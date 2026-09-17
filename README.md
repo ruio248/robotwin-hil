@@ -39,6 +39,18 @@ The default HG-DAgger collection uses policy action chunks until the operator
 presses i. It then discards the remaining policy chunk and attempts a scripted
 expert recovery. Only accepted recovery data is written.
 
+## Ubuntu/4090 HDD environment
+
+On the Ubuntu host where the data disk is mounted at `/hdd`, enter the
+HDD-backed environment with:
+
+    bash ./enter_robotwin_hil.sh
+
+The launcher creates a private user-namespace bind mount from `/hdd` to the
+historical `/media/ruio/hdd` path, activates `.venv`, sets the RoboTwin and
+LeRobot cache/output locations on the HDD, and opens a shell in `RoboTwin/`.
+It does not require `sudo` and does not modify `/etc/fstab`.
+
 ## Upstream sources
 
 - RoboTwin: https://github.com/robotwin-Platform/RoboTwin
