@@ -76,6 +76,18 @@ Then, in another terminal on the same host, run the human-gated client:
       --task-config handover_to_tray_v2_promptfix --seed-start 40000 \
       --render-freq 5 --frequency 30
 
+The repository intentionally does not contain model weights. The checkpoint
+directory must contain either an OpenPI `params/` tree or a PyTorch
+`model.safetensors` file, plus the normalization file expected by this
+adapter:
+
+    assets/ruio248/robotwin_handover_to_tray_v1/norm_stats.json
+
+If the checkpoint is stored elsewhere, pass its absolute directory path as
+`ckpt_name` to both the server and client commands. The server resolves a
+checkpoint path before trying the conventional
+`<bench>-<ckpt>-<env>-<action>-<seed>` directory name.
+
 ## Upstream sources
 
 - RoboTwin: https://github.com/robotwin-Platform/RoboTwin
