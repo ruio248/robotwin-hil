@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+.cache/
 
 # Local outputs and machine state
 /outputs/
