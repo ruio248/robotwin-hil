@@ -10,7 +10,9 @@ if [[ "${ROBOTWIN_HIL_HDD_MOUNTED:-0}" != "1" ]]; then
   # Do not request --mount-proc: some SSH sessions allow user/mount
   # namespaces but reject the extra procfs mount.  RoboTwin does not need a
   # private procfs for this bind mount or for headless smoke tests.
-  exec unshare -Urnm env ROBOTWIN_HIL_HDD_MOUNTED=1 "$0" "$@"
+  # Keep the host network namespace so a policy server on 127.0.0.1 can be
+  # reached from the HIL process.  Only user + mount namespaces are needed.
+  exec unshare -Ur -m env ROBOTWIN_HIL_HDD_MOUNTED=1 "$0" "$@"
 fi
 
 if ! mountpoint -q /media/ruio/hdd; then
