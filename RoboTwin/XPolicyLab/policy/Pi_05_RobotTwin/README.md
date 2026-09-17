@@ -9,7 +9,7 @@ Shared conventions — argument meanings, checkpoint naming, split-machine deplo
 ## Installation
 
 ```bash
-cd XPolicyLab/policy/Pi_05
+cd XPolicyLab/policy/Pi_05_RobotTwin
 bash install.sh
 source openpi/.venv/bin/activate  # OpenPI is uv-managed; there is no policy conda env
 ```
@@ -21,7 +21,7 @@ source openpi/.venv/bin/activate  # OpenPI is uv-managed; there is no policy con
 Converts RoboDojo demonstrations into the LeRobot repo consumed by training. The dataset uses the official keys — `observation.state`, `action`, `observation.images.cam_high` / `cam_left_wrist` / `cam_right_wrist` ([official LeRobot conversion](../../README.md#official-lerobot-conversion)); the bundled script exists because conversion must run inside openpi's own pinned LeRobot environment, which sets the dataset version. The optional `expert_data_num` caps episodes for data conversion only (it is not part of checkpoint naming); the optional `raw_task_dirs` is a source task directory or comma-separated task list under `data/<bench_name>/` (defaults to `ckpt_name`). `raw_task_dirs` may also be passed directly as the 5th argument to write a differently named dataset from all of a task's demos, e.g. `bash process_data.sh RoboDojo stack_bowls_ablation arx_x5 joint stack_bowls`.
 
 ```bash
-cd XPolicyLab/policy/Pi_05
+cd XPolicyLab/policy/Pi_05_RobotTwin
 bash process_data.sh <bench_name> <ckpt_name> <env_cfg_type> <action_type> [expert_data_num] [raw_task_dirs]
 
 # Example: convert stack_bowls demos for arx_x5 joint control
@@ -34,7 +34,7 @@ bash process_data.sh RoboDojo stack_bowls_50ep arx_x5 joint 50 stack_bowls
 ## Training
 
 ```bash
-cd XPolicyLab/policy/Pi_05
+cd XPolicyLab/policy/Pi_05_RobotTwin
 bash train.sh <bench_name> <ckpt_name> <env_cfg_type> <action_type> <seed> <gpu_id>
 
 # Example: train a cotrain run on GPU 0 (comma-separated gpu_id for multi-GPU)
@@ -46,7 +46,7 @@ Checkpoints land in `checkpoints/<bench_name>-<ckpt_name>-<env_cfg_type>-<action
 ## Evaluation
 
 ```bash
-cd XPolicyLab/policy/Pi_05
+cd XPolicyLab/policy/Pi_05_RobotTwin
 bash eval.sh <bench_name> <task_name> <ckpt_name> <env_cfg_type> <action_type> <seed> \
   <policy_gpu_id> <env_gpu_id> <policy_uv_env> <eval_env_conda_env>
 
