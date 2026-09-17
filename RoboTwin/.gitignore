@@ -23,6 +23,13 @@ assets/*
 
 policy/weights/*
 
+# The Pi_05_RobotTwin OpenPI adapter imports these model implementations at
+# runtime.  The broad models/ rule above must not hide this vendored source.
+!XPolicyLab/policy/Pi_05_RobotTwin/openpi/src/openpi/models/
+!XPolicyLab/policy/Pi_05_RobotTwin/openpi/src/openpi/models/**
+!XPolicyLab/policy/Pi_05_RobotTwin/openpi/src/openpi/models_pytorch/transformers_replace/
+!XPolicyLab/policy/Pi_05_RobotTwin/openpi/src/openpi/models_pytorch/transformers_replace/**
+
 envs/curobo/*
 
 .vscode
