@@ -25,9 +25,15 @@ action_dim=$(bash "${UTILS_DIR}/get_action_dim.sh" "${BENCH_ROOT}" "${env_cfg_ty
 
 echo "[SERVER] policy=${policy_name}, task=${task_name}, port=${policy_server_port}, action_dim=${action_dim}"
 
-CONDA_BASE="$(conda info --base)"
-source "${CONDA_BASE}/etc/profile.d/conda.sh"
-YAML_PYTHON="${CONDA_BASE}/bin/python"
+# Resolve the OpenPI project with the currently active Python.  The previous
+# version forced the base conda interpreter here; on a clean machine that
+# interpreter may not have PyYAML even though the selected policy environment
+# does.
+YAML_PYTHON="${YAML_PYTHON:-$(command -v python || true)}"
+if [[ -z "${YAML_PYTHON}" || ! -x "${YAML_PYTHON}" ]]; then
+    echo "[SERVER][ERROR] an active Python interpreter is required to parse deploy.yml" >&2
+    exit 1
+fi
 
 resolve_uv_env() {
     local raw_path=$1
