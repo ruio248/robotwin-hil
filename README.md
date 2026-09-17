@@ -26,6 +26,11 @@ prompt-fix configurations.
 
 RoboTwin/assets/embodiments contains robot embodiment and cuRobo assets.
 
+The large, ignored RoboTwin asset snapshot is machine-local rather than part
+of the Git history. On the configured Ubuntu host it is hydrated at
+`/hdd/robotwin-hil/RoboTwin/assets` and is exposed as
+`/media/ruio/hdd/robotwin-hil/RoboTwin/assets` inside the launcher namespace.
+
 ## Quick start
 
     source ./activate_robotwin_hil.sh
