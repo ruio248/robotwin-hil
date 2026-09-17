@@ -47,9 +47,10 @@ HDD-backed environment with:
     bash ./enter_robotwin_hil.sh
 
 The launcher creates a private user-namespace bind mount from `/hdd` to the
-historical `/media/ruio/hdd` path, activates `.venv`, sets the RoboTwin and
-LeRobot cache/output locations on the HDD, and opens a shell in `RoboTwin/`.
-It does not require `sudo` and does not modify `/etc/fstab`.
+historical `/media/ruio/hdd` path, selects the HDD-backed `robotwin_hil`
+conda clone, sets the RoboTwin, LeRobot, and Warp cache/output locations on
+the HDD, and opens a shell in `RoboTwin/`. It does not require `sudo` and does
+not modify `/etc/fstab`.
 
 ## Upstream sources
 
