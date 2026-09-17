@@ -21,6 +21,8 @@ fi
 
 export ROBOTWIN_HIL_ROOT=/media/ruio/hdd/robotwin-hil
 export ROBOTWIN_ROOT="$ROBOTWIN_HIL_ROOT/RoboTwin"
+export ROBOTWIN_OPENPI_ROOT="$ROBOTWIN_ROOT/XPolicyLab/policy/Pi_05_RobotTwin/openpi"
+export OPENPI_ROOT="$ROBOTWIN_OPENPI_ROOT"
 export ROBOTWIN_CONDA_ENV="${ROBOTWIN_CONDA_ENV:-/media/ruio/hdd/miniconda3/envs/robotwin_hil}"
 export VIRTUAL_ENV="$ROBOTWIN_CONDA_ENV"
 export ROBOTWIN_PYTHON="$ROBOTWIN_CONDA_ENV/bin/python"
@@ -33,11 +35,13 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$ROBOTWIN_HIL_ROOT/.cache/xdg}"
 export TMPDIR="${TMPDIR:-$ROBOTWIN_HIL_ROOT/.cache/tmp}"
 export WARP_CACHE_PATH="${WARP_CACHE_PATH:-$ROBOTWIN_HIL_ROOT/.cache/warp}"
 export WARP_CACHE_ROOT="${WARP_CACHE_ROOT:-$WARP_CACHE_PATH}"
+export JAX_COMPILATION_CACHE_DIR="${JAX_COMPILATION_CACHE_DIR:-$ROBOTWIN_HIL_ROOT/.cache/jax}"
+export OPENPI_LOCAL_CACHE_ROOT="${OPENPI_LOCAL_CACHE_ROOT:-$ROBOTWIN_HIL_ROOT/.cache/openpi}"
 export VK_ICD_FILENAMES="${VK_ICD_FILENAMES:-/usr/share/vulkan/icd.d/nvidia_icd.json}"
 export PYTHONNOUSERSITE=1
 export PYTHONUNBUFFERED=1
 
-mkdir -p "$ROBOTWIN_HIL_ROOT"/{outputs/{logs,manifests,lerobot_datasets},.cache/{pip,huggingface,xdg,tmp,warp}}
+mkdir -p "$ROBOTWIN_HIL_ROOT"/{outputs/{logs,manifests,lerobot_datasets},.cache/{pip,huggingface,xdg,tmp,warp,jax,openpi}}
 cd "$ROBOTWIN_ROOT"
 
 if [[ $# -gt 0 ]]; then

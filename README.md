@@ -48,9 +48,28 @@ HDD-backed environment with:
 
 The launcher creates a private user-namespace bind mount from `/hdd` to the
 historical `/media/ruio/hdd` path, selects the HDD-backed `robotwin_hil`
-conda clone, sets the RoboTwin, LeRobot, and Warp cache/output locations on
-the HDD, and opens a shell in `RoboTwin/`. It does not require `sudo` and does
-not modify `/etc/fstab`.
+conda clone, sets the RoboTwin, LeRobot, Warp, JAX, and OpenPI cache/output
+locations on the HDD, and opens a shell in `RoboTwin/`. It does not require
+`sudo` and does not modify `/etc/fstab`.
+
+The RoboTwin evaluation environment is the conda clone selected by the
+launcher. The Pi0.5 policy server uses its separate OpenPI environment:
+
+    source "$ROBOTWIN_OPENPI_ROOT/.venv/bin/activate"
+
+For the handover-to-tray checkpoint, start the policy server after placing the
+checkpoint under
+`RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/checkpoints/`:
+
+    bash XPolicyLab/policy/Pi_05_RobotTwin/setup_eval_policy_server.sh \
+      RoboTwin handover_to_tray v2_promptfix_9999 aloha_agilex joint 40000 0 uv 18300 127.0.0.1
+
+Then, in another terminal on the same host, run the human-gated client:
+
+    python scripts/hg_dagger_handover.py --host 127.0.0.1 --port 18300 \
+      --policy-name Pi_05_RobotTwin --ckpt-name v2_promptfix_9999 \
+      --task-config handover_to_tray_v2_promptfix --seed-start 40000 \
+      --render-freq 5 --frequency 30
 
 ## Upstream sources
 
