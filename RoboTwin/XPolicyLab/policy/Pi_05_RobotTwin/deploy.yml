@@ -16,7 +16,9 @@ obs_transform_pipeline: "xspark-v1.0"
 action_type: joint
 policy_uv_env_path: openpi
 # Must match the config used by train.sh (default OPENPI_TRAIN_CONFIG_NAME).
-train_config_name: pi05_robotwin_handover_to_tray_v1
+# The private RobotTwin training script uses the standard 14D Aloha Pi0.5
+# config; the RobotTwin dataset/repo id is supplied separately below.
+train_config_name: pi05_base_aloha_full_sim_arx-x5_seed_0
 repo_id: ruio248/robotwin_handover_to_tray_v1
 
 port: 6000
