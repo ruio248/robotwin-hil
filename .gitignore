@@ -1,0 +1,43 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local outputs and machine state
+/outputs/
+/cache/
+/conda/
+/toolchain/
+/logs/
+/eval_logs/
+/backups/
+/hg_dagger_acceptance/
+/hg_dagger_auto_smoke_step0/
+/hg_dagger_data_smoke/
+/lerobot_datasets/
+
+# RoboTwin generated data/results
+/RoboTwin/data/*
+!/RoboTwin/data/process_stuck.py
+!/RoboTwin/data/decode_image_bit.py
+/RoboTwin/eval_result/
+/RoboTwin/result/
+/RoboTwin/eval_video/
+/RoboTwin/**/checkpoints/
+/RoboTwin/**/results/
+
+# Local/editor/system files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+*.zip
+*.mp4
+*.mov
+*.webm

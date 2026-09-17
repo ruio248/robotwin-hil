@@ -1,0 +1,8 @@
+{
+  "seen": [
+    "Pass the red bar from {a} to {b} and place it in the blue tray."
+  ],
+  "unseen": [
+    "Transfer the red bar from {a} to {b}, then park it in the blue tray."
+  ]
+}
