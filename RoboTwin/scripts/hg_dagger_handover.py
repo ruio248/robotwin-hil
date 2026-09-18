@@ -606,7 +606,7 @@ def main() -> int:
                                 action_type=robotwin_action_type,
                             )
                             policy_steps += 1
-                            if save_data:
+                            if save_data and policy_steps % int(cli.save_freq) == 0:
                                 task_env._take_picture()
 
                             if is_episode_end(task_env):

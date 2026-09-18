@@ -467,6 +467,17 @@ class Base_Task(gym.Env):
         self.cameras.update_wrist_camera(self.robot.left_camera.get_pose(), self.robot.right_camera.get_pose())
         self.scene.update_render()
 
+    def _render_viewer_if_available(self):
+        """Render the on-screen viewer only if its window still exists."""
+        viewer = getattr(self, "viewer", None)
+        if viewer is None or getattr(viewer, "window", None) is None:
+            return
+        try:
+            viewer.render()
+        except Exception:
+            # A closed/destroyed desktop window must not abort the session.
+            self.viewer = None
+
     # =========================================================== Basic APIs ===========================================================
 
     def get_obs(self):
@@ -943,7 +954,7 @@ class Base_Task(gym.Env):
             self.scene.step()
             if self.render_freq and i % self.render_freq == 0:
                 self._update_render()
-                self.viewer.render()
+                self._render_viewer_if_available()
 
             if save_freq != None and i % save_freq == 0:
                 self._update_render()
@@ -1537,7 +1548,7 @@ class Base_Task(gym.Env):
 
             if self.render_freq and control_idx % self.render_freq == 0:
                 self._update_render()
-                self.viewer.render()
+                self._render_viewer_if_available()
 
             if save_freq != None and control_idx % save_freq == 0:
                 self._update_render()
@@ -1561,7 +1572,7 @@ class Base_Task(gym.Env):
 
         self._update_render()
         if self.render_freq:
-            self.viewer.render()
+            self._render_viewer_if_available()
 
         actions = np.array([action])
         left_jointstate = self.robot.get_left_arm_jointState()
@@ -1735,7 +1746,7 @@ class Base_Task(gym.Env):
 
         self._update_render()
         if self.render_freq:  # UI
-            self.viewer.render()
+            self._render_viewer_if_available()
 
 
     def save_camera_images(self, task_name, step_name, generate_num_id, save_dir="./camera_images"):
