@@ -397,7 +397,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--seed-min", type=int, default=40000)
     parser.add_argument("--seed-max", type=int, default=99999)
-    parser.add_argument("--rng-seed", type=int, default=0)
+    parser.add_argument(
+        "--rng-seed",
+        type=int,
+        default=None,
+        help=(
+            "Seed for the --seed-mode random offset stream. Leave unset to draw "
+            "fresh OS entropy each run, so repeated runs explore different "
+            "collection seeds. Pass a fixed value only for a reproducible order."
+        ),
+    )
     parser.add_argument(
         "--target-mode",
         choices=["hil", "expert"],
@@ -514,6 +523,14 @@ def main() -> int:
     if cli.acceptance:
         cli.episodes = 1
         cli.save_data = "false"
+    if cli.seed_mode == "random" and cli.rng_seed is None:
+        # Fresh entropy per run: repeated launches must not replay the same
+        # collection-seed sequence, otherwise "random" adds no diversity.
+        cli.rng_seed = random.SystemRandom().randrange(1, 2**31)
+        print(
+            f"[SEEDS] random mode, run rng-seed={cli.rng_seed} "
+            "(pass --rng-seed to reproduce this order)"
+        )
     seed_iter = build_seed_stream(cli)
     cli.output_dir = cli.output_dir.expanduser().resolve()
     cli.output_dir.mkdir(parents=True, exist_ok=True)
@@ -922,6 +939,7 @@ def main() -> int:
     session_report = {
         "aborted": aborted,
         "seed_mode": cli.seed_mode,
+        "rng_seed": cli.rng_seed,
         "seed_range": (
             [int(cli.seed_min), int(cli.seed_max)]
             if cli.seed_mode == "random"
