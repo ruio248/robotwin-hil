@@ -215,6 +215,7 @@ def finalize_episode(
     save: bool,
     supervisor_label: str,
     segments: list[dict[str, Any]],
+    extra: dict[str, Any] | None = None,
 ) -> Path | None:
     """Persist or discard the raw recorded trajectory after supervisor review.
 
@@ -262,6 +263,7 @@ def finalize_episode(
             "segments": segments,
             "episode_metadata": task_env.episode_metadata,
             "info": task_env.info,
+            "record": extra or {},
         },
     )
 
@@ -274,6 +276,11 @@ def finalize_episode(
             "control_mask": list(task_env.control_mask),
             "segments": segments,
             "raw_dir": str(raw_dir),
+            "hil_frames": (extra or {}).get("hil_frames"),
+            "rollout_seconds": (extra or {}).get("rollout_seconds"),
+            "expert_success": ((extra or {}).get("expert_result") or {}).get("success"),
+            "expert_branch": ((extra or {}).get("expert_result") or {}).get("branch"),
+            "intervention_count": (extra or {}).get("intervention_count"),
         },
     )
     return raw_dir
@@ -494,11 +501,11 @@ def main() -> int:
 
     try:
         rollout_index = 0
-        saved_count = 0
+        saved_hil_count = 0
         session_started = time.time()
         while (
             rollout_index < int(cli.episodes)
-            and saved_count < int(cli.target_saved)
+            and saved_hil_count < int(cli.target_saved)
         ):
             seed = int(cli.seed_start) + rollout_index
             rollout_started = time.time()
@@ -542,6 +549,7 @@ def main() -> int:
             source_start_step = 0
             recovery_iter = None
             expert_stage_count = 0
+            last_expert_progress: dict[str, Any] | None = None
             quit_requested = False
             last_expert_result: dict[str, Any] | None = None
 
@@ -560,7 +568,7 @@ def main() -> int:
 
             print(
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
-                f"saved {saved_count}/{cli.target_saved}] seed={seed}; "
+                f"saved valid HIL {saved_hil_count}/{cli.target_saved}] seed={seed}; "
                 "i=takeover, r=handback, q=quit.\033[0m"
             )
 
@@ -702,6 +710,7 @@ def main() -> int:
                         ):
                             if interventions:
                                 interventions[-1]["handback_step"] = int(task_env.FRAME_IDX)
+                                interventions[-1]["expert_progress"] = last_expert_progress
                             switch_source("policy")
                             mode = "policy"
                             reset_policy(model_client)
@@ -719,6 +728,7 @@ def main() -> int:
                                 interventions[-1]["end_step"] = int(task_env.FRAME_IDX)
                             last_expert_result = step.get("result") or {}
                             break
+                        last_expert_progress = step
 
             # Close the final open segment.
             append_segment(
@@ -737,6 +747,9 @@ def main() -> int:
             joints_legal, joint_absmax = task_env.planned_joints_legal()
             final_success_metrics = task_env.success_metrics()
             final_check_success = task_env.check_success()
+            hil_frames = sum(
+                1 for item in task_env.control_mask if str(item).lower() == "hil"
+            )
 
             if auto_label is not None:
                 supervisor_label = auto_label
@@ -781,6 +794,8 @@ def main() -> int:
                 "final_check_success": bool(final_check_success),
                 "final_success_metrics": final_success_metrics,
                 "expert_result": last_expert_result,
+                "expert_progress": last_expert_progress,
+                "hil_frames": int(hil_frames),
                 "supervisor_label": supervisor_label,
                 "joints_legal": bool(joints_legal),
                 "joint_absmax": float(joint_absmax),
@@ -797,12 +812,14 @@ def main() -> int:
                 save=do_save,
                 supervisor_label=supervisor_label,
                 segments=segments,
+                extra=episode_record,
             )
             episode_record["raw_dir"] = str(raw_dir) if raw_dir else None
             episode_record["hdf5_path"] = None
             if do_save:
                 data_episode_index += 1
-                saved_count += 1
+                if hil_frames > 0:
+                    saved_hil_count += 1
             records.append(episode_record)
             notify_trial_end(
                 model_client,
@@ -858,6 +875,11 @@ def main() -> int:
         "total_rollouts": len(records),
         "interventions": sum(int(item.get("intervention_count", 0)) for item in records),
         "saved_episodes": sum(1 for item in records if item.get("save_decision")),
+        "saved_hil_episodes": sum(
+            1
+            for item in records
+            if item.get("save_decision") and int(item.get("hil_frames", 0)) > 0
+        ),
         "success_labels": sum(
             1 for item in records if item.get("supervisor_label") == "success"
         ),
