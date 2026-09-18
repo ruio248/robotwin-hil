@@ -1,0 +1,10 @@
+policy_name: Pi_05_RobotTwin
+task_name: handover_to_tray
+action_type: joint
+env_cfg_type: aloha_agilex
+train_config_name: pi05_robotwin_handover_to_tray_v2_promptfix
+repo_id: ruio248/robotwin_handover_to_tray_v2_promptfix
+model_path: /hdd/robotwin-hil/RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/checkpoints/pi05_robotwin_handover_to_tray_v2_promptfix/robotwin_handover_to_tray_v2_promptfix_bf16_inference/9999
+host: 127.0.0.1
+port: 18300
+protocol: ws

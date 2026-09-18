@@ -402,6 +402,192 @@ class handover_to_tray(Base_Task):
         self.info["recovery"] = result
         return result
 
+    def recovery_stage_iterator(self):
+        """Yield the scripted expert's recovery stages one at a time.
+
+        The supervisor can hand control back to the policy after any yielded
+        stage. Each ``next()`` executes one semantic stage (or opens the
+        final grippers) and yields a progress dict. The final yield has
+        ``phase == "done"``.
+        """
+        initial = self.infer_recovery_state()
+        if not initial["recoverable"]:
+            yield {
+                "phase": "done",
+                "success": False,
+                "plan_success": False,
+                "reason": "bar_outside_recovery_workspace",
+                "initial": initial,
+                "executed_stage_ids": [],
+            }
+            return
+
+        self.plan_success = True
+        executed_stage_ids: list[int] = []
+        source_holds = bool(initial["source_holds"])
+        receiver_holds = bool(initial["receiver_holds"])
+        placed = bool(initial["placed"])
+        reason = None
+
+        def progress():
+            return {
+                "phase": "stage",
+                "plan_success": bool(self.plan_success),
+                "executed_stage_ids": list(executed_stage_ids),
+                "source_holds": bool(source_holds),
+                "receiver_holds": bool(receiver_holds),
+            }
+
+        if placed:
+            self._run_stage(
+                6,
+                self.open_gripper(self.source_arm_tag),
+                self.open_gripper(self.receiver_arm_tag),
+            )
+            executed_stage_ids.append(6)
+            yield progress()
+        else:
+            if not source_holds and not receiver_holds:
+                self._run_stage(
+                    1,
+                    self.open_gripper(self.source_arm_tag),
+                    self.open_gripper(self.receiver_arm_tag),
+                )
+                executed_stage_ids.append(1)
+                yield progress()
+
+                self._run_stage(
+                    1,
+                    self.grasp_actor(
+                        self.bar,
+                        arm_tag=self.source_arm_tag,
+                        pre_grasp_dis=0.07,
+                        grasp_dis=0.0,
+                        contact_point_id=[0, 1, 2, 3],
+                    ),
+                )
+                executed_stage_ids.append(1)
+                yield progress()
+
+                source_holds = bool(
+                    self.plan_success and self.arm_holds_bar(self.source_arm_tag)
+                )
+                if self.plan_success and not source_holds:
+                    self.plan_success = False
+                    reason = "source_grasp_did_not_attach"
+                if self.plan_success:
+                    self._run_stage(
+                        2,
+                        self.move_by_displacement(self.source_arm_tag, z=0.10),
+                    )
+                    executed_stage_ids.append(2)
+                    yield progress()
+
+            if source_holds and not receiver_holds and self.plan_success:
+                if (
+                    self.is_left_gripper_close()
+                    if self.receiver_arm_tag == "left"
+                    else self.is_right_gripper_close()
+                ):
+                    self._run_stage(3, self.open_gripper(self.receiver_arm_tag))
+                    executed_stage_ids.append(3)
+                    yield progress()
+
+                self._run_stage(
+                    3,
+                    self.place_actor(
+                        self.bar,
+                        target_pose=self.handover_middle_pose,
+                        arm_tag=self.source_arm_tag,
+                        functional_point_id=0,
+                        pre_dis=0.0,
+                        dis=0.0,
+                        is_open=False,
+                        constrain="free",
+                    ),
+                )
+                executed_stage_ids.append(3)
+                yield progress()
+
+                self._run_stage(
+                    4,
+                    self.grasp_actor(
+                        self.bar,
+                        arm_tag=self.receiver_arm_tag,
+                        pre_grasp_dis=0.07,
+                        grasp_dis=0.0,
+                        contact_point_id=[4, 5, 6, 7],
+                    ),
+                )
+                executed_stage_ids.append(4)
+                yield progress()
+
+                receiver_holds = bool(
+                    self.plan_success and self.arm_holds_bar(self.receiver_arm_tag)
+                )
+                if self.plan_success and not receiver_holds:
+                    self.plan_success = False
+                    reason = "receiver_grasp_did_not_attach"
+
+            if source_holds and receiver_holds and self.plan_success:
+                self._run_stage(5, self.open_gripper(self.source_arm_tag))
+                executed_stage_ids.append(5)
+                yield progress()
+
+                self._run_stage(
+                    5,
+                    self.move_by_displacement(
+                        self.source_arm_tag,
+                        z=0.10,
+                        move_axis="arm",
+                    ),
+                )
+                executed_stage_ids.append(5)
+                source_holds = False
+                yield progress()
+
+            if receiver_holds and self.plan_success:
+                self._run_stage(
+                    6,
+                    self.back_to_origin(self.source_arm_tag),
+                    self.place_actor(
+                        self.bar,
+                        target_pose=self._tray_placement_target(),
+                        arm_tag=self.receiver_arm_tag,
+                        functional_point_id=0,
+                        pre_dis=0.05,
+                        dis=0.0,
+                        constrain="align",
+                        pre_dis_axis="fp",
+                    ),
+                )
+                executed_stage_ids.append(6)
+                yield progress()
+
+        success = bool(self.plan_success and self.check_success())
+        self.eval_success = success
+        result = {
+            "initial": initial,
+            "branch": initial["branch"],
+            "executed_stage_ids": executed_stage_ids,
+            "plan_success": bool(self.plan_success),
+            "success": success,
+            "reason": reason,
+            "final": self.infer_recovery_state(),
+        }
+        self.episode_metadata["success"] = success
+        self.episode_metadata["plan_success"] = bool(self.plan_success)
+        self.episode_metadata["stage_count"] = len(self.stage_snapshots)
+        self.episode_metadata["recovery"] = result
+        self.info["info"] = {
+            "{a}": str(self.source_arm_tag),
+            "{b}": str(self.receiver_arm_tag),
+        }
+        self.info["task_metadata"] = self.episode_metadata
+        self.info["stage_snapshots"] = self.stage_snapshots
+        self.info["recovery"] = result
+        yield {"phase": "done", "result": result}
+
     def _run_stage(self, stage_id: int, *actions) -> bool:
         self.current_stage_id = stage_id
         if self.plan_success:

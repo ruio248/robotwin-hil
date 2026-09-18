@@ -61,6 +61,8 @@ class Base_Task(gym.Env):
         random.seed(kwags.get("seed", 0))
 
         self.FRAME_IDX = 0
+        self.control_mask = []
+        self.current_control_source = None
         self.task_name = kwags.get("task_name")
         self.save_dir = kwags.get("save_path", "data")
         self.ep_num = kwags.get("now_ep_num", 0)
@@ -538,6 +540,7 @@ class Base_Task(gym.Env):
 
         if self.FRAME_IDX == 0:
             self.folder_path = {"cache": f"{self.save_dir}/.cache/episode{self.ep_num}/"}
+            self.control_mask = []
 
             for directory in self.folder_path.values():  # remove previous data
                 if os.path.exists(directory):
@@ -547,6 +550,7 @@ class Base_Task(gym.Env):
 
         pkl_dic = self.get_obs()
         save_pkl(self.folder_path["cache"] + f"{self.FRAME_IDX}.pkl", pkl_dic)  # use cache
+        self.control_mask.append(self.current_control_source)
         self.FRAME_IDX += 1
 
     @staticmethod

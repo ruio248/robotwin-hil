@@ -51,19 +51,40 @@ from eval_policy_xpolicylab import (  # noqa: E402
 PROMPT = "Pass the red bar from the left arm to the right arm and place it in the blue tray."
 
 
+DEFAULT_KEYS = {"i": "intervene", "r": "handback", "q": "quit"}
+
+
 def parse_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
+def joint_bias_dims(bias_dims: str, left_dim: int, right_dim: int) -> list[int]:
+    if bias_dims.strip().lower() == "joints":
+        dims = list(range(left_dim))
+        dims += [left_dim + 1 + index for index in range(right_dim)]
+        return dims
+    return [int(value) for value in bias_dims.split(",") if value.strip() != ""]
+
+
+def apply_action_bias(action: np.ndarray, dims: list[int], magnitude: float) -> np.ndarray:
+    biased = np.asarray(action, dtype=np.float64).reshape(-1).copy()
+    for dim in dims:
+        if 0 <= dim < biased.shape[0]:
+            biased[dim] += magnitude
+    return biased
+
+
 class HumanInterventionInput:
     """Poll SAPIEN's focused window and, optionally, the launching terminal."""
 
-    def __init__(self, task_env, intervention_key: str = "i", quit_key: str = "q"):
+    def __init__(self, task_env, key_map: dict[str, str] | None = None):
         self.task_env = task_env
-        self.intervention_key = intervention_key.lower()
-        self.quit_key = quit_key.lower()
+        self.key_map = {
+            key.lower(): value
+            for key, value in (key_map or DEFAULT_KEYS).items()
+        }
         self._fd: int | None = None
         self._term_attrs = None
 
@@ -90,10 +111,7 @@ class HumanInterventionInput:
         window = getattr(viewer, "window", None)
         if window is None:
             return None
-        for key, event in (
-            (self.intervention_key, "intervene"),
-            (self.quit_key, "quit"),
-        ):
+        for key, event in self.key_map.items():
             try:
                 if bool(window.key_press(key)) or bool(window.key_down(key)):
                     return event
@@ -111,10 +129,11 @@ class HumanInterventionInput:
             data = os.read(self._fd, 64).decode("utf-8", errors="ignore").lower()
         except OSError:
             return None
-        if self.quit_key in data:
-            return "quit"
-        if self.intervention_key in data:
-            return "intervene"
+        for key, event in sorted(
+            self.key_map.items(), key=lambda item: -len(item[0])
+        ):
+            if key in data:
+                return event
         return None
 
     def poll(self) -> str | None:
@@ -154,15 +173,66 @@ def append_jsonl(path: Path, value: Any) -> None:
         handle.write(json.dumps(value, ensure_ascii=False) + "\n")
 
 
-def save_successful_recovery(
+def append_segment(
+    segments: list[dict[str, Any]],
+    source: str,
+    start_step: int,
+    end_step: int,
+) -> None:
+    """Record a contiguous control segment when it has at least one step."""
+    if int(end_step) > int(start_step):
+        segments.append(
+            {
+                "source": source,
+                "start_step": int(start_step),
+                "end_step": int(end_step),
+            }
+        )
+
+
+def prompt_choice(
+    task_env,
+    choices: dict[str, str],
+    prompt: str,
+) -> str:
+    """Block until the supervisor emits one of the configured key events."""
+    print(prompt, flush=True)
+    with HumanInterventionInput(task_env, choices) as poller:
+        while True:
+            event = poller.poll()
+            if event in choices.values():
+                return event
+            time.sleep(0.02)
+
+
+def finalize_episode(
     task_env,
     output_dir: Path,
     episode_index: int,
     instruction: str,
-    record: dict[str, Any],
-) -> Path:
+    *,
+    save: bool,
+    supervisor_label: str,
+    segments: list[dict[str, Any]],
+) -> Path | None:
+    """Write or discard the recorded full trajectory after supervisor review."""
+    task_env.episode_metadata["control_mask"] = list(task_env.control_mask)
+    task_env.episode_metadata["segments"] = segments
+    task_env.episode_metadata["supervisor_label"] = supervisor_label
+    task_env.episode_metadata["saved"] = bool(save)
+    task_env.info["task_metadata"] = task_env.episode_metadata
+    task_env.info["control_mask"] = list(task_env.control_mask)
+    task_env.info["segments"] = segments
+    task_env.info["supervisor_label"] = supervisor_label
+    task_env.info["saved"] = bool(save)
+
+    if not save:
+        discard_recovery_cache(task_env)
+        return None
+
     if int(task_env.FRAME_IDX) < 2:
-        raise RuntimeError("Expert recovery produced fewer than two recorded frames.")
+        raise RuntimeError("Episode produced fewer than two recorded frames; cannot save.")
+
     task_env.merge_pkl_to_hdf5_video(instructions=[instruction])
     hdf5_path = output_dir / "data" / f"episode_{episode_index:07d}.hdf5"
     if not hdf5_path.is_file():
@@ -182,7 +252,17 @@ def save_successful_recovery(
     scene_info = read_json_object(scene_info_path)
     scene_info[f"episode_{episode_index}"] = task_env.info
     write_json(scene_info_path, scene_info)
-    append_jsonl(output_dir / "interventions.jsonl", record)
+
+    append_jsonl(
+        output_dir / "episodes.jsonl",
+        {
+            "episode_index": episode_index,
+            "saved": True,
+            "supervisor_label": supervisor_label,
+            "control_mask": list(task_env.control_mask),
+            "segments": segments,
+        },
+    )
     task_env.remove_data_cache()
     return hdf5_path
 
@@ -202,78 +282,6 @@ def render_initial_frame(task_env) -> None:
         )
     task_env._update_render()
     viewer.render()
-
-
-def run_intervention_expert(
-    task_env,
-    *,
-    save_data: bool,
-    output_dir: Path,
-    episode_index: int,
-    instruction: str,
-    seed: int,
-    policy_steps: int,
-) -> tuple[dict[str, Any], Path | None]:
-    inferred = task_env.infer_recovery_state()
-    task_env.current_stage_id = int(inferred["stage_id"])
-    task_env.save_data = bool(save_data)
-    task_env.save_dir = str(output_dir)
-    task_env.save_video = False
-    task_env.FRAME_IDX = 0
-    task_env.folder_path = {}
-    task_env.ep_num = int(episode_index)
-
-    print("\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m")
-    print(
-        "\033[93m[HG-DAGGER] Expert takeover: "
-        f"branch={inferred['branch']} stage={inferred['stage_id']} "
-        f"source_holds={inferred['source_holds']} receiver_holds={inferred['receiver_holds']}\033[0m"
-    )
-
-    if save_data:
-        task_env._take_picture()
-    recovery = task_env.recover_from_current_state()
-    if save_data:
-        task_env.current_stage_id = max(
-            1,
-            min(6, int(task_env.current_stage_id)),
-        )
-        task_env._take_picture()
-
-    joints_legal, joint_absmax = task_env.planned_joints_legal()
-    accepted = bool(recovery.get("success") and recovery.get("plan_success") and joints_legal)
-    record = {
-        "episode_index": int(episode_index),
-        "seed": int(seed),
-        "instruction": instruction,
-        "policy_steps_before_intervention": int(policy_steps),
-        "intervention_key": "i",
-        "intervened": True,
-        "policy_chunk_discarded": True,
-        "expert_invoked": True,
-        "expert_recovery": recovery,
-        "joints_legal": bool(joints_legal),
-        "joint_absmax": float(joint_absmax),
-        "accepted_for_training": accepted,
-        "timestamp": datetime.now().isoformat(timespec="seconds"),
-    }
-    task_env.episode_metadata["hg_dagger"] = record
-    task_env.info["task_metadata"] = task_env.episode_metadata
-    task_env.info["hg_dagger"] = record
-
-    hdf5_path = None
-    if save_data and accepted:
-        hdf5_path = save_successful_recovery(
-            task_env,
-            output_dir,
-            episode_index,
-            instruction,
-            record,
-        )
-    elif save_data:
-        discard_recovery_cache(task_env)
-        append_jsonl(output_dir / "rejected_interventions.jsonl", record)
-    return record, hdf5_path
 
 
 def build_runtime_args(cli: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -345,6 +353,25 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-data", default="true")
     parser.add_argument(
+        "--save-video",
+        default="false",
+        help="Also export the recorded episode as an MP4 during save.",
+    )
+    parser.add_argument(
+        "--step-limit",
+        type=int,
+        default=None,
+        help="Override the environment step limit for short no-takeover recordings.",
+    )
+    parser.add_argument(
+        "--bias-start-step",
+        type=int,
+        default=-1,
+        help="Start applying a permanent action bias from this policy step (-1 disables).",
+    )
+    parser.add_argument("--bias-magnitude", type=float, default=0.0)
+    parser.add_argument("--bias-dims", default="joints")
+    parser.add_argument(
         "--acceptance",
         action="store_true",
         help="Run one episode and exit nonzero unless i is detected and expert recovery succeeds.",
@@ -354,6 +381,24 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=-1,
         help="Test-only hook; -1 requires a real i key, 0 intervenes before the first policy action.",
+    )
+    parser.add_argument(
+        "--auto-label",
+        choices=["success", "failure", "none"],
+        default="none",
+        help="Test-only hook: skip the manual success/failure prompt.",
+    )
+    parser.add_argument(
+        "--auto-save",
+        choices=["true", "false", "none"],
+        default="none",
+        help="Test-only hook: skip the manual save/discard prompt.",
+    )
+    parser.add_argument(
+        "--auto-handback-step",
+        type=int,
+        default=-1,
+        help="Test-only hook: hand back to the policy after this many expert stages.",
     )
     return parser.parse_args()
 
@@ -378,14 +423,22 @@ def main() -> int:
     task_env = class_decorator("handover_to_tray")
     model_client = build_policy_client(user_args)
     save_data = parse_bool(cli.save_data)
+    save_video = parse_bool(cli.save_video)
+    auto_label = None if cli.auto_label == "none" else cli.auto_label
+    auto_save = None if cli.auto_save == "none" else parse_bool(cli.auto_save)
+    bias_dims = joint_bias_dims(
+        cli.bias_dims,
+        int(user_args["left_arm_dim"]),
+        int(user_args["right_arm_dim"]),
+    )
     data_episode_index = next_episode_index(cli.output_dir)
     records: list[dict[str, Any]] = []
     aborted = False
 
     print("\n" + "=" * 72)
     print("RoboTwin handover_to_tray human-gated DAgger")
-    print("Focus the SAPIEN window or this terminal, then press i to intervene.")
-    print("Press q to abort the current session.")
+    print("Keys: i=takeover, r=hand back to policy, q=quit.")
+    print("After each episode: s/f=success/failure, y/n=save/discard.")
     print(f"Prompt: {PROMPT}")
     print(f"Output: {cli.output_dir}")
     print("=" * 72 + "\n")
@@ -402,80 +455,88 @@ def main() -> int:
                 is_test=False,
                 **args,
             )
+            if cli.step_limit is not None:
+                task_env.step_lim = int(cli.step_limit)
             task_env.set_instruction(PROMPT)
             render_initial_frame(task_env)
             prepare_policy_case(model_client, "handover_to_tray", seed, PROMPT, "joint")
             reset_policy(model_client)
 
+            # Record the full episode from this point. ``_take_picture`` tags
+            # each saved frame with the current control source, so the HDF5
+            # keeps a per-frame policy/HIL mask.
+            task_env.save_data = save_data
+            task_env.save_dir = str(cli.output_dir)
+            task_env.save_video = save_video
+            task_env.FRAME_IDX = 0
+            task_env.folder_path = {}
+            task_env.ep_num = int(data_episode_index)
+            task_env.control_mask = []
+            task_env.current_control_source = "policy"
+            if save_data:
+                task_env._take_picture()
+
+            mode = "policy"
             policy_steps = 0
-            intervention_requested = cli.auto_intervene_step == 0
+            intervention_count = 0
+            segments: list[dict[str, Any]] = []
+            interventions: list[dict[str, Any]] = []
+            current_source = "policy"
+            source_start_step = 0
+            recovery_iter = None
+            expert_stage_count = 0
             quit_requested = False
-            autonomous_success = False
+            last_expert_result: dict[str, Any] | None = None
+
+            def switch_source(new_source: str) -> None:
+                nonlocal current_source, source_start_step
+                if current_source == new_source:
+                    return
+                append_segment(
+                    segments,
+                    current_source,
+                    source_start_step,
+                    int(task_env.FRAME_IDX),
+                )
+                current_source = new_source
+                source_start_step = int(task_env.FRAME_IDX)
 
             print(
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/{cli.episodes}] seed={seed}; "
-                "press i before an unrecoverable failure.\033[0m"
+                "i=takeover, r=handback, q=quit.\033[0m"
             )
 
             with HumanInterventionInput(task_env) as keyboard:
-                while not is_episode_end(task_env) and not intervention_requested:
+                while True:
                     event = keyboard.poll()
                     if event == "quit":
                         quit_requested = True
                         break
-                    if event == "intervene":
-                        intervention_requested = True
+                    if is_episode_end(task_env):
                         break
 
-                    observation = task_env.get_obs()
-                    xpl_obs = robotwin_obs_to_xpolicylab(
-                        observation,
-                        instruction=PROMPT,
-                        env_idx=0,
-                        frequency=int(cli.frequency),
-                        task_env=task_env,
-                    )
-                    model_client.call(func_name="update_obs", obs=xpl_obs)
-                    action_chunk = normalize_action_chunk(model_client.call(func_name="get_action"))
-                    if not action_chunk:
-                        raise RuntimeError("Policy returned an empty action chunk.")
-
-                    for action in action_chunk:
-                        event = keyboard.poll()
-                        if event == "quit":
-                            quit_requested = True
-                            break
+                    if mode == "policy":
                         if event == "intervene":
-                            intervention_requested = True
-                            break
-
-                        flat_action, robotwin_action_type = xpolicylab_action_to_robotwin(
-                            action,
-                            action_type="joint",
-                            current_observation=observation,
-                        )
-                        task_env.take_action(flat_action, action_type=robotwin_action_type)
-                        policy_steps += 1
-
-                        if task_env.eval_success:
-                            autonomous_success = True
-                            break
-                        if is_episode_end(task_env):
-                            break
-                        if (
-                            cli.auto_intervene_step >= 0
-                            and policy_steps >= cli.auto_intervene_step
-                        ):
-                            intervention_requested = True
-                            break
-
-                        event = keyboard.poll()
-                        if event == "quit":
-                            quit_requested = True
-                            break
-                        if event == "intervene":
-                            intervention_requested = True
-                            break
+                            switch_source("hil")
+                            intervention_count += 1
+                            interventions.append(
+                                {
+                                    "intervention_index": intervention_count,
+                                    "policy_steps_before_intervention": int(policy_steps),
+                                    "start_step": int(task_env.FRAME_IDX),
+                                    "handback_step": None,
+                                    "expert_done": False,
+                                }
+                            )
+                            recovery_iter = task_env.recovery_stage_iterator()
+                            mode = "expert"
+                            print(
+                                "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
+                            )
+                            print(
+                                "\033[93m[HG-DAGGER] Expert takeover; press r to hand back.\033[0m"
+                            )
+                            continue
 
                         observation = task_env.get_obs()
                         xpl_obs = robotwin_obs_to_xpolicylab(
@@ -486,9 +547,128 @@ def main() -> int:
                             task_env=task_env,
                         )
                         model_client.call(func_name="update_obs", obs=xpl_obs)
+                        action_chunk = normalize_action_chunk(
+                            model_client.call(func_name="get_action")
+                        )
+                        if not action_chunk:
+                            raise RuntimeError("Policy returned an empty action chunk.")
 
-                    if quit_requested or intervention_requested or autonomous_success:
-                        break
+                        chunk_interrupted = False
+                        for action in action_chunk:
+                            event = keyboard.poll()
+                            if event == "quit":
+                                quit_requested = True
+                                chunk_interrupted = True
+                                break
+                            if event == "intervene":
+                                chunk_interrupted = True
+                                break
+
+                            flat_action, robotwin_action_type = xpolicylab_action_to_robotwin(
+                                action,
+                                action_type="joint",
+                                current_observation=observation,
+                            )
+                            if (
+                                cli.bias_start_step >= 0
+                                and policy_steps >= cli.bias_start_step
+                                and cli.bias_magnitude
+                            ):
+                                flat_action = apply_action_bias(
+                                    flat_action,
+                                    bias_dims,
+                                    cli.bias_magnitude,
+                                )
+                            task_env.current_control_source = "policy"
+                            task_env.take_action(
+                                flat_action,
+                                action_type=robotwin_action_type,
+                            )
+                            policy_steps += 1
+                            if save_data:
+                                task_env._take_picture()
+
+                            if is_episode_end(task_env):
+                                chunk_interrupted = True
+                                break
+                            if (
+                                cli.auto_intervene_step >= 0
+                                and policy_steps >= cli.auto_intervene_step
+                                and intervention_count == 0
+                            ):
+                                event = "intervene"
+                                chunk_interrupted = True
+                                break
+
+                            observation = task_env.get_obs()
+                            xpl_obs = robotwin_obs_to_xpolicylab(
+                                observation,
+                                instruction=PROMPT,
+                                env_idx=0,
+                                frequency=int(cli.frequency),
+                                task_env=task_env,
+                            )
+                            model_client.call(func_name="update_obs", obs=xpl_obs)
+
+                        if quit_requested:
+                            break
+                        if is_episode_end(task_env):
+                            break
+                        if chunk_interrupted and event == "intervene":
+                            switch_source("hil")
+                            intervention_count += 1
+                            interventions.append(
+                                {
+                                    "intervention_index": intervention_count,
+                                    "policy_steps_before_intervention": int(policy_steps),
+                                    "start_step": int(task_env.FRAME_IDX),
+                                    "handback_step": None,
+                                    "expert_done": False,
+                                }
+                            )
+                            recovery_iter = task_env.recovery_stage_iterator()
+                            mode = "expert"
+                            print(
+                                "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
+                            )
+                            print(
+                                "\033[93m[HG-DAGGER] Expert takeover; press r to hand back.\033[0m"
+                            )
+                            continue
+                    else:
+                        # Expert mode. The supervisor can hand back at any
+                        # stage boundary. Each ``next()`` executes one stage.
+                        if event == "handback" or (
+                            cli.auto_handback_step >= 0
+                            and expert_stage_count >= cli.auto_handback_step
+                        ):
+                            if interventions:
+                                interventions[-1]["handback_step"] = int(task_env.FRAME_IDX)
+                            switch_source("policy")
+                            mode = "policy"
+                            reset_policy(model_client)
+                            print("\033[93m[HG-DAGGER] Hand back to policy.\033[0m")
+                            continue
+
+                        task_env.current_control_source = "hil"
+                        step = next(recovery_iter, None)
+                        expert_stage_count += 1
+                        if step is None:
+                            break
+                        if step.get("phase") == "done":
+                            if interventions:
+                                interventions[-1]["expert_done"] = True
+                                interventions[-1]["end_step"] = int(task_env.FRAME_IDX)
+                            last_expert_result = step.get("result") or {}
+                            break
+
+            # Close the final open segment.
+            append_segment(
+                segments,
+                current_source,
+                source_start_step,
+                int(task_env.FRAME_IDX),
+            )
 
             if quit_requested:
                 aborted = True
@@ -496,70 +676,91 @@ def main() -> int:
                 safe_close_env(task_env)
                 break
 
-            if intervention_requested:
-                record, hdf5_path = run_intervention_expert(
-                    task_env,
-                    save_data=save_data,
-                    output_dir=cli.output_dir,
-                    episode_index=data_episode_index,
-                    instruction=PROMPT,
-                    seed=seed,
-                    policy_steps=policy_steps,
-                )
-                record["rollout_index"] = rollout_index
-                record["autonomous_success"] = False
-                records.append(record)
-                accepted = bool(record["accepted_for_training"])
-                notify_trial_end(model_client, "handover_to_tray", seed, accepted)
-                if accepted:
-                    print("\033[92m[HG-DAGGER] Expert recovery SUCCESS.\033[0m")
-                    if hdf5_path is not None:
-                        print(f"\033[92m[HG-DAGGER] Saved {hdf5_path}\033[0m")
-                        data_episode_index += 1
-                else:
-                    print("\033[91m[HG-DAGGER] Expert recovery FAILED; data rejected.\033[0m")
+            if auto_label is not None:
+                supervisor_label = auto_label
             else:
-                record = {
-                    "rollout_index": rollout_index,
-                    "seed": seed,
-                    "instruction": PROMPT,
-                    "policy_steps_before_intervention": policy_steps,
-                    "intervened": False,
-                    "autonomous_success": bool(autonomous_success),
-                    "accepted_for_training": False,
-                    "timestamp": datetime.now().isoformat(timespec="seconds"),
-                }
-                records.append(record)
-                notify_trial_end(
-                    model_client,
-                    "handover_to_tray",
-                    seed,
-                    autonomous_success,
+                supervisor_label = prompt_choice(
+                    task_env,
+                    {"s": "success", "f": "failure"},
+                    "[TRAJECTORY] Mark trajectory: [s]uccess / [f]ailure",
                 )
-                label = "SUCCESS" if autonomous_success else "FAIL"
-                print(f"[POLICY] Autonomous rollout {label}; no expert data saved.")
 
+            if auto_save is None:
+                do_save = (
+                    prompt_choice(
+                        task_env,
+                        {"y": "save", "n": "discard"},
+                        "[TRAJECTORY] Save episode? [y]es / [n]o",
+                    )
+                    == "save"
+                )
+            else:
+                do_save = bool(auto_save)
+
+            joints_legal, joint_absmax = task_env.planned_joints_legal()
+            final_success_metrics = task_env.success_metrics()
+            final_check_success = task_env.check_success()
+            episode_record = {
+                "rollout_index": rollout_index,
+                "episode_index": int(data_episode_index),
+                "seed": int(seed),
+                "instruction": PROMPT,
+                "policy_steps": int(policy_steps),
+                "intervention_count": intervention_count,
+                "interventions": interventions,
+                "segments": segments,
+                "control_mask": list(task_env.control_mask),
+                "autonomous_success": bool(task_env.eval_success),
+                "final_check_success": bool(final_check_success),
+                "final_success_metrics": final_success_metrics,
+                "expert_result": last_expert_result,
+                "supervisor_label": supervisor_label,
+                "joints_legal": bool(joints_legal),
+                "joint_absmax": float(joint_absmax),
+                "save_decision": bool(do_save),
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+            }
+
+            hdf5_path = finalize_episode(
+                task_env,
+                cli.output_dir,
+                data_episode_index,
+                PROMPT,
+                save=do_save,
+                supervisor_label=supervisor_label,
+                segments=segments,
+            )
+            episode_record["hdf5_path"] = str(hdf5_path) if hdf5_path else None
+            if do_save:
+                data_episode_index += 1
+            records.append(episode_record)
+            notify_trial_end(
+                model_client,
+                "handover_to_tray",
+                seed,
+                bool(task_env.eval_success),
+            )
+            print(
+                f"[EPISODE] label={supervisor_label} save={do_save} "
+                f"interventions={intervention_count}"
+            )
             safe_close_env(task_env)
 
             if cli.acceptance:
-                last_record = records[-1]
-                expert_recovery = last_record.get("expert_recovery", {})
                 checks = {
-                    "intervention_detected": bool(intervention_requested),
-                    "policy_chunk_discarded": bool(
-                        last_record.get("policy_chunk_discarded")
-                    ),
-                    "expert_invoked": bool(last_record.get("expert_invoked")),
-                    "plan_success": bool(expert_recovery.get("plan_success")),
-                    "task_success": bool(expert_recovery.get("success")),
-                    "joints_legal": bool(last_record.get("joints_legal")),
+                    "intervention_detected": intervention_count > 0,
+                    "policy_chunk_discarded": intervention_count > 0,
+                    "expert_invoked": intervention_count > 0,
+                    "plan_success": bool((last_expert_result or {}).get("plan_success")),
+                    "task_success": bool(task_env.eval_success),
+                    "joints_legal": bool(joints_legal),
                 }
                 passed = all(checks.values())
                 report = {
                     "acceptance_passed": passed,
                     "criterion": "all takeover and expert-recovery checks are true",
                     "checks": checks,
-                    "record": last_record,
+                    "record": records[-1],
                 }
                 report_path = cli.output_dir / "acceptance_report.json"
                 write_json(report_path, report)
@@ -581,9 +782,14 @@ def main() -> int:
     session_report = {
         "aborted": aborted,
         "rollouts": len(records),
-        "interventions": sum("expert_recovery" in item for item in records),
-        "accepted_recoveries": sum(bool(item.get("accepted_for_training")) for item in records),
-        "autonomous_successes": sum(bool(item.get("autonomous_success")) for item in records),
+        "interventions": sum(int(item.get("intervention_count", 0)) for item in records),
+        "saved_episodes": sum(1 for item in records if item.get("save_decision")),
+        "success_labels": sum(
+            1 for item in records if item.get("supervisor_label") == "success"
+        ),
+        "autonomous_successes": sum(
+            1 for item in records if item.get("autonomous_success")
+        ),
         "records": records,
     }
     report_path = cli.output_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
