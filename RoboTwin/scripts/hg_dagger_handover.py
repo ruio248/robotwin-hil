@@ -365,6 +365,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-data", default="true")
     parser.add_argument(
+        "--save-video",
+        default="false",
+        help=(
+            "Deprecated. Collection is raw-first: raw frames are kept and MP4 "
+            "export happens offline via export_hg_dagger_dataset.py."
+        ),
+    )
+    parser.add_argument(
         "--step-limit",
         type=int,
         default=None,
@@ -430,6 +438,12 @@ def main() -> int:
     task_env = class_decorator("handover_to_tray")
     model_client = build_policy_client(user_args)
     save_data = parse_bool(cli.save_data)
+    if parse_bool(cli.save_video):
+        print(
+            "[HG-DAGGER] --save-video is deprecated in collection; "
+            "raw frames are saved and MP4 export is done offline.",
+            flush=True,
+        )
     auto_label = None if cli.auto_label == "none" else cli.auto_label
     auto_save = None if cli.auto_save == "none" else parse_bool(cli.auto_save)
     bias_dims = joint_bias_dims(

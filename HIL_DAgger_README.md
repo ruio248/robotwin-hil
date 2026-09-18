@@ -81,9 +81,12 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
     --task-config handover_to_tray_v2_promptfix \
     --seed-start 40000 --episodes 1 \
     --render-freq 5 --frequency 30 \
-    --save-data true --save-video true \
+    --save-data true \
     --output-dir /media/ruio/hdd/robotwin-hil/outputs/hg_dagger_collection
 ```
+
+> 采集阶段不生成 MP4/HDF5，只落原始帧；视频和 LeRobot 转换在离线阶段用
+> `export_hg_dagger_dataset.py` 完成（见 4.1 节）。
 
 ### 3.2 操作键
 
