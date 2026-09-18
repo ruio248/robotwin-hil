@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import select
+import shutil
 import sys
 import termios
 import time
@@ -215,7 +216,13 @@ def finalize_episode(
     supervisor_label: str,
     segments: list[dict[str, Any]],
 ) -> Path | None:
-    """Write or discard the recorded full trajectory after supervisor review."""
+    """Persist or discard the raw recorded trajectory after supervisor review.
+
+    Collection deliberately stops at the raw stage: frames stay as the native
+    per-frame pkl cache and metadata stays in ``episode.json``. HDF5, MP4 and
+    LeRobot conversion happen later in ``export_hg_dagger_dataset.py`` so the
+    control loop never pays for encoding.
+    """
     task_env.episode_metadata["control_mask"] = list(task_env.control_mask)
     task_env.episode_metadata["segments"] = segments
     task_env.episode_metadata["supervisor_label"] = supervisor_label
@@ -233,25 +240,30 @@ def finalize_episode(
     if int(task_env.FRAME_IDX) < 2:
         raise RuntimeError("Episode produced fewer than two recorded frames; cannot save.")
 
-    task_env.merge_pkl_to_hdf5_video(instructions=[instruction])
-    hdf5_path = output_dir / "data" / f"episode_{episode_index:07d}.hdf5"
-    if not hdf5_path.is_file():
-        raise FileNotFoundError(hdf5_path)
+    raw_dir = output_dir / "raw" / f"episode_{episode_index:07d}"
+    frames_dir = raw_dir / "frames"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    cache = getattr(task_env, "folder_path", {}).get("cache")
+    if cache and Path(cache).exists():
+        if frames_dir.exists():
+            shutil.rmtree(frames_dir)
+        shutil.move(str(cache), str(frames_dir))
 
-    instruction_payload = {
-        "episode_index": episode_index,
-        "seen": [instruction],
-        "unseen": [instruction],
-    }
     write_json(
-        output_dir / "instruction" / f"episode_{episode_index:07d}.json",
-        instruction_payload,
+        raw_dir / "episode.json",
+        {
+            "episode_index": int(episode_index),
+            "instruction": instruction,
+            "seed": int(getattr(task_env, "episode_seed", -1)),
+            "supervisor_label": supervisor_label,
+            "save_freq": int(task_env.save_freq or 15),
+            "frequency": int(task_env.save_freq or 15),
+            "control_mask": list(task_env.control_mask),
+            "segments": segments,
+            "episode_metadata": task_env.episode_metadata,
+            "info": task_env.info,
+        },
     )
-
-    scene_info_path = output_dir / "scene_info.json"
-    scene_info = read_json_object(scene_info_path)
-    scene_info[f"episode_{episode_index}"] = task_env.info
-    write_json(scene_info_path, scene_info)
 
     append_jsonl(
         output_dir / "episodes.jsonl",
@@ -261,10 +273,10 @@ def finalize_episode(
             "supervisor_label": supervisor_label,
             "control_mask": list(task_env.control_mask),
             "segments": segments,
+            "raw_dir": str(raw_dir),
         },
     )
-    task_env.remove_data_cache()
-    return hdf5_path
+    return raw_dir
 
 
 def discard_recovery_cache(task_env) -> None:
@@ -353,11 +365,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-data", default="true")
     parser.add_argument(
-        "--save-video",
-        default="false",
-        help="Also export the recorded episode as an MP4 during save.",
-    )
-    parser.add_argument(
         "--step-limit",
         type=int,
         default=None,
@@ -423,7 +430,6 @@ def main() -> int:
     task_env = class_decorator("handover_to_tray")
     model_client = build_policy_client(user_args)
     save_data = parse_bool(cli.save_data)
-    save_video = parse_bool(cli.save_video)
     auto_label = None if cli.auto_label == "none" else cli.auto_label
     auto_save = None if cli.auto_save == "none" else parse_bool(cli.auto_save)
     bias_dims = joint_bias_dims(
@@ -467,7 +473,8 @@ def main() -> int:
             # keeps a per-frame policy/HIL mask.
             task_env.save_data = save_data
             task_env.save_dir = str(cli.output_dir)
-            task_env.save_video = save_video
+            # Raw-first collection: never encode MP4/HDF5 inside the control loop.
+            task_env.save_video = False
             task_env.FRAME_IDX = 0
             task_env.folder_path = {}
             task_env.ep_num = int(data_episode_index)
@@ -721,7 +728,7 @@ def main() -> int:
                 "timestamp": datetime.now().isoformat(timespec="seconds"),
             }
 
-            hdf5_path = finalize_episode(
+            raw_dir = finalize_episode(
                 task_env,
                 cli.output_dir,
                 data_episode_index,
@@ -730,7 +737,8 @@ def main() -> int:
                 supervisor_label=supervisor_label,
                 segments=segments,
             )
-            episode_record["hdf5_path"] = str(hdf5_path) if hdf5_path else None
+            episode_record["raw_dir"] = str(raw_dir) if raw_dir else None
+            episode_record["hdf5_path"] = None
             if do_save:
                 data_episode_index += 1
             records.append(episode_record)

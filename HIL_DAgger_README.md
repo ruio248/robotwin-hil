@@ -93,28 +93,41 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 
 一个 episode 内可以多次 `i`/`r`，实现 HG-DAgger 的专家 gating。
 
-## 4. 数据保存
+## 4. 数据保存（raw-first）
 
-保存一个 episode 会生成：
+采集阶段只落**原始帧 + 元数据**，不做 HDF5 / MP4 / LeRobot 转换，避免编码拖慢
+控制循环、也避免在切分规则还没定稿时提前固化格式。
 
 ```text
 <output-dir>/
-  data/episode_NNNNNNN.hdf5          # 完整 policy+hil 轨迹
-  video/episode_NNNNNNN.mp4          # 若 --save-video true
-  instruction/episode_NNNNNNN.json
-  scene_info.json
+  raw/episode_NNNNNNN/frames/*.pkl   # 逐帧原始观测，按 --save-freq 采样
+  raw/episode_NNNNNNN/episode.json   # control_mask / segments / label / seed
   episodes.jsonl
   session_YYYYMMDD_HHMMSS.json
 ```
 
-每个 HDF5 的 episode metadata 中保存：
+`episode.json` 中保存：
 
-- `control_mask`：逐帧 `policy` / `hil` 标签。
-- `segments`：`{source, start_step, end_step}` 控制段。
-- `supervisor_label`：`success` / `failure`。
-- `saved`：是否保存。
+- `control_mask`：逐帧 `policy` / `hil` 标签；
+- `segments`：`{source, start_step, end_step}` 控制段；
+- `supervisor_label`：`success` / `failure`；
+- `save_freq`、`seed`、`episode_metadata`、`info`。
 
-训练时只应使用 `control_mask == "hil"` 的帧作为专家标签；policy 帧仅用于完整性审计。
+监督者按 `n` 丢弃的 episode 会直接删除 cache，不落盘。
+
+### 4.1 离线导出（HDF5 / MP4）
+
+```bash
+python -u scripts/export_hg_dagger_dataset.py \
+  --raw-root /media/ruio/hdd/robotwin-hil/outputs/hg_dagger_collection/raw \
+  --output-dir /media/ruio/hdd/robotwin-hil/outputs/hg_dagger_export \
+  --mode full \
+  --save-video true
+```
+
+- `--mode full`：完整 policy+HIL 轨迹；
+- `--mode hil`：只保留 `control_mask == "hil"` 的帧（重新编号），用于训练；
+- 输出 `data/*.hdf5`、`video/*.mp4`（可选）、`instruction/*.json`、`manifest_*.json`。
 
 ## 5. 保存后的训练
 
@@ -128,8 +141,8 @@ RoboTwin/scripts/prepare_hg_dagger_dataset.py
 
 它需要：
 
-1. 读取 `data/episode_*.hdf5` 的 `control_mask`。
-2. 只保留 `hil` 帧，生成 recovery-only LeRobot 数据集。
+1. 先用 `export_hg_dagger_dataset.py --mode hil` 导出 HIL-only HDF5。
+2. 把 HIL-only HDF5 转成 recovery-only LeRobot 数据集。
 3. 与原始 `ruio248/robotwin_handover_to_tray_v2_promptfix` 数据混合。
 
 建议混合比例：原始 v2 专家数据 50–70%，HG-DAgger hil 数据 30–50%。
