@@ -218,27 +218,10 @@ class handover_to_tray(Base_Task):
             return False
         return self._arm_contacts_bar(arm_tag) or self._arm_near_bar(arm_tag)
 
-    def arm_grasp_is_loose(self, arm_tag: ArmTag) -> bool:
-        """Closed gripper that is merely near the bar without touching it.
-
-        ``arm_holds_bar`` accepts proximity as a stand-in for contact so that
-        momentary contact dropouts do not look like a lost grasp.  A gripper
-        that is closed next to a mis-aligned bar also satisfies that test,
-        which is why a loose receiver has to be re-grasped rather than used to
-        place an object it never actually picked up.
-        """
-        return bool(
-            self.arm_holds_bar(arm_tag) and not self._arm_contacts_bar(arm_tag)
-        )
-
     def infer_recovery_state(self) -> dict[str, object]:
         """Infer the recovery branch from live privileged simulator state."""
         source_holds = self.arm_holds_bar(self.source_arm_tag)
         receiver_holds = self.arm_holds_bar(self.receiver_arm_tag)
-        receiver_grasp_loose = bool(
-            receiver_holds
-            and not self._arm_contacts_bar(self.receiver_arm_tag)
-        )
         metrics = self.success_metrics()
         placed = bool(
             metrics["position_error_x"] < 0.040
@@ -257,12 +240,6 @@ class handover_to_tray(Base_Task):
         if placed:
             branch = "release_at_tray"
             stage_id = 6
-        elif source_holds and receiver_grasp_loose:
-            # The receiver is closed next to a bar it never gripped, while the
-            # source still supports the bar. Re-grasp instead of trying to
-            # place an object that is not attached to the gripper.
-            branch = "regrasp_receiver"
-            stage_id = 7
         elif receiver_holds:
             branch = "receiver_place"
             stage_id = 5 if source_holds else 6
@@ -284,7 +261,6 @@ class handover_to_tray(Base_Task):
             "stage_id": stage_id,
             "source_holds": bool(source_holds),
             "receiver_holds": bool(receiver_holds),
-            "receiver_grasp_loose": receiver_grasp_loose,
             "placed": bool(placed),
             "near_tray": bool(self._bar_near_tray(bar_position)),
             "recoverable": bool(recoverable or source_holds or receiver_holds),
@@ -315,17 +291,7 @@ class handover_to_tray(Base_Task):
         initial: dict[str, object], stage_id: int
     ) -> dict[str, object]:
         """Override the inferred branch so recovery starts from a human-chosen
-        stage (1-7) instead of the privileged auto-inference."""
-        if stage_id == 7:
-            # Release the receiver, retreat it out of the way, then re-plan the
-            # handover from the cleared state. Used when the receiver closed
-            # next to the bar without actually gripping it.
-            forced = dict(initial)
-            forced["branch"] = "regrasp_receiver"
-            forced["stage_id"] = 4
-            forced["forced_stage_id"] = 7
-            forced["regrasp_receiver"] = True
-            return forced
+        stage (1-6) instead of the privileged auto-inference."""
         overrides = {
             1: ("restart_source_grasp", 1, False, False, False, False),
             2: ("resume_handover", 3, True, False, False, False),
@@ -397,24 +363,6 @@ class handover_to_tray(Base_Task):
                 self.open_gripper(self.source_arm_tag),
                 self.open_gripper(self.receiver_arm_tag),
             )
-        elif bool(initial.get("regrasp_receiver")):
-            # Receiver closed next to a bar it never gripped: release and
-            # retreat it, then re-plan the handover from the cleaned state.
-            run(4, self.open_gripper(self.receiver_arm_tag))
-            run(4, self.back_to_origin(self.receiver_arm_tag))
-            if self.plan_success:
-                follow_up = self.infer_recovery_state()
-                if follow_up.get("branch") == "regrasp_receiver":
-                    self.plan_success = False
-                    result["reason"] = "receiver_gripper_did_not_open"
-                else:
-                    nested = self.recover_from_current_state()
-                    nested["regrasp_prefix_stage_ids"] = [4, 4]
-                    self.episode_metadata["recovery"] = nested
-                    self.info["recovery"] = nested
-                    return nested
-            else:
-                result["reason"] = "receiver_retreat_failed"
         elif air_place:
             # Bar is already hovering near the tray with no gripper holding it.
             # Grasp it directly with the receiver and finish the placement.
@@ -595,7 +543,6 @@ class handover_to_tray(Base_Task):
             and not receiver_holds
             and not placed
         )
-        regrasp = bool(initial.get("regrasp_receiver"))
         reason = None
 
         def progress():
@@ -615,29 +562,6 @@ class handover_to_tray(Base_Task):
             )
             executed_stage_ids.append(6)
             yield progress()
-        elif regrasp:
-            # The receiver closed next to the bar without gripping it. Release
-            # it, retreat it clear of the handover pose, then re-plan the
-            # handover from the cleaned-up state.
-            self._run_stage(4, self.open_gripper(self.receiver_arm_tag))
-            executed_stage_ids.append(4)
-            yield progress()
-
-            self._run_stage(4, self.back_to_origin(self.receiver_arm_tag))
-            executed_stage_ids.append(4)
-            yield progress()
-
-            if self.plan_success:
-                follow_up = self.infer_recovery_state()
-                if follow_up.get("branch") == "regrasp_receiver":
-                    # The gripper never opened; fail instead of looping.
-                    self.plan_success = False
-                    reason = "receiver_gripper_did_not_open"
-                else:
-                    yield from self.recovery_stage_iterator()
-                    return
-            else:
-                reason = "receiver_retreat_failed"
         elif air_place:
             self._run_stage(
                 4,

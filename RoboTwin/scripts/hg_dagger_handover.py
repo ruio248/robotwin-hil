@@ -103,8 +103,7 @@ DEFAULT_KEYS = {
 # Human-readable stage names shown at takeover time. Stage 2 (source_lift) is
 # an intermediate motion folded into the resume_handover entry point (3);
 # stage 4 (receiver_grasp) also serves as the direct "grasp-and-place from
-# air" entry point when the bar is already hovering near the tray; stage 7 is
-# the extra recovery entry that re-grasps a mis-aligned receiver.
+# air" entry point when the bar is already hovering near the tray.
 STAGE_LABELS = {
     1: "source_grasp               左臂抓取红杆",
     2: "source_lift               左臂抬起",
@@ -112,7 +111,6 @@ STAGE_LABELS = {
     4: "receiver_grasp            右臂抓取（含悬空直接放）",
     5: "source_release_and_retreat 左臂松开并后撤",
     6: "guided_tray_placement     放入蓝托盘",
-    7: "regrasp_receiver          松开右臂后退回原点，重新抓取",
 }
 
 
@@ -225,7 +223,7 @@ class HumanInterventionInput:
         return (line or "").strip()
 
 
-def choose_recovery_stage(task_env, keyboard, cli=None) -> tuple[Any, int | None]:
+def choose_recovery_stage(task_env, keyboard) -> tuple[Any, int | None]:
     """Show the inferred recovery stage and let the supervisor confirm it or
     override the entry stage before the expert starts moving.
 
@@ -233,37 +231,30 @@ def choose_recovery_stage(task_env, keyboard, cli=None) -> tuple[Any, int | None
     supervisor cancelled this takeover and the policy should keep control.
     """
     state = task_env.infer_recovery_state()
-    print("\n\033[96m[HG-DAGGER] 任务共 6 个阶段（7 = 右臂重新抓取）:\033[0m")
-    for stage_id in range(1, 8):
+    print("\n\033[96m[HG-DAGGER] 任务共 6 个阶段:\033[0m")
+    for stage_id in range(1, 7):
         print(f"  {stage_id}. {STAGE_LABELS[stage_id]}")
     print("\n\033[96m[HG-DAGGER] 专家自动判定:\033[0m")
     print(f"  branch={state['branch']}  entry_stage={state['stage_id']}")
     print(
         f"  source_holds={state['source_holds']} "
         f"receiver_holds={state['receiver_holds']} "
-        f"receiver_loose={state.get('receiver_grasp_loose')} "
         f"placed={state['placed']} near_tray={state.get('near_tray', False)}"
     )
     print(f"  bar_pos={state.get('bar_position')}")
 
-    forced = getattr(cli, "auto_intervene_stage", None)
-    if forced is not None:
-        chosen = int(forced)
-        print(f"\033[95m[TEST] auto-intervene-stage={chosen}\033[0m")
-        return task_env.recovery_stage_iterator(start_stage_id=chosen), chosen
-
     while True:
         answer = keyboard.read_line(
-            "\n阶段判断正确吗? [Y/Enter]=确认自动, 输入 1-7 重选, q=取消本次接管: "
+            "\n阶段判断正确吗? [Y/Enter]=确认自动, 输入 1-6 重选, q=取消本次接管: "
         ).strip().lower()
         if answer in ("", "y", "yes"):
             return task_env.recovery_stage_iterator(), None
         if answer == "q":
             return None, None
-        if answer.isdigit() and 1 <= int(answer) <= 7:
+        if answer.isdigit() and 1 <= int(answer) <= 6:
             chosen = int(answer)
             return task_env.recovery_stage_iterator(start_stage_id=chosen), chosen
-        print("\033[91m  无效输入，请输入 Y / 1-7 / q\033[0m")
+        print("\033[91m  无效输入，请输入 Y / 1-6 / q\033[0m")
 
 
 def next_episode_index(output_dir: Path) -> int:
@@ -603,15 +594,6 @@ def parse_args() -> argparse.Namespace:
         default=-1,
         help="Test-only hook: simulate pressing x after this many policy steps.",
     )
-    parser.add_argument(
-        "--auto-intervene-stage",
-        type=int,
-        default=None,
-        help=(
-            "Test-only hook: with --auto-intervene-step, force this recovery "
-            "entry stage instead of asking the supervisor."
-        ),
-    )
     return parser.parse_args()
 
 
@@ -754,7 +736,7 @@ def main() -> int:
                     if mode == "policy":
                         if event == "intervene":
                             recovery_iter, chosen_stage = choose_recovery_stage(
-                                task_env, keyboard, cli
+                                task_env, keyboard
                             )
                             if recovery_iter is None:
                                 print(
@@ -870,7 +852,7 @@ def main() -> int:
                             break
                         if chunk_interrupted and event == "intervene":
                             recovery_iter, chosen_stage = choose_recovery_stage(
-                                task_env, keyboard, cli
+                                task_env, keyboard
                             )
                             if recovery_iter is None:
                                 print(
