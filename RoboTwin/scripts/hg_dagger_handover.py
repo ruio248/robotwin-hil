@@ -588,6 +588,12 @@ def parse_args() -> argparse.Namespace:
         default=-1,
         help="Test-only hook: hand back to the policy after this many expert stages.",
     )
+    parser.add_argument(
+        "--auto-abort-step",
+        type=int,
+        default=-1,
+        help="Test-only hook: simulate pressing x after this many policy steps.",
+    )
     return parser.parse_args()
 
 
@@ -819,6 +825,13 @@ def main() -> int:
                                 event = "intervene"
                                 chunk_interrupted = True
                                 break
+                            if (
+                                cli.auto_abort_step >= 0
+                                and policy_steps >= cli.auto_abort_step
+                            ):
+                                event = "abort"
+                                chunk_interrupted = True
+                                break
 
                             observation = task_env.get_obs()
                             xpl_obs = robotwin_obs_to_xpolicylab(
@@ -833,6 +846,9 @@ def main() -> int:
                         if quit_requested:
                             break
                         if is_episode_end(task_env):
+                            break
+                        if chunk_interrupted and event == "abort":
+                            episode_aborted = True
                             break
                         if chunk_interrupted and event == "intervene":
                             recovery_iter, chosen_stage = choose_recovery_stage(
