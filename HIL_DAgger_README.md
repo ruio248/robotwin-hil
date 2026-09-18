@@ -1,0 +1,196 @@
+# HIL/DAgger 数据收集与训练流程
+
+本文档描述 RoboTwin `handover_to_tray` 长序任务上，从模型部署、HIL 数据
+收集与保存、到保存后的训练和最终测试的完整流程。
+
+## 1. 概览
+
+整体闭环是：
+
+```text
+部署 Pi0.5 策略服务
+      ↓
+交互式 HG-DAgger 收集（策略 ↔ 专家手动接管/交还）
+      ↓
+保存完整轨迹，并给每一帧打 policy/hil 控制来源
+      ↓
+从保存的数据中抽取 hil 段，转成 LeRobot 数据集
+      ↓
+与原 v2 专家数据混合后重训 Pi0.5
+      ↓
+在固定 dev/test seeds 上评估，并按需做扰动救援测试
+```
+
+## 2. 环境与模型部署
+
+### 2.1 仓库与环境
+
+- 仓库根目录：`/hdd/robotwin-hil`
+- RoboTwin 代码：`/hdd/robotwin-hil/RoboTwin`
+- 进入 HDD 环境（会自动建立 `/media/ruio/hdd` 绑定挂载并选择 conda 环境）：
+
+```bash
+cd /hdd/robotwin-hil
+bash ./enter_robotwin_hil.sh
+```
+
+### 2.2 Checkpoint
+
+当前使用 `v2_promptfix_9999` 的 bf16 推理副本，本地路径：
+
+```text
+/hdd/robotwin-hil/RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/checkpoints/
+  pi05_robotwin_handover_to_tray_v2_promptfix/
+    robotwin_handover_to_tray_v2_promptfix_bf16_inference/9999/{params,assets}
+```
+
+该路径由配置文件指定：
+
+```text
+RoboTwin/XPolicyLab/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml
+```
+
+### 2.3 启动本地策略服务
+
+```bash
+bash /hdd/robotwin-hil/local_serving/start_local_policy_server.sh
+```
+
+服务默认在 GPU 0 上监听 `127.0.0.1:18300`，使用 `XLA_PYTHON_CLIENT_MEM_FRACTION=0.3`。
+确认服务已就绪：
+
+```bash
+ss -ltn | grep ':18300 '
+```
+
+## 3. HIL 数据收集
+
+### 3.1 交互式收集命令
+
+在远程桌面的终端里执行：
+
+```bash
+cd /hdd/robotwin-hil
+env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+    -u all_proxy -u ALL_PROXY \
+  DISPLAY=:1 XAUTHORITY=/home/ruio/.Xauthority \
+  bash ./enter_robotwin_hil.sh python -u scripts/hg_dagger_handover.py \
+    --host 127.0.0.1 --port 18300 \
+    --policy-name Pi_05_RobotTwin \
+    --ckpt-name v2_promptfix_9999 \
+    --task-config handover_to_tray_v2_promptfix \
+    --seed-start 40000 --episodes 1 \
+    --render-freq 5 --frequency 30 \
+    --save-data true --save-video true \
+    --output-dir /media/ruio/hdd/robotwin-hil/outputs/hg_dagger_collection
+```
+
+### 3.2 操作键
+
+- rollout 中：`i` = 接管，`r` = 交还策略，`q` = 退出。
+- episode 结束：`s` = 标记成功，`f` = 标记失败。
+- 标记后：`y` = 保存整条轨迹，`n` = 丢弃。
+
+一个 episode 内可以多次 `i`/`r`，实现 HG-DAgger 的专家 gating。
+
+## 4. 数据保存
+
+保存一个 episode 会生成：
+
+```text
+<output-dir>/
+  data/episode_NNNNNNN.hdf5          # 完整 policy+hil 轨迹
+  video/episode_NNNNNNN.mp4          # 若 --save-video true
+  instruction/episode_NNNNNNN.json
+  scene_info.json
+  episodes.jsonl
+  session_YYYYMMDD_HHMMSS.json
+```
+
+每个 HDF5 的 episode metadata 中保存：
+
+- `control_mask`：逐帧 `policy` / `hil` 标签。
+- `segments`：`{source, start_step, end_step}` 控制段。
+- `supervisor_label`：`success` / `failure`。
+- `saved`：是否保存。
+
+训练时只应使用 `control_mask == "hil"` 的帧作为专家标签；policy 帧仅用于完整性审计。
+
+## 5. 保存后的训练
+
+### 5.1 HIL 帧抽取与 LeRobot 转换（待实现）
+
+计划脚本：
+
+```text
+RoboTwin/scripts/prepare_hg_dagger_dataset.py
+```
+
+它需要：
+
+1. 读取 `data/episode_*.hdf5` 的 `control_mask`。
+2. 只保留 `hil` 帧，生成 recovery-only LeRobot 数据集。
+3. 与原始 `ruio248/robotwin_handover_to_tray_v2_promptfix` 数据混合。
+
+建议混合比例：原始 v2 专家数据 50–70%，HG-DAgger hil 数据 30–50%。
+
+### 5.2 重训 Pi0.5
+
+使用已有 `pi05_robotwin_handover_to_tray_v2_promptfix` 训练配置，从 `9999`
+checkpoint 继续训练：
+
+```bash
+cd <training-host-openpi>
+.venv/bin/python scripts/train.py \
+  pi05_robotwin_handover_to_tray_v2_promptfix \
+  --exp-name robotwin_handover_to_tray_hg_dagger_r1 \
+  --data.repo-id <hil-leRobot-repo> \
+  --batch-size 128 \
+  --num-workers 8 \
+  --fsdp-devices 4 \
+  --num-train-steps 2500 \
+  --save-interval 1000
+```
+
+> 注意：这一节的数据过滤/转换脚本尚未完成，当前仓库只完成了数据收集端。
+
+## 6. 最终测试
+
+### 6.1 无人验收 smoke
+
+```bash
+bash /hdd/robotwin-hil/local_serving/run_local_takeover_validation.sh 40003 87
+```
+
+会在第 87 步自动触发专家接管，验证丢弃 chunk → 专家恢复 → 成功的链路。
+
+### 6.2 扰动救援测试
+
+```bash
+cd /hdd/robotwin-hil
+env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+    -u all_proxy -u ALL_PROXY \
+  DISPLAY=:1 XAUTHORITY=/home/ruio/.Xauthority \
+  bash ./enter_robotwin_hil.sh python -u scripts/perturbation_rescue.py \
+    --host 127.0.0.1 --port 18300 \
+    --policy-name Pi_05_RobotTwin \
+    --ckpt-name v2_promptfix_9999 \
+    --task-config handover_to_tray_v2_promptfix \
+    --seed-start 40000 --episodes 100 \
+    --lead-in-steps 30 --bias-duration 10 \
+    --perturb-mode action_bias --bias-magnitude 0.08 \
+    --output-dir /media/ruio/hdd/robotwin-hil/outputs/perturbation_rescue_100
+```
+
+报告会汇总 `rescue_rate`、每个 seed 的 `expert_success`、`branch` 和
+`executed_stage_ids`。
+
+## 7. 常用路径速查
+
+- 仓库根目录：`/hdd/robotwin-hil`
+- 策略服务端口：`127.0.0.1:18300`
+- 本地服务启动：`local_serving/start_local_policy_server.sh`
+- 验收验证：`local_serving/run_local_takeover_validation.sh`
+- HG-DAgger 入口：`RoboTwin/scripts/hg_dagger_handover.py`
+- 扰动救援：`RoboTwin/scripts/perturbation_rescue.py`
+- 本地 checkpoint 配置：`RoboTwin/XPolicyLab/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml`
