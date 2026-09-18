@@ -24,7 +24,7 @@ bash ./enter_robotwin_hil.sh python -u scripts/hg_dagger_handover.py \
   --seed-max "${MANUAL_SEED_MAX:-99999}" \
   --episodes "${MANUAL_MAX_ROLLOUTS:-200}" \
   --target-saved "${MANUAL_TARGET_SAVED:-50}" \
-  --target-mode "${MANUAL_TARGET_MODE:-expert}" \
+  --target-mode "${MANUAL_TARGET_MODE:-hil}" \
   --render-freq 10 \
   --frequency 30 \
   --save-data true \

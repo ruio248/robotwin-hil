@@ -97,8 +97,12 @@ session 报告里会记录 `total_rollouts`、每个 rollout 的 `rollout_second
 
 两个和"有效"相关的开关：
 
-- `--target-mode hil|expert`：`hil` = 保存且含 HIL 帧就算一条；`expert` =
-  还要求专家完整恢复 `success=True`（更严格，只收"救回来了"的样本）。
+- `--target-mode hil|expert`：`hil`（默认）= 保存且含 HIL 帧就算一条；`expert`
+  = 还要求专家完整恢复 `success=True`。
+
+  HG-DAgger 的典型用法是**短暂接管、修正到安全点后按 `r` 交还策略**，这种
+  episode 的 expert 恢复并没有跑到 `done`，但 HIL 段本身就是专家动作，属于有效
+  样本，因此默认用 `hil` 口径；`expert` 只在你专门想收"专家完整救回"样本时使用。
 - `--seed-mode sequential|random`：`random`（默认）会在
   `[--seed-min, --seed-max]`（默认 40000–99999）里随机抽 seed，并自动跳过
   demo（1–579）、dev（30000–30022）、frozen test（31000–31103）区间，用
