@@ -404,6 +404,15 @@ def parse_args() -> argparse.Namespace:
         help="Test-only hook: skip the manual success/failure prompt.",
     )
     parser.add_argument(
+        "--label-mode",
+        choices=["auto", "manual"],
+        default="auto",
+        help=(
+            "auto: label success/failure from check_success(); "
+            "manual: ask the supervisor to press s/f."
+        ),
+    )
+    parser.add_argument(
         "--auto-save",
         choices=["true", "false", "none"],
         default="none",
@@ -697,8 +706,20 @@ def main() -> int:
                 safe_close_env(task_env)
                 break
 
+            joints_legal, joint_absmax = task_env.planned_joints_legal()
+            final_success_metrics = task_env.success_metrics()
+            final_check_success = task_env.check_success()
+
             if auto_label is not None:
                 supervisor_label = auto_label
+            elif cli.label_mode == "auto":
+                # The program already decides task success; the supervisor only
+                # decides whether this trajectory is worth keeping.
+                supervisor_label = "success" if final_check_success else "failure"
+                print(
+                    f"[TRAJECTORY] auto label={supervisor_label} "
+                    f"(check_success={bool(final_check_success)})"
+                )
             else:
                 supervisor_label = prompt_choice(
                     task_env,
@@ -718,9 +739,6 @@ def main() -> int:
             else:
                 do_save = bool(auto_save)
 
-            joints_legal, joint_absmax = task_env.planned_joints_legal()
-            final_success_metrics = task_env.success_metrics()
-            final_check_success = task_env.check_success()
             episode_record = {
                 "rollout_index": rollout_index,
                 "episode_index": int(data_episode_index),

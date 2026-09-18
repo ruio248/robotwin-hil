@@ -91,8 +91,11 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 ### 3.2 操作键
 
 - rollout 中：`i` = 接管，`r` = 交还策略，`q` = 退出。
-- episode 结束：`s` = 标记成功，`f` = 标记失败。
-- 标记后：`y` = 保存整条轨迹，`n` = 丢弃。
+- episode 结束后由程序自动判定成功/失败（基于 `check_success()`），日志会打印
+  `[TRAJECTORY] auto label=success|failure`；
+- 监督者只需要决定这条轨迹是否有效：`y` = 保存，`n` = 丢弃。
+
+如需人工打标签，加 `--label-mode manual`（此时才出现 `s`/`f` 提示）。
 
 一个 episode 内可以多次 `i`/`r`，实现 HG-DAgger 的专家 gating。
 
