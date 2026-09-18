@@ -93,7 +93,12 @@ def build_seed_stream(cli: argparse.Namespace):
         yield seed
 
 
-DEFAULT_KEYS = {"i": "intervene", "r": "handback", "q": "quit"}
+DEFAULT_KEYS = {
+    "i": "intervene",
+    "r": "handback",
+    "x": "abort",
+    "q": "quit",
+}
 
 # Human-readable stage names shown at takeover time. Stage 2 (source_lift) is
 # an intermediate motion folded into the resume_handover entry point (3);
@@ -628,7 +633,7 @@ def main() -> int:
 
     print("\n" + "=" * 72)
     print("RoboTwin handover_to_tray human-gated DAgger")
-    print("Keys: i=takeover, r=hand back to policy, q=quit.")
+    print("Keys: i=takeover, r=hand back to policy, x=abort episode, q=quit.")
     print("After each episode: s/f=success/failure, y/n=save/discard.")
     print(f"Prompt: {PROMPT}")
     print(f"Output: {cli.output_dir}")
@@ -637,6 +642,7 @@ def main() -> int:
     try:
         rollout_index = 0
         saved_hil_count = 0
+        aborted_rollouts = 0
         session_started = time.time()
         while (
             rollout_index < int(cli.episodes)
@@ -686,6 +692,7 @@ def main() -> int:
             expert_stage_count = 0
             last_expert_progress: dict[str, Any] | None = None
             quit_requested = False
+            episode_aborted = False
             last_expert_result: dict[str, Any] | None = None
 
             def switch_source(new_source: str) -> None:
@@ -705,7 +712,7 @@ def main() -> int:
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
                 f"saved valid HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
                 f"seed={seed}; "
-                "i=takeover, r=handback, q=quit.\033[0m"
+                "i=takeover, r=handback, x=abort episode, q=quit.\033[0m"
             )
 
             with HumanInterventionInput(task_env) as keyboard:
@@ -713,6 +720,9 @@ def main() -> int:
                     event = keyboard.poll()
                     if event == "quit":
                         quit_requested = True
+                        break
+                    if event == "abort":
+                        episode_aborted = True
                         break
                     if is_episode_end(task_env):
                         break
@@ -896,6 +906,22 @@ def main() -> int:
                 safe_close_env(task_env)
                 break
 
+            if episode_aborted:
+                # The supervisor judged this rollout unrecoverable: drop it
+                # immediately instead of waiting for the episode to finish or
+                # sitting through the save prompt.
+                aborted_rollouts += 1
+                discard_recovery_cache(task_env)
+                notify_trial_end(model_client, "handover_to_tray", seed, False)
+                print(
+                    f"\n\033[93m[EPISODE] aborted by supervisor at step "
+                    f"{int(task_env.FRAME_IDX)} "
+                    f"(interventions={intervention_count}); discarded, next rollout.\033[0m"
+                )
+                safe_close_env(task_env)
+                rollout_index += 1
+                continue
+
             joints_legal, joint_absmax = task_env.planned_joints_legal()
             final_success_metrics = task_env.success_metrics()
             final_check_success = task_env.check_success()
@@ -1036,6 +1062,7 @@ def main() -> int:
         "max_rollouts": int(cli.episodes),
         "rollouts": len(records),
         "total_rollouts": len(records),
+        "aborted_rollouts": int(aborted_rollouts),
         "interventions": sum(int(item.get("intervention_count", 0)) for item in records),
         "saved_episodes": sum(1 for item in records if item.get("save_decision")),
         "saved_hil_episodes": sum(
