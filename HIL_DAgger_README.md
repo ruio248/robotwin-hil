@@ -95,6 +95,15 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 session 报告里会记录 `total_rollouts`、每个 rollout 的 `rollout_seconds`、
 `total_seconds` 和 `seconds_per_saved_episode`。
 
+两个和"有效"相关的开关：
+
+- `--target-mode hil|expert`：`hil` = 保存且含 HIL 帧就算一条；`expert` =
+  还要求专家完整恢复 `success=True`（更严格，只收"救回来了"的样本）。
+- `--seed-mode sequential|random`：`random`（默认）会在
+  `[--seed-min, --seed-max]`（默认 40000–99999）里随机抽 seed，并自动跳过
+  demo（1–579）、dev（30000–30022）、frozen test（31000–31103）区间，用
+  随机采样提高场景多样性；`sequential` 则从 `--seed-start` 顺序取。
+
 ### 3.2 操作键
 
 - rollout 中：`i` = 接管，`r` = 交还策略，`q` = 退出。

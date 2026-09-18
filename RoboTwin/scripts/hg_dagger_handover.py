@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import select
 import shutil
 import sys
@@ -50,6 +51,46 @@ from eval_policy_xpolicylab import (  # noqa: E402
 
 
 PROMPT = "Pass the red bar from the left arm to the right arm and place it in the blue tray."
+
+
+RESERVED_SEED_RANGES = (
+    (1, 579, "demonstration (1-579)"),
+    (30000, 30022, "development (30000-30022)"),
+    (31000, 31103, "frozen test (31000-31103)"),
+)
+
+
+def reserved_seed_label(seed: int) -> str | None:
+    for low, high, label in RESERVED_SEED_RANGES:
+        if low <= seed <= high:
+            return label
+    return None
+
+
+def build_seed_stream(cli: argparse.Namespace):
+    """Yield collection seeds: sequential from --seed-start, or random in range."""
+    if cli.seed_mode == "sequential":
+        for seed in range(int(cli.seed_start), int(cli.seed_start) + int(cli.episodes)):
+            label = reserved_seed_label(seed)
+            if label:
+                raise ValueError(
+                    f"Refusing to collect DAgger data on reserved seed {seed} ({label}). "
+                    "Use fresh collection seeds such as 40000+."
+                )
+            yield seed
+        return
+
+    rng = random.Random(int(cli.rng_seed))
+    used: set[int] = set()
+    low, high = int(cli.seed_min), int(cli.seed_max)
+    if low > high:
+        raise ValueError("--seed-min must be <= --seed-max")
+    while True:
+        seed = rng.randint(low, high)
+        if seed in used or reserved_seed_label(seed):
+            continue
+        used.add(seed)
+        yield seed
 
 
 DEFAULT_KEYS = {"i": "intervene", "r": "handback", "q": "quit"}
@@ -346,6 +387,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--task-config", default="handover_to_tray_v2_promptfix")
     parser.add_argument("--seed-start", type=int, default=40000)
     parser.add_argument(
+        "--seed-mode",
+        choices=["sequential", "random"],
+        default="random",
+        help=(
+            "random: sample uniformly from [seed-min, seed-max] and skip reserved "
+            "demo/dev/test ranges; sequential: use seed-start + rollout index."
+        ),
+    )
+    parser.add_argument("--seed-min", type=int, default=40000)
+    parser.add_argument("--seed-max", type=int, default=99999)
+    parser.add_argument("--rng-seed", type=int, default=0)
+    parser.add_argument(
+        "--target-mode",
+        choices=["hil", "expert"],
+        default="hil",
+        help=(
+            "hil: a saved episode with HIL frames counts toward --target-saved; "
+            "expert: additionally require expert recovery success."
+        ),
+    )
+    parser.add_argument(
         "--episodes",
         type=int,
         default=50,
@@ -452,21 +514,7 @@ def main() -> int:
     if cli.acceptance:
         cli.episodes = 1
         cli.save_data = "false"
-    requested_seeds = range(int(cli.seed_start), int(cli.seed_start) + int(cli.episodes))
-    forbidden = []
-    for seed in requested_seeds:
-        if 1 <= seed <= 579:
-            forbidden.append((seed, "demonstration (1-579)"))
-        elif 30000 <= seed <= 30022:
-            forbidden.append((seed, "development (30000-30022)"))
-        elif 31000 <= seed <= 31103:
-            forbidden.append((seed, "frozen test (31000-31103)"))
-    if forbidden:
-        raise ValueError(
-            "Refusing to collect DAgger data on reserved seeds "
-            f"(e.g. {forbidden[0][0]} is {forbidden[0][1]}). "
-            "Use fresh collection seeds such as 40000+."
-        )
+    seed_iter = build_seed_stream(cli)
     cli.output_dir = cli.output_dir.expanduser().resolve()
     cli.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -507,7 +555,7 @@ def main() -> int:
             rollout_index < int(cli.episodes)
             and saved_hil_count < int(cli.target_saved)
         ):
-            seed = int(cli.seed_start) + rollout_index
+            seed = next(seed_iter)
             rollout_started = time.time()
             args["save_data"] = False
             args["need_plan"] = True
@@ -568,7 +616,8 @@ def main() -> int:
 
             print(
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
-                f"saved valid HIL {saved_hil_count}/{cli.target_saved}] seed={seed}; "
+                f"saved valid HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
+                f"seed={seed}; "
                 "i=takeover, r=handback, q=quit.\033[0m"
             )
 
@@ -818,7 +867,10 @@ def main() -> int:
             episode_record["hdf5_path"] = None
             if do_save:
                 data_episode_index += 1
-                if hil_frames > 0:
+                expert_success = bool((last_expert_result or {}).get("success"))
+                if hil_frames > 0 and (
+                    cli.target_mode != "expert" or expert_success
+                ):
                     saved_hil_count += 1
             records.append(episode_record)
             notify_trial_end(
@@ -869,6 +921,13 @@ def main() -> int:
 
     session_report = {
         "aborted": aborted,
+        "seed_mode": cli.seed_mode,
+        "seed_range": (
+            [int(cli.seed_min), int(cli.seed_max)]
+            if cli.seed_mode == "random"
+            else [int(cli.seed_start), int(cli.seed_start) + int(cli.episodes) - 1]
+        ),
+        "target_mode": cli.target_mode,
         "target_saved": int(cli.target_saved),
         "max_rollouts": int(cli.episodes),
         "rollouts": len(records),
@@ -897,6 +956,7 @@ def main() -> int:
         ),
         "records": records,
     }
+    session_report["seeds"] = [item.get("seed") for item in records]
     report_path = cli.output_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     write_json(report_path, session_report)
     print(f"session_report={report_path}")

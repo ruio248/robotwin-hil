@@ -19,8 +19,12 @@ bash ./enter_robotwin_hil.sh python -u scripts/hg_dagger_handover.py \
   --ckpt-name v2_promptfix_9999 \
   --task-config handover_to_tray_v2_promptfix \
   --seed-start "${MANUAL_SEED_START:-40000}" \
-  --episodes "${MANUAL_MAX_ROLLOUTS:-50}" \
-  --target-saved "${MANUAL_TARGET_SAVED:-10}" \
+  --seed-mode "${MANUAL_SEED_MODE:-random}" \
+  --seed-min "${MANUAL_SEED_MIN:-40000}" \
+  --seed-max "${MANUAL_SEED_MAX:-99999}" \
+  --episodes "${MANUAL_MAX_ROLLOUTS:-200}" \
+  --target-saved "${MANUAL_TARGET_SAVED:-50}" \
+  --target-mode "${MANUAL_TARGET_MODE:-expert}" \
   --render-freq 10 \
   --frequency 30 \
   --save-data true \
