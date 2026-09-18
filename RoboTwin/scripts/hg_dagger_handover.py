@@ -930,9 +930,10 @@ def main() -> int:
                 discard_recovery_cache(task_env)
                 notify_trial_end(model_client, "handover_to_tray", seed, False)
                 print(
-                    f"\n\033[93m[EPISODE] aborted by supervisor at step "
-                    f"{int(task_env.FRAME_IDX)} "
-                    f"(interventions={intervention_count}); discarded, next rollout.\033[0m"
+                    f"\n\033[93m[EPISODE] aborted by supervisor after "
+                    f"{policy_steps} policy steps "
+                    f"(frame_idx={int(task_env.FRAME_IDX)}, "
+                    f"interventions={intervention_count}); discarded, next rollout.\033[0m"
                 )
                 safe_close_env(task_env)
                 rollout_index += 1
