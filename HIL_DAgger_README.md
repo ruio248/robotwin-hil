@@ -222,6 +222,42 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 
 想要无人值守且更快时，可以加 `--save-videos none` 并把 `--render-freq` 调大。
 
+### 6.4 SFT 策略评测记录（policy_eval_record.py）
+
+纯策略评测（不接管），逐 seed 记录结果，并把失败样本的 rollout 视频和 HDF5
+保存下来。
+
+当前 100 个 test seed 的评测命令：
+
+```bash
+cd /hdd/robotwin-hil
+env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+    -u all_proxy -u ALL_PROXY \
+  DISPLAY=:1 XAUTHORITY=/home/ruio/.Xauthority \
+  bash ./enter_robotwin_hil.sh python -u scripts/policy_eval_record.py \
+    --host 127.0.0.1 --port 18300 \
+    --policy-name Pi_05_RobotTwin \
+    --ckpt-name v2_promptfix_9999 \
+    --task-config handover_to_tray_v2_promptfix \
+    --seed-start 31000 --episodes 100 \
+    --render-freq 10 --frequency 30 --save-freq 15 \
+    --save-videos all \
+    --output-dir /media/ruio/hdd/robotwin-hil/outputs/sft_policy_eval_100
+```
+
+输出：
+
+- `eval_records.jsonl`：每个 seed 的 `success`、`policy_steps`、
+  `final_check_success`、`final_success_metrics`、`bar_pose`、`current_stage_id`；
+- `summary_*.json`：成功率汇总；
+- `data/episode_*.hdf5`、`video/episode_*.mp4`：完整 rollout（`--save-videos
+  failure` 只存失败，`none` 只存 JSON）。
+
+`--step-limit N` 可临时截断步数，适合快速 smoke。
+
+注意：`31000-31103` 是冻结的 test 区间，只用于最终评测，不要用于训练或调参
+（`hg_dagger_handover.py` 里有对应的保护）。
+
 ## 7. 常用路径速查
 
 - 仓库根目录：`/hdd/robotwin-hil`
