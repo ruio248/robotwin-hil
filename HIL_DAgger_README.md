@@ -111,6 +111,27 @@ session 报告里会记录 `total_rollouts`、每个 rollout 的 `rollout_second
 ### 3.2 操作键
 
 - rollout 中：`i` = 接管，`r` = 交还策略，`q` = 退出。
+- 按下 `i` 后，终端会弹出任务共 6 个阶段以及专家**自动判定**的接管分支和
+  当前夹爪/杆位状态。监督者先确认判断是否正确：
+
+  - `Y` / 回车 = 接受自动判定；
+  - `1`–`6` = 强制从某个阶段进入恢复（例如杆已悬空在托盘上方时选 `4`，
+    让右臂原地抓取后直接放托盘，而不是错误地回到左臂重抓）；
+  - `q` = 取消本次接管，继续由策略执行。
+
+  六个阶段与恢复入口对应关系：
+
+  | 阶段 | 名称 | 说明 |
+  |---|---|---|
+  | 1 | source_grasp | 左臂抓取红杆（从头重抓的入口） |
+  | 2 | source_lift | 左臂抬起（并入阶段 3 的 `resume_handover`） |
+  | 3 | handover_pose | 移向交接位姿（`resume_handover` 入口） |
+  | 4 | receiver_grasp | 右臂抓取（含"悬空直接放"入口） |
+  | 5 | source_release_and_retreat | 左臂松开并后撤（`receiver_place` 入口） |
+  | 6 | guided_tray_placement | 放入蓝托盘（`receiver_place` / `release_at_tray` 入口） |
+
+  每次接管会把 `chosen_stage_id` 写进 episode 的 intervention 记录，便于事后
+  检查人工选择的阶段是否覆盖了专家自动误判的场景。
 - episode 结束后由程序自动判定成功/失败（基于 `check_success()`），日志会打印
   `[TRAJECTORY] auto label=success|failure`；
 - 监督者只需要决定这条轨迹是否有效：`y` = 保存，`n` = 丢弃。
