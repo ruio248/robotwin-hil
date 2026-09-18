@@ -127,8 +127,12 @@ session 报告里会记录 `total_rollouts`、每个 rollout 的 `rollout_second
   | 2 | source_lift | 左臂抬起（并入阶段 3 的 `resume_handover`） |
   | 3 | handover_pose | 移向交接位姿（`resume_handover` 入口） |
   | 4 | receiver_grasp | 右臂抓取（含"悬空直接放"入口） |
-  | 5 | source_release_and_retreat | 左臂松开并后撤（`receiver_place` 入口） |
-  | 6 | guided_tray_placement | 放入蓝托盘（`receiver_place` / `release_at_tray` 入口） |
+  | 5 | source_release_and_retreat | 左臂松开并后撤（右臂已抓杆时的 `receiver_place` 入口） |
+  | 6 | guided_tray_placement | 左臂回原点、右臂放入蓝托盘（右臂已抓杆且左臂已松开的入口） |
+
+  阶段 5 和 6 是两步不同的动作：5 只做"左臂松杆 + 上抬后撤"，6 才做"左臂回原点
+  + 右臂把杆放进托盘"。恢复分支名 `receiver_place` 之所以同时对应 5/6，是因为
+  当右臂已经抓着杆时，若左臂还没松开就从 5 开始，若左臂已经松开就直接从 6 开始。
 
   每次接管会把 `chosen_stage_id` 写进 episode 的 intervention 记录，便于事后
   检查人工选择的阶段是否覆盖了专家自动误判的场景。
