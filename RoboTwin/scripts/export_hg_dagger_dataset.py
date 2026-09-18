@@ -98,6 +98,13 @@ def main() -> int:
         if staging.exists():
             shutil.rmtree(staging)
         merge_frames = stage_frames(frames_dir, control_mask, cli.mode, staging)
+        if cli.mode == "hil" and not any(merge_frames.glob("*.pkl")):
+            print(
+                f"[EXPORT] episode={episode_index} mode=hil skipped (no HIL frames)",
+                flush=True,
+            )
+            shutil.rmtree(staging, ignore_errors=True)
+            continue
 
         suffix = "" if cli.mode == "full" else "_hil"
         episode_name = f"episode_{episode_index:07d}{suffix}"
