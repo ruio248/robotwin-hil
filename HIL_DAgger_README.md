@@ -185,6 +185,43 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 报告会汇总 `rescue_rate`、每个 seed 的 `expert_success`、`branch` 和
 `executed_stage_ids`。
 
+### 6.3 真实 rollout 上的接管救援测试（live intervention）
+
+在真实策略 rollout 上直接触发接管（不是回放数据），用于回答“test seed
+上的真实失败状态，专家能不能救回来”。
+
+触发条件（任一满足即接管）：
+
+- `bar_dropped`：bar 之前被某只手握住，随后两只手都不再握住它；
+- `out_of_workspace`：bar 离开可恢复工作区；
+- `fixed_step`：兜底触发步数（`--intervene-step`，默认 600）。
+
+```bash
+cd /hdd/robotwin-hil
+env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+    -u all_proxy -u ALL_PROXY \
+  DISPLAY=:1 XAUTHORITY=/home/ruio/.Xauthority \
+  bash ./enter_robotwin_hil.sh python -u scripts/live_intervention_eval.py \
+    --host 127.0.0.1 --port 18300 \
+    --policy-name Pi_05_RobotTwin \
+    --ckpt-name v2_promptfix_9999 \
+    --task-config handover_to_tray_v2_promptfix \
+    --seed-start 31000 --episodes 100 \
+    --render-freq 10 --frequency 30 \
+    --intervene-step 600 \
+    --output-dir /media/ruio/hdd/robotwin-hil/outputs/live_intervention_100
+```
+
+输出：
+
+- `live_intervention_records.jsonl`：每个 seed 的触发原因、接管前步数、
+  接管时的特权状态、专家 branch/stage、`expert_success`、最终成功与指标；
+- `summary_*.json`：整体 `rescue_rate`，以及按触发原因和按专家 branch 分组的
+  rescue 统计；
+- `video/`、`data/`：完整 policy+HIL 轨迹（`--save-videos none` 可关闭）。
+
+想要无人值守且更快时，可以加 `--save-videos none` 并把 `--render-freq` 调大。
+
 ## 7. 常用路径速查
 
 - 仓库根目录：`/hdd/robotwin-hil`
@@ -193,4 +230,6 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 - 验收验证：`local_serving/run_local_takeover_validation.sh`
 - HG-DAgger 入口：`RoboTwin/scripts/hg_dagger_handover.py`
 - 扰动救援：`RoboTwin/scripts/perturbation_rescue.py`
+- 策略评测记录：`RoboTwin/scripts/policy_eval_record.py`
+- 真实接管救援测试：`RoboTwin/scripts/live_intervention_eval.py`
 - 本地 checkpoint 配置：`RoboTwin/XPolicyLab/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml`
