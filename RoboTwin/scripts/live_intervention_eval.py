@@ -308,8 +308,6 @@ def main() -> int:
             )
             safe_close_env(task_env)
     except Exception:
-        import traceback
-
         traceback.print_exc()
         safe_close_env(task_env, clear_cache=True)
         return 3
