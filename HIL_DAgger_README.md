@@ -98,9 +98,9 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 
 ### 3.3 窗口分辨率与速度
 
-SAPIEN viewer 的渲染目标尺寸是采集/测试速度的主要瓶颈。可以用
-`HIL_VIEWER_RESOLUTION` 控制窗口分辨率（默认由 SAPIEN 决定，实测会开到
-接近 4K）：
+SAPIEN viewer 的**固有渲染目标分辨率**（framebuffer）是速度的主要瓶颈，
+和窗口拖多大无关。代码现在固定为 `1280x720`，并在创建 viewer 后显式调用
+`window.resize()` 强制该尺寸；可用 `HIL_VIEWER_RESOLUTION` 覆盖：
 
 ```bash
 HIL_VIEWER_RESOLUTION=960x540 bash ./enter_robotwin_hil.sh python ...
@@ -114,8 +114,8 @@ HIL_VIEWER_RESOLUTION=960x540 bash ./enter_robotwin_hil.sh python ...
 | 960x540 | ~8.0 步/秒 |
 | 无窗口（`--render-freq 0`） | ~9.3 步/秒 |
 
-也就是说窗口越小越接近 headless 速度。需要人看时建议用 960x540 或
-1280x720；纯自动化测试直接用 `--render-freq 0`。
+默认 `1280x720` 的预期速度介于 960x540 和 4K 之间。需要人看时用默认或
+960x540；纯自动化测试直接用 `--render-freq 0`。
 
 ## 4. 数据保存（raw-first）
 

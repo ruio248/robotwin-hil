@@ -278,17 +278,19 @@ class Base_Task(gym.Env):
 
         # initialize viewer with camera position and orientation
         if self.render_freq:
-            viewer_resolution = os.environ.get("HIL_VIEWER_RESOLUTION", "").strip().lower()
-            if viewer_resolution:
-                try:
-                    width, height = (
-                        int(part) for part in viewer_resolution.split("x", 1)
-                    )
-                    self.viewer = Viewer(self.renderer, resolutions=(width, height))
-                except ValueError:
-                    self.viewer = Viewer(self.renderer)
-            else:
-                self.viewer = Viewer(self.renderer)
+            # Fix the intrinsic render-target resolution instead of relying on
+            # the OS window size. The OS window can be resized or scaled by the
+            # desktop manager, but the framebuffer size is what determines the
+            # render cost.
+            viewer_resolution = os.environ.get("HIL_VIEWER_RESOLUTION", "1280x720").strip().lower()
+            try:
+                width, height = (
+                    int(part) for part in viewer_resolution.split("x", 1)
+                )
+            except ValueError:
+                width, height = 1280, 720
+            self.viewer = Viewer(self.renderer, resolutions=(width, height))
+            self.viewer.window.resize(width, height)
             self.viewer.set_scene(self.scene)
             self.viewer.set_camera_xyz(
                 x=kwargs.get("camera_xyz_x", 0.4),
