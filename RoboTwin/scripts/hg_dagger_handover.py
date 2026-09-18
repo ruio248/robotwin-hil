@@ -338,7 +338,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ckpt-name", default="v2_promptfix_9999")
     parser.add_argument("--task-config", default="handover_to_tray_v2_promptfix")
     parser.add_argument("--seed-start", type=int, default=40000)
-    parser.add_argument("--episodes", type=int, default=10)
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=50,
+        help="Maximum number of policy rollouts to run (seed_start + index).",
+    )
+    parser.add_argument(
+        "--target-saved",
+        type=int,
+        default=10,
+        help="Stop once this many valid (saved) HIL episodes have been collected.",
+    )
     parser.add_argument("--frequency", type=int, default=30)
     parser.add_argument("--render-freq", type=int, default=5)
     parser.add_argument("--save-freq", type=int, default=15)
@@ -482,8 +493,15 @@ def main() -> int:
     print("=" * 72 + "\n")
 
     try:
-        for rollout_index in range(int(cli.episodes)):
+        rollout_index = 0
+        saved_count = 0
+        session_started = time.time()
+        while (
+            rollout_index < int(cli.episodes)
+            and saved_count < int(cli.target_saved)
+        ):
             seed = int(cli.seed_start) + rollout_index
+            rollout_started = time.time()
             args["save_data"] = False
             args["need_plan"] = True
             args["eval_mode"] = True
@@ -541,7 +559,8 @@ def main() -> int:
                 source_start_step = int(task_env.FRAME_IDX)
 
             print(
-                f"\n\033[96m[ROLLOUT {rollout_index + 1}/{cli.episodes}] seed={seed}; "
+                f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
+                f"saved {saved_count}/{cli.target_saved}] seed={seed}; "
                 "i=takeover, r=handback, q=quit.\033[0m"
             )
 
@@ -766,6 +785,7 @@ def main() -> int:
                 "joints_legal": bool(joints_legal),
                 "joint_absmax": float(joint_absmax),
                 "save_decision": bool(do_save),
+                "rollout_seconds": round(time.time() - rollout_started, 2),
                 "timestamp": datetime.now().isoformat(timespec="seconds"),
             }
 
@@ -782,6 +802,7 @@ def main() -> int:
             episode_record["hdf5_path"] = None
             if do_save:
                 data_episode_index += 1
+                saved_count += 1
             records.append(episode_record)
             notify_trial_end(
                 model_client,
@@ -820,6 +841,7 @@ def main() -> int:
                 print("\n\033[91m========== HG-DAGGER ACCEPTANCE: FAIL ==========\033[0m")
                 print(f"report={report_path}")
                 return 2
+            rollout_index += 1
     except Exception:
         print("\n\033[91mHG-DAgger session error:\033[0m")
         print(traceback.format_exc())
@@ -830,7 +852,10 @@ def main() -> int:
 
     session_report = {
         "aborted": aborted,
+        "target_saved": int(cli.target_saved),
+        "max_rollouts": int(cli.episodes),
         "rollouts": len(records),
+        "total_rollouts": len(records),
         "interventions": sum(int(item.get("intervention_count", 0)) for item in records),
         "saved_episodes": sum(1 for item in records if item.get("save_decision")),
         "success_labels": sum(
@@ -838,6 +863,15 @@ def main() -> int:
         ),
         "autonomous_successes": sum(
             1 for item in records if item.get("autonomous_success")
+        ),
+        "total_seconds": round(time.time() - session_started, 2),
+        "seconds_per_rollout": round(
+            (time.time() - session_started) / len(records), 2
+        ) if records else None,
+        "seconds_per_saved_episode": round(
+            (time.time() - session_started)
+            / max(1, sum(1 for item in records if item.get("save_decision"))),
+            2,
         ),
         "records": records,
     }

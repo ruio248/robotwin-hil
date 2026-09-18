@@ -79,7 +79,9 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
     --policy-name Pi_05_RobotTwin \
     --ckpt-name v2_promptfix_9999 \
     --task-config handover_to_tray_v2_promptfix \
-    --seed-start 40000 --episodes 1 \
+    --seed-start 40000 \
+    --episodes 50 \
+    --target-saved 10 \
     --render-freq 5 --frequency 30 \
     --save-data true \
     --output-dir /media/ruio/hdd/robotwin-hil/outputs/hg_dagger_collection
@@ -87,6 +89,11 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 
 > 采集阶段不生成 MP4/HDF5，只落原始帧；视频和 LeRobot 转换在离线阶段用
 > `export_hg_dagger_dataset.py` 完成（见 4.1 节）。
+
+`--target-saved`（默认 10）是**有效 HIL 条数**的目标：程序会一直跑 rollout，
+直到累计保存了 10 条有效 episode 才停；`--episodes` 是 rollout 次数上限。
+session 报告里会记录 `total_rollouts`、每个 rollout 的 `rollout_seconds`、
+`total_seconds` 和 `seconds_per_saved_episode`。
 
 ### 3.2 操作键
 
