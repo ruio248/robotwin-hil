@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -198,14 +199,26 @@ def main() -> int:
                         current_observation=observation,
                     )
                     task_env.current_control_source = "policy"
-                    task_env.take_action(flat_action, action_type=action_type)
+                    try:
+                        task_env.take_action(flat_action, action_type=action_type)
+                    except Exception as exc:
+                        intervene = True
+                        intervene_reason = "policy_step_error"
+                        intervention_state = {"error": repr(exc)}
+                        break
                     policy_steps += 1
                     if task_env.save_data and policy_steps % int(cli.save_freq) == 0:
                         task_env._take_picture()
                     if is_episode_end(task_env):
                         break
 
-                    state = task_env.infer_recovery_state()
+                    try:
+                        state = task_env.infer_recovery_state()
+                    except Exception as exc:
+                        intervene = True
+                        intervene_reason = "state_error"
+                        intervention_state = {"error": repr(exc)}
+                        break
                     held = bool(state["source_holds"] or state["receiver_holds"])
                     if (
                         not cli.no_intervene_on_drop
@@ -243,9 +256,13 @@ def main() -> int:
                     model_client.call(func_name="update_obs", obs=xpl_obs)
 
             expert_result = None
+            expert_error = None
             if intervene and not is_episode_end(task_env):
                 task_env.current_control_source = "hil"
-                expert_result = task_env.recover_from_current_state()
+                try:
+                    expert_result = task_env.recover_from_current_state()
+                except Exception:
+                    expert_error = traceback.format_exc()
 
             joints_legal, joint_absmax = task_env.planned_joints_legal()
             success = bool(task_env.eval_success)
@@ -260,6 +277,7 @@ def main() -> int:
                 "expert_branch": (expert_result or {}).get("branch"),
                 "expert_stage_ids": (expert_result or {}).get("executed_stage_ids"),
                 "expert_reason": (expert_result or {}).get("reason"),
+                "expert_error": expert_error,
                 "final_success": success,
                 "final_check_success": bool(task_env.check_success()),
                 "final_success_metrics": task_env.success_metrics(),

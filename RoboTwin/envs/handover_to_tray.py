@@ -8,6 +8,7 @@ reset and intervention experiments; they are never policy inputs.
 from __future__ import annotations
 
 import math
+import traceback
 
 import numpy as np
 import sapien
@@ -591,7 +592,21 @@ class handover_to_tray(Base_Task):
     def _run_stage(self, stage_id: int, *actions) -> bool:
         self.current_stage_id = stage_id
         if self.plan_success:
-            self.move(*actions)
+            try:
+                self.move(*actions)
+            except Exception as exc:
+                # A planner/motion exception from an extreme policy state must
+                # fail this stage, not kill the whole DAgger session.
+                self.plan_success = False
+                self.episode_metadata["expert_stage_error"] = {
+                    "stage_id": int(stage_id),
+                    "error": repr(exc),
+                    "traceback": traceback.format_exc(),
+                }
+                print(
+                    f"\033[91m[EXPERT] stage {stage_id} planning failed: {exc}\033[0m",
+                    flush=True,
+                )
         self._record_stage(stage_id)
         return bool(self.plan_success)
 
