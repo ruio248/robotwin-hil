@@ -435,10 +435,19 @@ def main() -> int:
         cli.episodes = 1
         cli.save_data = "false"
     requested_seeds = range(int(cli.seed_start), int(cli.seed_start) + int(cli.episodes))
-    if any(31000 <= seed <= 31103 for seed in requested_seeds):
+    forbidden = []
+    for seed in requested_seeds:
+        if 1 <= seed <= 579:
+            forbidden.append((seed, "demonstration (1-579)"))
+        elif 30000 <= seed <= 30022:
+            forbidden.append((seed, "development (30000-30022)"))
+        elif 31000 <= seed <= 31103:
+            forbidden.append((seed, "frozen test (31000-31103)"))
+    if forbidden:
         raise ValueError(
-            "Refusing to collect or tune on the frozen 31000--31103 test range. "
-            "Use collection seeds such as 40000+."
+            "Refusing to collect DAgger data on reserved seeds "
+            f"(e.g. {forbidden[0][0]} is {forbidden[0][1]}). "
+            "Use fresh collection seeds such as 40000+."
         )
     cli.output_dir = cli.output_dir.expanduser().resolve()
     cli.output_dir.mkdir(parents=True, exist_ok=True)
