@@ -278,7 +278,17 @@ class Base_Task(gym.Env):
 
         # initialize viewer with camera position and orientation
         if self.render_freq:
-            self.viewer = Viewer(self.renderer)
+            viewer_resolution = os.environ.get("HIL_VIEWER_RESOLUTION", "").strip().lower()
+            if viewer_resolution:
+                try:
+                    width, height = (
+                        int(part) for part in viewer_resolution.split("x", 1)
+                    )
+                    self.viewer = Viewer(self.renderer, resolutions=(width, height))
+                except ValueError:
+                    self.viewer = Viewer(self.renderer)
+            else:
+                self.viewer = Viewer(self.renderer)
             self.viewer.set_scene(self.scene)
             self.viewer.set_camera_xyz(
                 x=kwargs.get("camera_xyz_x", 0.4),

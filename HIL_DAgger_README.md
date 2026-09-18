@@ -96,6 +96,27 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 
 一个 episode 内可以多次 `i`/`r`，实现 HG-DAgger 的专家 gating。
 
+### 3.3 窗口分辨率与速度
+
+SAPIEN viewer 的渲染目标尺寸是采集/测试速度的主要瓶颈。可以用
+`HIL_VIEWER_RESOLUTION` 控制窗口分辨率（默认由 SAPIEN 决定，实测会开到
+接近 4K）：
+
+```bash
+HIL_VIEWER_RESOLUTION=960x540 bash ./enter_robotwin_hil.sh python ...
+```
+
+同一批 test seed、`--save-videos none` 下的实测步速：
+
+| viewer 分辨率 | 步速 |
+|---|---|
+| 4K（3700x2032） | ~5.5 步/秒 |
+| 960x540 | ~8.0 步/秒 |
+| 无窗口（`--render-freq 0`） | ~9.3 步/秒 |
+
+也就是说窗口越小越接近 headless 速度。需要人看时建议用 960x540 或
+1280x720；纯自动化测试直接用 `--render-freq 0`。
+
 ## 4. 数据保存（raw-first）
 
 采集阶段只落**原始帧 + 元数据**，不做 HDF5 / MP4 / LeRobot 转换，避免编码拖慢
