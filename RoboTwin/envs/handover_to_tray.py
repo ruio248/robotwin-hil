@@ -246,6 +246,12 @@ class handover_to_tray(Base_Task):
         elif source_holds:
             branch = "resume_handover"
             stage_id = 3
+        elif self._bar_near_tray(bar_position):
+            # The policy dropped the bar above/near the tray with both grippers
+            # free. Grabbing it again with the source would be the wrong plan:
+            # the receiver can grasp it in place and finish the placement.
+            branch = "guided_place_from_air"
+            stage_id = 4
         else:
             branch = "restart_source_grasp"
             stage_id = 1
@@ -256,10 +262,63 @@ class handover_to_tray(Base_Task):
             "source_holds": bool(source_holds),
             "receiver_holds": bool(receiver_holds),
             "placed": bool(placed),
+            "near_tray": bool(self._bar_near_tray(bar_position)),
             "recoverable": bool(recoverable or source_holds or receiver_holds),
             "bar_position": bar_position.round(8).tolist(),
             "success_metrics": metrics,
         }
+
+    def _bar_near_tray(self, bar_position: np.ndarray | None = None) -> bool:
+        """True when the bar is hovering close enough to the tray to be
+        recovered by a direct receiver grasp + placement instead of a full
+        source-side restart."""
+        if bar_position is None:
+            bar_position = np.asarray(self.bar.get_pose().p, dtype=np.float64)
+        if not np.isfinite(bar_position).all():
+            return False
+        tray_position = np.asarray(
+            self.tray_floor.get_functional_point(1, "pose").p,
+            dtype=np.float64,
+        )
+        return bool(
+            abs(bar_position[0] - tray_position[0]) < 0.28
+            and abs(bar_position[1] - tray_position[1]) < 0.28
+            and 0.70 <= bar_position[2] <= 1.25
+        )
+
+    @staticmethod
+    def _forced_recovery_state(
+        initial: dict[str, object], stage_id: int
+    ) -> dict[str, object]:
+        """Override the inferred branch so recovery starts from a human-chosen
+        stage (1-6) instead of the privileged auto-inference."""
+        overrides = {
+            1: ("restart_source_grasp", 1, False, False, False, False),
+            2: ("resume_handover", 3, True, False, False, False),
+            3: ("resume_handover", 3, True, False, False, False),
+            4: ("guided_place_from_air", 4, False, False, False, True),
+            5: ("receiver_place", 5, True, True, False, False),
+            6: ("receiver_place", 6, False, True, False, False),
+        }
+        if stage_id not in overrides:
+            raise ValueError(f"unsupported recovery start stage: {stage_id}")
+        (
+            branch,
+            entry_stage,
+            source_holds,
+            receiver_holds,
+            placed,
+            near_tray,
+        ) = overrides[stage_id]
+        forced = dict(initial)
+        forced["branch"] = branch
+        forced["stage_id"] = entry_stage
+        forced["source_holds"] = source_holds
+        forced["receiver_holds"] = receiver_holds
+        forced["placed"] = placed
+        forced["near_tray"] = near_tray
+        forced["forced_stage_id"] = stage_id
+        return forced
 
     def recover_from_current_state(self) -> dict[str, object]:
         """Run the scripted expert from a policy-visited live simulator state.
@@ -290,6 +349,12 @@ class handover_to_tray(Base_Task):
         source_holds = bool(initial["source_holds"])
         receiver_holds = bool(initial["receiver_holds"])
         placed = bool(initial["placed"])
+        air_place = bool(
+            initial.get("near_tray")
+            and not source_holds
+            and not receiver_holds
+            and not placed
+        )
 
         if placed:
             # A policy may reach the tray but forget to release one gripper.
@@ -298,6 +363,45 @@ class handover_to_tray(Base_Task):
                 self.open_gripper(self.source_arm_tag),
                 self.open_gripper(self.receiver_arm_tag),
             )
+        elif air_place:
+            # Bar is already hovering near the tray with no gripper holding it.
+            # Grasp it directly with the receiver and finish the placement.
+            run(
+                4,
+                self.open_gripper(self.source_arm_tag),
+                self.open_gripper(self.receiver_arm_tag),
+            )
+            run(
+                4,
+                self.grasp_actor(
+                    self.bar,
+                    arm_tag=self.receiver_arm_tag,
+                    pre_grasp_dis=0.07,
+                    grasp_dis=0.0,
+                    contact_point_id=[4, 5, 6, 7],
+                ),
+            )
+            receiver_holds = bool(
+                self.plan_success and self.arm_holds_bar(self.receiver_arm_tag)
+            )
+            if self.plan_success and not receiver_holds:
+                self.plan_success = False
+                result["reason"] = "receiver_grasp_did_not_attach"
+            if receiver_holds and self.plan_success:
+                run(
+                    6,
+                    self.back_to_origin(self.source_arm_tag),
+                    self.place_actor(
+                        self.bar,
+                        target_pose=self._tray_placement_target(),
+                        arm_tag=self.receiver_arm_tag,
+                        functional_point_id=0,
+                        pre_dis=0.05,
+                        dis=0.0,
+                        constrain="align",
+                        pre_dis_axis="fp",
+                    ),
+                )
         else:
             if not source_holds and not receiver_holds:
                 # A half-closed gripper cannot execute the normal grasp suffix.
@@ -403,15 +507,20 @@ class handover_to_tray(Base_Task):
         self.info["recovery"] = result
         return result
 
-    def recovery_stage_iterator(self):
+    def recovery_stage_iterator(self, start_stage_id: int | None = None):
         """Yield the scripted expert's recovery stages one at a time.
 
         The supervisor can hand control back to the policy after any yielded
         stage. Each ``next()`` executes one semantic stage (or opens the
         final grippers) and yields a progress dict. The final yield has
         ``phase == "done"``.
+
+        ``start_stage_id`` optionally forces the recovery entry stage (1-6)
+        chosen by a human, overriding the privileged auto-inference.
         """
         initial = self.infer_recovery_state()
+        if start_stage_id is not None:
+            initial = self._forced_recovery_state(initial, int(start_stage_id))
         if not initial["recoverable"]:
             yield {
                 "phase": "done",
@@ -428,6 +537,12 @@ class handover_to_tray(Base_Task):
         source_holds = bool(initial["source_holds"])
         receiver_holds = bool(initial["receiver_holds"])
         placed = bool(initial["placed"])
+        air_place = bool(
+            initial.get("near_tray")
+            and not source_holds
+            and not receiver_holds
+            and not placed
+        )
         reason = None
 
         def progress():
@@ -447,6 +562,51 @@ class handover_to_tray(Base_Task):
             )
             executed_stage_ids.append(6)
             yield progress()
+        elif air_place:
+            self._run_stage(
+                4,
+                self.open_gripper(self.source_arm_tag),
+                self.open_gripper(self.receiver_arm_tag),
+            )
+            executed_stage_ids.append(4)
+            yield progress()
+
+            self._run_stage(
+                4,
+                self.grasp_actor(
+                    self.bar,
+                    arm_tag=self.receiver_arm_tag,
+                    pre_grasp_dis=0.07,
+                    grasp_dis=0.0,
+                    contact_point_id=[4, 5, 6, 7],
+                ),
+            )
+            executed_stage_ids.append(4)
+            yield progress()
+
+            receiver_holds = bool(
+                self.plan_success and self.arm_holds_bar(self.receiver_arm_tag)
+            )
+            if self.plan_success and not receiver_holds:
+                self.plan_success = False
+                reason = "receiver_grasp_did_not_attach"
+            if receiver_holds and self.plan_success:
+                self._run_stage(
+                    6,
+                    self.back_to_origin(self.source_arm_tag),
+                    self.place_actor(
+                        self.bar,
+                        target_pose=self._tray_placement_target(),
+                        arm_tag=self.receiver_arm_tag,
+                        functional_point_id=0,
+                        pre_dis=0.05,
+                        dis=0.0,
+                        constrain="align",
+                        pre_dis_axis="fp",
+                    ),
+                )
+                executed_stage_ids.append(6)
+                yield progress()
         else:
             if not source_holds and not receiver_holds:
                 self._run_stage(

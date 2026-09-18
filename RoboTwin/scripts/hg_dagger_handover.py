@@ -95,6 +95,19 @@ def build_seed_stream(cli: argparse.Namespace):
 
 DEFAULT_KEYS = {"i": "intervene", "r": "handback", "q": "quit"}
 
+# Human-readable stage names shown at takeover time. Stage 2 (source_lift) is
+# an intermediate motion folded into the resume_handover entry point (3);
+# stage 4 (receiver_grasp) also serves as the direct "grasp-and-place from
+# air" entry point when the bar is already hovering near the tray.
+STAGE_LABELS = {
+    1: "source_grasp               左臂抓取红杆",
+    2: "source_lift               左臂抬起",
+    3: "handover_pose             移向交接位姿",
+    4: "receiver_grasp            右臂抓取（含悬空直接放）",
+    5: "source_release_and_retreat 左臂松开并后撤",
+    6: "guided_tray_placement     放入蓝托盘",
+}
+
 
 def parse_bool(value: Any) -> bool:
     if isinstance(value, bool):
@@ -180,6 +193,63 @@ class HumanInterventionInput:
 
     def poll(self) -> str | None:
         return self._poll_viewer() or self._poll_terminal()
+
+    def read_line(self, prompt: str) -> str:
+        """Temporarily leave cbreak mode and read one line from the terminal.
+
+        Returns an empty string when there is no interactive terminal, so the
+        caller can safely fall back to automatic stage selection in headless
+        runs.
+        """
+        if self._fd is None or self._term_attrs is None:
+            return ""
+        sys.stdout.write(prompt)
+        sys.stdout.flush()
+        try:
+            termios.tcsetattr(self._fd, termios.TCSADRAIN, self._term_attrs)
+            line = sys.stdin.readline()
+        except (OSError, termios.error, ValueError):
+            line = ""
+        finally:
+            try:
+                tty.setcbreak(self._fd)
+            except (OSError, termios.error):
+                pass
+        return (line or "").strip()
+
+
+def choose_recovery_stage(task_env, keyboard) -> tuple[Any, int | None]:
+    """Show the inferred recovery stage and let the supervisor confirm it or
+    override the entry stage before the expert starts moving.
+
+    Returns ``(recovery_iter, chosen_stage_id)``. ``(None, None)`` means the
+    supervisor cancelled this takeover and the policy should keep control.
+    """
+    state = task_env.infer_recovery_state()
+    print("\n\033[96m[HG-DAGGER] 任务共 6 个阶段:\033[0m")
+    for stage_id in range(1, 7):
+        print(f"  {stage_id}. {STAGE_LABELS[stage_id]}")
+    print("\n\033[96m[HG-DAGGER] 专家自动判定:\033[0m")
+    print(f"  branch={state['branch']}  entry_stage={state['stage_id']}")
+    print(
+        f"  source_holds={state['source_holds']} "
+        f"receiver_holds={state['receiver_holds']} "
+        f"placed={state['placed']} near_tray={state.get('near_tray', False)}"
+    )
+    print(f"  bar_pos={state.get('bar_position')}")
+
+    while True:
+        answer = keyboard.read_line(
+            "\n阶段判断正确吗? [Y/Enter]=确认自动, 输入 1-6 重选, q=取消本次接管: "
+        ).strip().lower()
+        if answer in ("", "y", "yes"):
+            return task_env.recovery_stage_iterator(), None
+        if answer == "q":
+            return None, None
+        if answer.isdigit() and 1 <= int(answer) <= 6:
+            chosen = int(answer)
+            return task_env.recovery_stage_iterator(start_stage_id=chosen), chosen
+        print("\033[91m  无效输入，请输入 Y / 1-6 / q\033[0m")
 
 
 def next_episode_index(output_dir: Path) -> int:
@@ -649,6 +719,14 @@ def main() -> int:
 
                     if mode == "policy":
                         if event == "intervene":
+                            recovery_iter, chosen_stage = choose_recovery_stage(
+                                task_env, keyboard
+                            )
+                            if recovery_iter is None:
+                                print(
+                                    "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
+                                )
+                                continue
                             switch_source("hil")
                             intervention_count += 1
                             interventions.append(
@@ -658,9 +736,9 @@ def main() -> int:
                                     "start_step": int(task_env.FRAME_IDX),
                                     "handback_step": None,
                                     "expert_done": False,
+                                    "chosen_stage_id": chosen_stage,
                                 }
                             )
-                            recovery_iter = task_env.recovery_stage_iterator()
                             mode = "expert"
                             print(
                                 "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
@@ -747,6 +825,14 @@ def main() -> int:
                         if is_episode_end(task_env):
                             break
                         if chunk_interrupted and event == "intervene":
+                            recovery_iter, chosen_stage = choose_recovery_stage(
+                                task_env, keyboard
+                            )
+                            if recovery_iter is None:
+                                print(
+                                    "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
+                                )
+                                continue
                             switch_source("hil")
                             intervention_count += 1
                             interventions.append(
@@ -756,9 +842,9 @@ def main() -> int:
                                     "start_step": int(task_env.FRAME_IDX),
                                     "handback_step": None,
                                     "expert_done": False,
+                                    "chosen_stage_id": chosen_stage,
                                 }
                             )
-                            recovery_iter = task_env.recovery_stage_iterator()
                             mode = "expert"
                             print(
                                 "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
