@@ -115,6 +115,8 @@ def main() -> int:
             episode_metadata=meta.get("episode_metadata"),
             save_video=save_video,
         )
+        if cli.mode == "hil":
+            shutil.rmtree(staging, ignore_errors=True)
         write_json(
             cli.output_dir / "instruction" / f"{episode_name}.json",
             {
