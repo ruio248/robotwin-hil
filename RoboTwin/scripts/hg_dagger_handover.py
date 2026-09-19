@@ -415,12 +415,84 @@ def discard_recovery_cache(task_env) -> None:
 def render_initial_frame(task_env) -> None:
     viewer = getattr(task_env, "viewer", None)
     if viewer is None:
+        if os.environ.get("HIL_DIAG_ALLOW_NO_VIEWER") == "1":
+            # Diagnostic-only escape hatch: run this entry point fully headless.
+            return
         raise RuntimeError(
             "Human-gated mode needs a SAPIEN viewer. Set --render-freq to a positive value "
             "and launch inside the 5090 desktop session."
         )
     task_env._update_render()
     viewer.render()
+
+
+def setup_viewer_diagnostics(task_env) -> None:
+    """Environment-gated diagnostics for the SAPIEN viewer cost.
+
+    HIL_DIAG_VIEWER=1      time every viewer.render()/scene.update_render() call
+    HIL_DIAG_SKIP_VIEWER=1 keep the window but turn viewer.render() into a no-op
+    """
+    if os.environ.get("HIL_DIAG_VIEWER") != "1" and os.environ.get("HIL_DIAG_SKIP_VIEWER") != "1":
+        return
+
+    viewer = getattr(task_env, "viewer", None)
+    if viewer is None:
+        print("[DIAG] no viewer instance", flush=True)
+        return
+
+    window = getattr(viewer, "window", None)
+    print(
+        f"[DIAG] viewer resolution={getattr(viewer, 'resolution', None)} "
+        f"shader_dir={getattr(viewer, 'shader_dir', None)} "
+        f"paused={getattr(viewer, 'paused', None)} "
+        f"window_size={getattr(window, 'size', None)}",
+        flush=True,
+    )
+    for plugin in getattr(viewer, "plugins", []):
+        camera_index = getattr(plugin, "camera_index", None)
+        focused_camera = getattr(plugin, "focused_camera", None)
+        if camera_index is None and focused_camera is None:
+            continue
+        print(
+            f"[DIAG] plugin {type(plugin).__name__}: camera_index={camera_index} "
+            f"focused_camera={focused_camera}",
+            flush=True,
+        )
+
+    if os.environ.get("HIL_DIAG_SKIP_VIEWER") == "1":
+        viewer.render = lambda *args, **kwargs: None
+        print("[DIAG] viewer.render disabled (window kept)", flush=True)
+        return
+
+    def install_timer(target, attribute, label, stats):
+        original = getattr(target, attribute)
+
+        def timed(*args, **kwargs):
+            started = time.perf_counter()
+            try:
+                return original(*args, **kwargs)
+            finally:
+                elapsed = time.perf_counter() - started
+                stats["count"] += 1
+                stats["total"] += elapsed
+                stats["max"] = max(stats["max"], elapsed)
+                if stats["count"] % 25 == 0:
+                    print(
+                        f"[DIAG] {label} n={stats['count']} "
+                        f"total={stats['total']:.2f}s "
+                        f"avg={stats['total'] / stats['count'] * 1000:.1f}ms "
+                        f"max={stats['max'] * 1000:.1f}ms",
+                        flush=True,
+                    )
+
+        setattr(target, attribute, timed)
+        return stats
+
+    render_stats = {"count": 0, "total": 0.0, "max": 0.0}
+    update_stats = {"count": 0, "total": 0.0, "max": 0.0}
+    install_timer(viewer, "render", "viewer.render", render_stats)
+    install_timer(task_env, "_update_render", "scene.update_render", update_stats)
+    print("[DIAG] timing enabled for viewer.render and scene.update_render", flush=True)
 
 
 def build_runtime_args(cli: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -603,7 +675,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     cli = parse_args()
-    if cli.render_freq <= 0:
+    if cli.render_freq <= 0 and os.environ.get("HIL_DIAG_ALLOW_NO_VIEWER") != "1":
         raise ValueError("--render-freq must be positive for human supervision")
     if cli.acceptance:
         cli.episodes = 1
@@ -673,6 +745,8 @@ def main() -> int:
                 task_env.step_lim = int(cli.step_limit)
             task_env.set_instruction(PROMPT)
             render_initial_frame(task_env)
+            if rollout_index == 0:
+                setup_viewer_diagnostics(task_env)
             prepare_policy_case(model_client, "handover_to_tray", seed, PROMPT, "joint")
             reset_policy(model_client)
 
