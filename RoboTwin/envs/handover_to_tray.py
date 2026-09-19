@@ -447,11 +447,16 @@ class handover_to_tray(Base_Task):
                 ):
                     run(3, self.open_gripper(self.receiver_arm_tag))
                 # The policy usually stops with the receiver hovering right
-                # next to the bar. Retreat it to the rest pose first, otherwise
-                # the re-grasp closes in the air instead of around the bar.
-                # This is a preparation step, so a failed retreat falls back to
-                # the original flow instead of aborting the recovery.
-                if not run(4, self.back_to_origin(self.receiver_arm_tag)):
+                # next to the bar. Nudge it back a little along its approach
+                # axis (back to roughly the pre-grasp clearance) instead of
+                # sending it all the way home, then re-approach. Preparation
+                # only: a failed retreat falls back to the original flow.
+                if not run(
+                    4,
+                    self.move_by_displacement(
+                        self.receiver_arm_tag, z=0.10, move_axis="arm"
+                    ),
+                ):
                     self.plan_success = True
                 run(
                     3,
@@ -669,11 +674,15 @@ class handover_to_tray(Base_Task):
                     executed_stage_ids.append(3)
                     yield progress()
 
-                # Retreat the receiver clear of the handover workspace before
-                # re-centring the bar. Preparation only: if the retreat cannot
-                # be planned, keep the original re-grasp attempt.
+                # Nudge the receiver back along its approach axis (small
+                # clearance, not the home pose) before re-centring the bar.
+                # Preparation only: if the retreat cannot be planned, keep the
+                # original re-grasp attempt.
                 retreated = self._run_stage(
-                    4, self.back_to_origin(self.receiver_arm_tag)
+                    4,
+                    self.move_by_displacement(
+                        self.receiver_arm_tag, z=0.10, move_axis="arm"
+                    ),
                 )
                 executed_stage_ids.append(4)
                 yield progress()
