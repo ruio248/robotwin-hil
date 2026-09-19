@@ -205,6 +205,27 @@ episodes/<id>.npz         # features[T,1536], state[T,14], a_pi[T,K,14], frame_i
   --resume "$TAIL_ROOT/runs/stable_mean/last.pt" --steps 15000
 ```
 
+如果需要“后台启动一轮、达到指定 checkpoint 后离线评测、再挂起训练”，使用
+仓库内的 `scripts/run_tail_train_eval.sh`。默认总步数为 10,000，在第 5,000
+步 checkpoint 上评测，然后对仍在运行的训练进程发送 `SIGSTOP`；状态文件会写入
+run 目录，继续训练使用其中的 `kill -CONT <pid>`。它不启动策略服务，也不执行
+机器人动作：
+
+```bash
+nohup bash scripts/run_tail_train_eval.sh \
+  --python "$TAIL_PYTHON" \
+  --sft-cache "$TAIL_ROOT/cache/sft" \
+  --heldout-cache "$TAIL_ROOT/cache/heldout" \
+  --hil-cache "$TAIL_ROOT/cache/hil" \
+  --run-dir "$TAIL_ROOT/runs/stable_mean" \
+  --report-dir "$TAIL_ROOT/reports/stable_mean_step5000" \
+  > "$TAIL_ROOT/runs/stable_mean_orchestrator.log" 2>&1 &
+echo $! > "$TAIL_ROOT/runs/stable_mean_orchestrator.pid"
+```
+
+脚本拒绝覆盖非空的 run/report 目录；`run_dir.train.log` 保存训练输出，
+`run_dir/orchestration_state.txt` 保存暂停状态、训练 PID、checkpoint 和继续命令。
+
 Checkpoint 保存 online/target、optimizer、训练统计量、随机状态、缓存指纹。
 不自动从独立示范/HIL 选择最佳 checkpoint。`last.pt` 是最近一次有效保存。
 
