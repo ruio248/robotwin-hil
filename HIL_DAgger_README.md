@@ -214,41 +214,71 @@ python -u scripts/export_hg_dagger_dataset.py \
 
 ## 5. 保存后的训练
 
-### 5.1 HIL 帧抽取与 LeRobot 转换（待实现）
+### 5.1 HIL 帧抽取与 LeRobot 转换
 
-计划脚本：
+入口脚本：
 
 ```text
 RoboTwin/scripts/prepare_hg_dagger_dataset.py
 ```
 
-它需要：
+它直接读取 `outputs/hg_dagger_collection_r*/raw`，按同一个连续
+`control_mask` 段生成相邻帧 transition：当前帧作为 state，下一保存帧的
+14 维绝对 joint target 作为 action。不会跨越 policy/HIL 边界，也不会把
+episode 最后一帧伪造成自循环。输出两个 LeRobot 数据集：`baseline` 和
+`dagger`。
 
-1. 先用 `export_hg_dagger_dataset.py --mode hil` 导出 HIL-only HDF5。
-2. 把 HIL-only HDF5 转成 recovery-only LeRobot 数据集。
-3. 与原始 `ruio248/robotwin_handover_to_tray_v2_promptfix` 数据混合。
+如果没有单独的 SFT LeRobot 根目录，默认把同一批 HIL rollout 中的
+policy-controlled 段作为 baseline；这只是接口/训练冒烟用的 baseline，不等于
+原始 450 条 SFT。拿到真正的 SFT LeRobot 数据后，通过 `--baseline-root` 指定它，
+脚本会只从 HIL raw 抽取 `dagger`，并用两个来源各取相同帧预算重算 norm_stats。
 
-建议混合比例：原始 v2 专家数据 50–70%，HG-DAgger hil 数据 30–50%。
+Ubuntu 上的 5:5 入口：
+
+```bash
+cd /hdd/robotwin-hil
+HIL_RAW_ROOTS="/hdd/robotwin-hil/outputs/hg_dagger_collection_r15/raw" \
+RUN_TRAIN=0 \
+bash RoboTwin/scripts/run_hg_iwr_balanced_5050.sh
+```
+
+每个 batch 严格包含 baseline/DAgger 各 50%，两边 loss weight 都是 1.0；
+没有使用 HIL 标签作为额外 loss 权重。默认 launcher 针对 Ubuntu 24GB RTX 4090
+打开 `LORA=1 LORA_ONLY=1 NO_EMA=1`，A800 全参训练时设为
+`LORA=0 NO_EMA=0`。在 A800 上如果使用默认 r15 数据，baseline 363 帧、DAgger
+1110 帧；batch size 为 128 时，一个平衡 epoch 是
+`ceil(1110 / 64) = 18` 个 batch，需显式设置 `NUM_TRAIN_STEPS=18`。
 
 ### 5.2 重训 Pi0.5
 
 使用已有 `pi05_robotwin_handover_to_tray_v2_promptfix` 训练配置，从 `9999`
-checkpoint 继续训练：
+checkpoint 继续训练。A800 全参一个平衡 epoch 的示例：
 
 ```bash
-cd <training-host-openpi>
-.venv/bin/python scripts/train.py \
+cd <robotwin-hil>/RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/openpi
+HF_LEROBOT_HOME=<prepared-dataset-root> \
+.venv/bin/python scripts/train_iwr_balanced_5050.py \
   pi05_robotwin_handover_to_tray_v2_promptfix \
-  --exp-name robotwin_handover_to_tray_hg_dagger_r1 \
-  --data.repo-id <hil-leRobot-repo> \
+  --baseline-repo-id baseline \
+  --dagger-repo-id dagger \
+  --norm-stats-asset-id iwr_hg_dagger_balanced_5050 \
+  --mix-manifest <prepared-dataset-root>/iwr_balanced_mix.json \
+  --assets-base-dir <prepared-dataset-root>/assets \
+  --checkpoint-base-dir <output-root>/checkpoints \
+  --exp-name iwr_hg_dagger_balanced_5050_epoch1 \
+  --weight-loader-params <existing-9999-checkpoint>/params \
   --batch-size 128 \
   --num-workers 8 \
-  --fsdp-devices 4 \
-  --num-train-steps 2500 \
-  --save-interval 1000
+  --fsdp-devices 1 \
+  --num-train-steps 18 \
+  --save-interval 18 \
+  --keep-period 5000 \
+  --overwrite
 ```
 
-> 注意：这一节的数据过滤/转换脚本尚未完成，当前仓库只完成了数据收集端。
+这段训练脚本不重新调用策略服务；策略服务只用于之后的 rollout/评测。
+默认 baseline 是同一批 rollout 的 policy 段，不是原始 SFT；真实效果实验应
+优先使用 `--baseline-root` 接入与当前 checkpoint 对齐的 SFT 数据。
 
 ## 6. 最终测试
 
