@@ -97,6 +97,12 @@ class CoverageCritic(nn.Module):
 
 
 def action_distances(candidates, expert, scale):
+    """Normalized RMS distance in the shared absolute joint/qpos space.
+
+    Both inputs are absolute actions.  Subtracting the same current state
+    from both would produce the identical difference, so no delta conversion
+    is needed for coverage ranking.
+    """
     return (((candidates - expert[:, None]) / scale).square().mean(-1)).sqrt()
 
 

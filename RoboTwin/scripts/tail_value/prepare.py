@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 
-from .cache import CAMERAS, FEATURE_DIM, PROMPT, transition_mask, validate_episode
+from .cache import ACTION_DIM, ACTION_SPACE, CAMERAS, FEATURE_DIM, PROMPT, transition_mask, validate_episode
 from .sources import JOINT_FIELDS, iter_episode, rgb_image
 
 ENCODER_SPEC = {"name": "resnet18", "weights": "IMAGENET1K_V1", "features": FEATURE_DIM,
@@ -42,6 +42,13 @@ class FrozenEncoder:
 
 
 def first_action(chunk):
+    """Extract the first physical absolute-joint action from a policy chunk.
+
+    OpenPI may train the arm dimensions in delta space, but its output
+    transform restores the current state before the RoboTwin adapter receives
+    the action.  The cache deliberately stores that final absolute qpos
+    representation; it is the same space as the recorded 14D action.
+    """
     if isinstance(chunk, dict) and "actions" in chunk:
         chunk = chunk["actions"]
     if not isinstance(chunk, (list, tuple, np.ndarray)) or len(chunk) == 0:
@@ -51,11 +58,11 @@ def first_action(chunk):
         action = np.concatenate([np.asarray(chunk[0][key.removesuffix("s")], dtype=np.float32).reshape(-1) for key in JOINT_FIELDS])
     else:
         array = np.asarray(chunk, dtype=np.float32)
-        if array.ndim != 2 or array.shape[1] != 14:
-            raise ValueError(f"Expected physical [horizon,14] policy actions, got {array.shape}")
+        if array.ndim != 2 or array.shape[1] != ACTION_DIM:
+            raise ValueError(f"Expected physical [horizon,{ACTION_DIM}] {ACTION_SPACE} policy actions, got {array.shape}")
         action = array[0]
-    if action.shape != (14,) or not np.isfinite(action).all():
-        raise ValueError("Policy first action is not finite physical 14D")
+    if action.shape != (ACTION_DIM,) or not np.isfinite(action).all():
+        raise ValueError(f"Policy first action is not finite physical {ACTION_DIM}D {ACTION_SPACE}")
     return action.copy()
 
 

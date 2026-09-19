@@ -14,6 +14,16 @@ PROMPT = "Pass the red bar from the left arm to the right arm and place it in th
 CAMERAS = ("cam_high", "cam_left_wrist", "cam_right_wrist")
 ACTION_DIM = 14
 FEATURE_DIM = 1536
+# The policy adapter returns this representation after OpenPI's internal
+# delta-to-absolute output transform.  Coverage distances must use this
+# physical representation for both policy candidates and recorded actions.
+ACTION_SPACE = "absolute_joint_qpos"
+ACTION_ORDER = (
+    "left_arm_joint[6]",
+    "left_gripper[1]",
+    "right_arm_joint[6]",
+    "right_gripper[1]",
+)
 APPROXIMATION = "next-recorded-joint-target; adjacent saved observations, not verified executed-command transitions"
 
 

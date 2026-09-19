@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 import uuid
 
-from tail_value.cache import (APPROXIMATION, PROMPT, SCHEMA_VERSION, atomic_json, atomic_npz,
-                              json_digest, load_episode, read_json, sha256)
+from tail_value.cache import (ACTION_ORDER, ACTION_SPACE, APPROXIMATION, PROMPT, SCHEMA_VERSION,
+                              atomic_json, atomic_npz, json_digest, load_episode, read_json, sha256)
 from tail_value.sources import add_xpolicylab_path, discover
 
 
@@ -38,12 +38,23 @@ def run(args):
     policy = yaml.safe_load(args.policy_config.read_text())
     if policy.get("policy_name") != "Pi_05_RobotTwin" or policy.get("action_type") != "joint":
         raise ValueError("v1 supports the physical-joint Pi_05_RobotTwin adapter only")
+    declared_space = policy.get("action_space", "absolute_joint_qpos")
+    if declared_space not in ("absolute_joint", "absolute_joint_qpos"):
+        raise ValueError(f"Expected an absolute joint policy output, got action_space={declared_space!r}")
     identity = {k: v for k, v in policy.items() if k not in ("host", "port", "protocol", "ws_ping_interval_s", "ws_ping_timeout_s")}
     encoder = dict(ENCODER_SPEC)
     # Record exact local weights when supplied; the same file is required across suites.
     encoder["local_weights_sha256"] = sha256(args.encoder_weights) if args.encoder_weights else None
-    compatibility = {"prompt": PROMPT, "encoder": encoder, "action_semantics": "absolute-joint-target-first-chunk-step-14d",
-                     "num_candidates": args.num_candidates, "policy_identity": identity}
+    compatibility = {
+        "prompt": PROMPT,
+        "encoder": encoder,
+        "action_space": ACTION_SPACE,
+        "action_order": list(ACTION_ORDER),
+        "action_semantics": "absolute-joint-target-first-chunk-step-14d",
+        "model_training_transform": "arm-joint-delta-internal; grippers-absolute; runtime-output-restored-to-absolute",
+        "num_candidates": args.num_candidates,
+        "policy_identity": identity,
+    }
     entries = [{"id": s.id, "split": s.split, "kind": s.kind, "file": f"episodes/{s.id}.npz",
                 "source_fingerprint": s.fingerprint(), "metadata": s.metadata} for s in sources]
     config = {"source_format": args.source_format, "dataset_root": str(args.dataset_root.resolve()), "seed": args.seed,

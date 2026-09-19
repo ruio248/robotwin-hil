@@ -32,6 +32,10 @@
 只取首个 14D 动作，顺序为 `[left_arm(6), left_gripper, right_arm(6), right_gripper]`。
 **不是**从同一个 chunk 里拿不同时刻的动作冒充独立候选。
 服务已输出绝对关节/夹爪目标，不再次做 OpenPI delta 或归一化变换。
+缓存 manifest 会明确记录 `action_space=absolute_joint_qpos` 和动作顺序；
+`use_delta_joint_actions=True` 只表示 SFT 模型内部训练时对机械臂关节维度做
+delta 变换，策略适配器输出后已经恢复为绝对 joint/qpos，因此候选距离直接
+计算 `a_policy_abs - a_demo_abs`。
 所有候选都保留在缓存中；不做“确定不在专家集”的预筛选。
 
 三路 RGB 为 head、left wrist、right wrist；保持宽高比缩放、居中零填充到

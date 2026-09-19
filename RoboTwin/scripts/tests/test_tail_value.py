@@ -16,7 +16,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tail_value.cache import (PROMPT, atomic_json, atomic_npz, assert_compatible, cache_fingerprint,
+from tail_value.cache import (ACTION_SPACE, PROMPT, atomic_json, atomic_npz, assert_compatible, cache_fingerprint,
                               episode_split, load_episode, load_manifest, sha256, transition_mask, validate_episode)
 from tail_value.evaluate import report_rows, score_episode, summarize
 from tail_value.model import (CoverageCritic, TransitionTable, action_distances, critic_loss, farthest_indices,
@@ -152,6 +152,18 @@ class CacheTests(unittest.TestCase):
 
 
 class SamplingTests(unittest.TestCase):
+    def test_absolute_and_delta_joint_distances_are_identical(self):
+        state = torch.linspace(-0.4, 0.4, 14)[None]
+        policy_abs = state[:, None, :] + torch.tensor(
+            [[[0.1] * 14, [0.2] * 14, [0.3] * 14, [0.4] * 14]], dtype=torch.float32
+        )
+        expert_abs = state + 0.15
+        scale = torch.full((14,), 0.05)
+        absolute = action_distances(policy_abs, expert_abs, scale)
+        delta = action_distances(policy_abs - state[:, None, :], expert_abs - state, scale)
+        self.assertEqual(ACTION_SPACE, "absolute_joint_qpos")
+        self.assertTrue(torch.allclose(absolute, delta))
+
     def test_same_obs_independent_calls_first_action_only(self):
         frame = {"state": np.zeros(14), "images": {c: np.zeros((8, 12, 3), dtype=np.uint8) for c in CAMERAS}}
         client = FakePolicy()
