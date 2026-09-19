@@ -497,6 +497,54 @@ def setup_viewer_diagnostics(task_env) -> None:
     print("[DIAG] timing enabled for take_action/get_obs/update_render/viewer.render", flush=True)
 
 
+def install_viewer_frame_limit(task_env) -> None:
+    """Redraw the viewer at most ``HIL_VIEWER_MAX_FPS`` times per second.
+
+    ``Base_Task.take_action`` redraws the viewer on entry and exit regardless
+    of ``--render-freq``, so a supervised rollout pays for two viewer renders
+    per policy step (~2 x 15 ms at 960x540, more at higher resolutions).  The
+    supervisor only needs the window to look smooth, so throttle the redraw by
+    wall-clock time instead. ``HIL_VIEWER_MAX_FPS=0`` restores the old
+    behaviour of rendering on every call.
+    """
+    if getattr(task_env, "_hil_viewer_fps_installed", False):
+        return
+    task_env._hil_viewer_fps_installed = True
+
+    raw = os.environ.get("HIL_VIEWER_MAX_FPS", "10").strip()
+    try:
+        max_fps = float(raw)
+    except ValueError:
+        print(f"[VIEWER] invalid HIL_VIEWER_MAX_FPS={raw!r}; keeping 10 fps", flush=True)
+        max_fps = 10.0
+
+    viewer = getattr(task_env, "viewer", None)
+    if viewer is None or max_fps <= 0:
+        print(f"[VIEWER] frame limit disabled (HIL_VIEWER_MAX_FPS={raw})", flush=True)
+        return
+
+    min_interval = 1.0 / max_fps
+    original_render = viewer.render
+    state = {"last": 0.0, "rendered": 0, "skipped": 0}
+
+    def throttled_render(*args, **kwargs):
+        now = time.perf_counter()
+        if now - state["last"] < min_interval:
+            state["skipped"] += 1
+            return None
+        state["last"] = now
+        state["rendered"] += 1
+        return original_render(*args, **kwargs)
+
+    viewer.render = throttled_render
+    print(
+        f"[VIEWER] render limited to {max_fps:g} fps "
+        f"(min interval {min_interval * 1000:.0f} ms); "
+        "set HIL_VIEWER_MAX_FPS=0 to disable",
+        flush=True,
+    )
+
+
 def build_runtime_args(cli: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
     user_args: dict[str, Any] = {
         "task_name": "handover_to_tray",
@@ -749,6 +797,7 @@ def main() -> int:
             render_initial_frame(task_env)
             if rollout_index == 0:
                 setup_viewer_diagnostics(task_env)
+                install_viewer_frame_limit(task_env)
             prepare_policy_case(model_client, "handover_to_tray", seed, PROMPT, "joint")
             reset_policy(model_client)
 

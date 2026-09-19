@@ -9,6 +9,8 @@ export DISPLAY="${DISPLAY:-:1}"
 export XAUTHORITY="${XAUTHORITY:-/home/ruio/.Xauthority}"
 # Fixed intrinsic render resolution (framebuffer), not OS window shrink.
 export HIL_VIEWER_RESOLUTION="${HIL_VIEWER_RESOLUTION:-960x540}"
+# Cap viewer redraws by wall-clock time; 0 restores render-on-every-call.
+export HIL_VIEWER_MAX_FPS="${HIL_VIEWER_MAX_FPS:-10}"
 
 LOG=/tmp/hg_dagger_manual_$(date +%Y%m%d_%H%M%S).log
 
