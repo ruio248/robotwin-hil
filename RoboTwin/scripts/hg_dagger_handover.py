@@ -241,6 +241,10 @@ def choose_recovery_stage(task_env, keyboard) -> tuple[Any, int | None]:
         f"receiver_holds={state['receiver_holds']} "
         f"placed={state['placed']} near_tray={state.get('near_tray', False)}"
     )
+    print(
+        f"  末端到杆距离: source={state.get('source_ee_to_bar')} "
+        f"receiver={state.get('receiver_ee_to_bar')} (米)"
+    )
     print(f"  bar_pos={state.get('bar_position')}")
 
     while True:

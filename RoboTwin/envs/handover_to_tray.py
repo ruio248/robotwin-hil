@@ -194,8 +194,9 @@ class handover_to_tray(Base_Task):
                 return True
         return False
 
-    def _arm_near_bar(self, arm_tag: ArmTag, threshold: float = 0.17) -> bool:
-        """Closed-gripper proximity fallback for momentary contact dropouts."""
+    def _arm_min_bar_distance(self, arm_tag: ArmTag) -> float:
+        """Smallest distance from the arm's end effector to the bar contact
+        points, in metres. Returns NaN when no contact point can be read."""
         ee_pose = np.asarray(self.get_arm_pose(arm_tag), dtype=np.float64)
         distances = []
         for point_id in range(8):
@@ -204,7 +205,12 @@ class handover_to_tray(Base_Task):
                 distances.append(float(np.linalg.norm(ee_pose[:3] - np.asarray(point_pose.p))))
             except (IndexError, TypeError, ValueError, AttributeError):
                 continue
-        return bool(distances and min(distances) <= threshold)
+        return float(min(distances)) if distances else float("nan")
+
+    def _arm_near_bar(self, arm_tag: ArmTag, threshold: float = 0.17) -> bool:
+        """Closed-gripper proximity fallback for momentary contact dropouts."""
+        distance = self._arm_min_bar_distance(arm_tag)
+        return bool(np.isfinite(distance) and distance <= threshold)
 
     def arm_holds_bar(self, arm_tag: ArmTag) -> bool:
         """Best-effort grasp predicate used only by the privileged expert."""
@@ -263,6 +269,8 @@ class handover_to_tray(Base_Task):
             "receiver_holds": bool(receiver_holds),
             "placed": bool(placed),
             "near_tray": bool(self._bar_near_tray(bar_position)),
+            "source_ee_to_bar": round(self._arm_min_bar_distance(self.source_arm_tag), 4),
+            "receiver_ee_to_bar": round(self._arm_min_bar_distance(self.receiver_arm_tag), 4),
             "recoverable": bool(recoverable or source_holds or receiver_holds),
             "bar_position": bar_position.round(8).tolist(),
             "success_metrics": metrics,
@@ -438,6 +446,13 @@ class handover_to_tray(Base_Task):
                     else self.is_right_gripper_close()
                 ):
                     run(3, self.open_gripper(self.receiver_arm_tag))
+                # The policy usually stops with the receiver hovering right
+                # next to the bar. Retreat it to the rest pose first, otherwise
+                # the re-grasp closes in the air instead of around the bar.
+                # This is a preparation step, so a failed retreat falls back to
+                # the original flow instead of aborting the recovery.
+                if not run(4, self.back_to_origin(self.receiver_arm_tag)):
+                    self.plan_success = True
                 run(
                     3,
                     self.place_actor(
@@ -653,6 +668,17 @@ class handover_to_tray(Base_Task):
                     self._run_stage(3, self.open_gripper(self.receiver_arm_tag))
                     executed_stage_ids.append(3)
                     yield progress()
+
+                # Retreat the receiver clear of the handover workspace before
+                # re-centring the bar. Preparation only: if the retreat cannot
+                # be planned, keep the original re-grasp attempt.
+                retreated = self._run_stage(
+                    4, self.back_to_origin(self.receiver_arm_tag)
+                )
+                executed_stage_ids.append(4)
+                yield progress()
+                if not retreated:
+                    self.plan_success = True
 
                 self._run_stage(
                     3,
