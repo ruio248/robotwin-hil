@@ -435,9 +435,38 @@ def setup_viewer_diagnostics(task_env) -> None:
     if os.environ.get("HIL_DIAG_VIEWER") != "1" and os.environ.get("HIL_DIAG_SKIP_VIEWER") != "1":
         return
 
+    def install_timer(target, attribute, label, every):
+        original = getattr(target, attribute)
+        stats = {"count": 0, "total": 0.0, "max": 0.0}
+
+        def timed(*args, **kwargs):
+            started = time.perf_counter()
+            try:
+                return original(*args, **kwargs)
+            finally:
+                elapsed = time.perf_counter() - started
+                stats["count"] += 1
+                stats["total"] += elapsed
+                stats["max"] = max(stats["max"], elapsed)
+                if stats["count"] % every == 0:
+                    print(
+                        f"[DIAG] {label} n={stats['count']} "
+                        f"total={stats['total']:.2f}s "
+                        f"avg={stats['total'] / stats['count'] * 1000:.2f}ms "
+                        f"max={stats['max'] * 1000:.2f}ms",
+                        flush=True,
+                    )
+
+        setattr(target, attribute, timed)
+
+    # These exist with or without a viewer, so time them first.
+    install_timer(task_env, "take_action", "take_action", 25)
+    install_timer(task_env, "get_obs", "get_obs", 25)
+    install_timer(task_env, "_update_render", "scene.update_render", 200)
+
     viewer = getattr(task_env, "viewer", None)
     if viewer is None:
-        print("[DIAG] no viewer instance", flush=True)
+        print("[DIAG] no viewer instance; still timing env paths", flush=True)
         return
 
     window = getattr(viewer, "window", None)
@@ -464,35 +493,8 @@ def setup_viewer_diagnostics(task_env) -> None:
         print("[DIAG] viewer.render disabled (window kept)", flush=True)
         return
 
-    def install_timer(target, attribute, label, stats):
-        original = getattr(target, attribute)
-
-        def timed(*args, **kwargs):
-            started = time.perf_counter()
-            try:
-                return original(*args, **kwargs)
-            finally:
-                elapsed = time.perf_counter() - started
-                stats["count"] += 1
-                stats["total"] += elapsed
-                stats["max"] = max(stats["max"], elapsed)
-                if stats["count"] % 25 == 0:
-                    print(
-                        f"[DIAG] {label} n={stats['count']} "
-                        f"total={stats['total']:.2f}s "
-                        f"avg={stats['total'] / stats['count'] * 1000:.1f}ms "
-                        f"max={stats['max'] * 1000:.1f}ms",
-                        flush=True,
-                    )
-
-        setattr(target, attribute, timed)
-        return stats
-
-    render_stats = {"count": 0, "total": 0.0, "max": 0.0}
-    update_stats = {"count": 0, "total": 0.0, "max": 0.0}
-    install_timer(viewer, "render", "viewer.render", render_stats)
-    install_timer(task_env, "_update_render", "scene.update_render", update_stats)
-    print("[DIAG] timing enabled for viewer.render and scene.update_render", flush=True)
+    install_timer(viewer, "render", "viewer.render", 25)
+    print("[DIAG] timing enabled for take_action/get_obs/update_render/viewer.render", flush=True)
 
 
 def build_runtime_args(cli: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
