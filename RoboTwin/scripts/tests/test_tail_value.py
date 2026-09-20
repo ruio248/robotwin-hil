@@ -284,30 +284,34 @@ class ObjectiveTests(unittest.TestCase):
         scale[0] = 100
         self.assertEqual(farthest_indices(candidates, torch.zeros(1, 14), scale).item(), 1)
 
-    def test_numeric_losses_and_regularizer_all_candidates(self):
-        q_e, q_p, target, far = torch.tensor([2.]), torch.tensor([[1., 5.]]), torch.tensor([3.]), torch.tensor([1])
-        options = dict(alpha=.1, output_reg=.01)
-        original, _ = loss_from_scores(q_e, q_p, target, far, mode="original", reduction="mean", **options)
-        mean, m = loss_from_scores(q_e, q_p, target, far, mode="stabilized", reduction="mean", **options)
-        hardest, h = loss_from_scores(q_e, q_p, target, far, mode="stabilized", reduction="farthest", **options)
-        self.assertAlmostEqual(original.item(), 1.1, places=6)
-        self.assertAlmostEqual(mean.item(), 1.185, places=6)
-        self.assertAlmostEqual(hardest.item(), 1.385, places=6)
-        self.assertEqual(m["regularizer"], h["regularizer"])
+    def test_expert_bootstrap_loss_has_only_td_and_candidate_separation(self):
+        q_e, q_p, target = torch.tensor([2.]), torch.tensor([[1., 5.]]), torch.tensor([3.])
+        loss, metrics = loss_from_scores(q_e, q_p, target, alpha=.1)
+        self.assertAlmostEqual(loss.item(), 1.1, places=6)
+        self.assertAlmostEqual(metrics["td"].item(), 1., places=6)
+        self.assertAlmostEqual(metrics["conservative"].item(), 1., places=6)
+        self.assertNotIn("regularizer", metrics)
 
-    def test_target_is_unchanged_and_has_no_gradient(self):
+    def test_target_uses_next_expert_action_and_has_no_gradient(self):
         data = arrays()
         batch = {k: torch.from_numpy(data[k][:-1]) for k in ("features", "state", "a_demo", "a_pi")}
-        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_pi")})
-        targets = []
-        for reduction in ("mean", "farthest"):
-            loss, _, values = critic_loss(self.model, self.target, batch, gamma=.99, alpha=.01,
-                                          output_reg=.0001, reduction=reduction, mode="stabilized")
-            targets.append(values["target"])
-            loss.backward()
-        torch.testing.assert_close(*targets)
+        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_demo")})
+        loss, _, values = critic_loss(self.model, self.target, batch, gamma=.99, alpha=.01)
+        expected = 1. + .99 * self.target(batch["next_features"], batch["next_state"], batch["next_a_demo"])
+        torch.testing.assert_close(values["target"], expected)
+        loss.backward()
         self.assertTrue(all(p.grad is None for p in self.target.parameters()))
         self.assertTrue(any(p.grad is not None for p in self.model.parameters()))
+
+    def test_target_is_defined_by_next_expert_action(self):
+        data = arrays()
+        batch = {k: torch.from_numpy(data[k][:-1]) for k in ("features", "state", "a_demo", "a_pi")}
+        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_demo")})
+        first = critic_loss(self.model, self.target, batch, gamma=.99, alpha=.01)[2]["target"]
+        altered = dict(batch)
+        altered["next_a_demo"] = batch["next_a_demo"] + 100.
+        second = critic_loss(self.model, self.target, altered, gamma=.99, alpha=.01)[2]["target"]
+        self.assertFalse(torch.allclose(first, second))
 
     def test_ema_and_guards(self):
         before = next(self.target.parameters()).clone()

@@ -29,7 +29,7 @@ def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_
     model.eval()
     target.eval()
     fields = {key: torch.from_numpy(arrays[key].astype(np.float32)) for key in ("features", "state", "a_pi")}
-    demo, policy, target_policy, distances = [], [], [], []
+    demo, policy, target_expert, distances = [], [], [], []
     n = len(arrays["state"])
     for start in range(0, n, batch_size):
         sl = slice(start, start + batch_size)
@@ -40,10 +40,10 @@ def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_
         if kind == "demo":
             expert = torch.from_numpy(arrays["a_demo"][sl]).to(device)
             q_e = model(z, state, expert)
-            q_next = target.score_many(z, state, actions)
-            finite_guard({"q_demo": q_e, "q_target": q_next}, score_limit)
+            q_next_expert = target(z, state, expert)
+            finite_guard({"q_demo": q_e, "q_target_expert": q_next_expert}, score_limit)
             demo.append(q_e.cpu().numpy())
-            target_policy.append(q_next.mean(1).cpu().numpy())
+            target_expert.append(q_next_expert.cpu().numpy())
             distances.append(action_distances(actions, expert, model.action_scale).cpu().numpy())
     q_pi = np.concatenate(policy)
     result = {"frame_index": arrays["frame_index"], "q_pi": q_pi,
@@ -51,7 +51,7 @@ def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_
               "q_pi_p95": np.quantile(q_pi, .95, axis=1), "q_pi_min": q_pi.min(1), "q_pi_max": q_pi.max(1),
               "candidate_std_mean": arrays["a_pi"].std(1).mean(1)}
     if kind == "demo":
-        q_demo, distance, q_target = np.concatenate(demo), np.concatenate(distances), np.concatenate(target_policy)
+        q_demo, distance, q_target = np.concatenate(demo), np.concatenate(distances), np.concatenate(target_expert)
         farthest = distance.argmax(1)
         td_target = np.full(n, np.nan)
         valid = np.flatnonzero(arrays["valid_transition"])

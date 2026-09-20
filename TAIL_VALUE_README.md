@@ -44,26 +44,30 @@ ResNet18 输出 3×512 维特征。MLP 输入 `1536 + 14 state + 14 action`，�
 256/LN/SiLU，实数输出。状态、动作 mean/std 只用 train 有效转移估计，
 std 下限为 0.05；metadata 不进入网络。
 
-训练有两个**独立**开关：
+当前版本固定为“专家轨迹 bootstrap + 当前状态候选分离”，不再提供旧的
+`original/stabilized` 模式，也不加入输出正则。对每个有效专家转移
+`(o_t, a_t^E, o_{t+1}, a_{t+1}^E)`，目标是：
 
-- `--candidate-reduction mean`（默认）：`R = mean_k C(o, a_pi[k])`。
-- `--candidate-reduction farthest`：`R = C(o, a_pi[k*])`，其中
-  `k* = argmax_k sqrt(mean_j ((a_pi[k,j]-a_demo[j])/action_scale[j])**2)`。
-  距离使用训练统计量，不使用 critic 分数。它改变了采样分布，是困难候选变体，
-  不是原式策略期望的无偏估计。K 越大，最远选择也会变化，比较时固定 K 和缓存。
-- `--mode original`：`loss = TD + alpha * mean(R-C_demo)`。
-- `--mode stabilized`（默认）：增加
-  `output_reg/2 * mean(C_demo**2 + mean_k C_pi[k]**2)`，始终约束全部候选。
+`y_t^E = 1 + gamma * C_target(o_next, a_demo_next)`，停止梯度。
 
-两种候选模式的 target 都是
-`y = 1 + gamma * mean_k C_target(o_next, a_pi_next[k])`，停止梯度。
-不能用专家的后继观测当作某个不同候选动作的已观测执行结果；候选只参与
-评分，TD 当前动作始终是记录的专家目标。
+损失为：
+
+`loss = mean((C(o, a_demo) - y_expert_next)^2)`
+`     + alpha * mean(mean_k C(o, a_pi[k]) - C(o, a_demo))`。
+
+因此，候选动作只进入当前状态的保守/分离项：梯度下降会压低候选动作
+`C(o, a_pi)`，同时抬高专家动作 `C(o, a_demo)`。TD target 使用数据中下一
+保存帧的专家动作，不使用 `next_a_pi`。`a_pi` 仍全部保留在缓存中，K 个
+候选在分离项中取平均，近似公式里的候选期望；不选择最远候选作为主算法。
+
+这不是图片中 `a'~pi_theta` 的策略 bootstrap 版本，而是明确的专家轨迹
+一致性版本。它的优点是 target 沿着记录的专家轨迹定义；它不能被表述为
+策略闭环未来覆盖的严格估计。当前实验仍然是下一保存帧关节目标的近似转移。
 
 默认 AdamW：lr=1e-4、weight_decay=1e-4、batch=256、gamma=.99、alpha=.01、
-output_reg=1e-4、gradient clip=1、target EMA=.005、10,000 steps。
-这些是起始值，不是调优结论。每 500 steps 验证和保存；评分超出绝对值 1e4
-或出现非有限值时中止并记录 `failure.json`，不静默裁剪分数。
+gradient clip=1、target EMA=.005、10,000 steps。这些是起始值，不是调优结论。
+每 500 steps 验证和保存；评分超出绝对值 1e4 或出现非有限值时中止并记录
+`failure.json`，不静默裁剪分数。
 
 ## Ubuntu：独立 checkout 与依赖
 
@@ -185,24 +189,20 @@ episodes/<id>.npz         # features[T,1536], state[T,14], a_pi[T,K,14], frame_i
 
 ```bash
 "$TAIL_PYTHON" scripts/train_tail.py --cache-dir "$TAIL_ROOT/cache/sft" \
-  --output-dir "$TAIL_ROOT/runs/stable_mean" --mode stabilized --candidate-reduction mean
-
-"$TAIL_PYTHON" scripts/train_tail.py --cache-dir "$TAIL_ROOT/cache/sft" \
-  --output-dir "$TAIL_ROOT/runs/stable_farthest" --mode stabilized --candidate-reduction farthest
-
-"$TAIL_PYTHON" scripts/train_tail.py --cache-dir "$TAIL_ROOT/cache/sft" \
-  --output-dir "$TAIL_ROOT/runs/original_mean" --mode original --candidate-reduction mean
+  --output-dir "$TAIL_ROOT/runs/expert_bootstrap"
 ```
 
-默认 seed 相同，缓存相同。首先比较 stable_mean 与 stable_farthest，隔离
-候选选择的影响；再与 original_mean 比较输出正则影响。
+候选缓存相同，训练只使用 SFT train split 的专家转移；每个 batch 同时读取
+当前候选 `a_pi[t]` 和下一帧专家动作 `a_demo[t+1]`。不再比较 farthest 或
+输出正则变体；如果以后需要策略 bootstrap，必须作为另一个明确命名的算法
+版本实现，不能与本实验混称。
 
 恢复时重复原超参数并增加总步数，例如：
 
 ```bash
 "$TAIL_PYTHON" scripts/train_tail.py --cache-dir "$TAIL_ROOT/cache/sft" \
-  --output-dir "$TAIL_ROOT/runs/stable_mean" --mode stabilized --candidate-reduction mean \
-  --resume "$TAIL_ROOT/runs/stable_mean/last.pt" --steps 15000
+  --output-dir "$TAIL_ROOT/runs/expert_bootstrap" \
+  --resume "$TAIL_ROOT/runs/expert_bootstrap/last.pt" --steps 15000
 ```
 
 如果需要“后台启动一轮、达到指定 checkpoint 后离线评测、再挂起训练”，使用
@@ -217,10 +217,10 @@ nohup bash scripts/run_tail_train_eval.sh \
   --sft-cache "$TAIL_ROOT/cache/sft" \
   --heldout-cache "$TAIL_ROOT/cache/heldout" \
   --hil-cache "$TAIL_ROOT/cache/hil" \
-  --run-dir "$TAIL_ROOT/runs/stable_mean" \
-  --report-dir "$TAIL_ROOT/reports/stable_mean_step5000" \
-  > "$TAIL_ROOT/runs/stable_mean_orchestrator.log" 2>&1 &
-echo $! > "$TAIL_ROOT/runs/stable_mean_orchestrator.pid"
+  --run-dir "$TAIL_ROOT/runs/expert_bootstrap" \
+  --report-dir "$TAIL_ROOT/reports/expert_bootstrap_step5000" \
+  > "$TAIL_ROOT/runs/expert_bootstrap_orchestrator.log" 2>&1 &
+echo $! > "$TAIL_ROOT/runs/expert_bootstrap_orchestrator.pid"
 ```
 
 脚本拒绝覆盖非空的 run/report 目录；`run_dir.train.log` 保存训练输出，
@@ -234,9 +234,7 @@ Checkpoint 保存 online/target、optimizer、训练统计量、随机状态、�
 ```bash
 "$TAIL_PYTHON" scripts/eval_tail_value.py \
   --cache-dir "$TAIL_ROOT/cache/sft" "$TAIL_ROOT/cache/heldout" "$TAIL_ROOT/cache/hil" \
-  --checkpoint "$TAIL_ROOT/runs/stable_mean/last.pt" \
-               "$TAIL_ROOT/runs/stable_farthest/last.pt" \
-               "$TAIL_ROOT/runs/original_mean/last.pt" \
+  --checkpoint "$TAIL_ROOT/runs/expert_bootstrap/last.pt" \
   --suite all --output-dir "$TAIL_ROOT/reports/comparison_001"
 ```
 
@@ -251,7 +249,8 @@ Checkpoint 保存 online/target、optimizer、训练统计量、随机状态、�
 - PNG：轨迹曲线、HIL 接管区间、评分直方图、动作距离散点图。
 
 保守项本身推动“专家分高于策略”，因此 gap 大或 loss 下降不是恢复有效性的
-证据。输出正则抑制发散也不能解决 OOD 状态泛化；这些仍需后续仿真分支实验。
+证据。没有输出正则时，必须同时监控分数尺度、非有限值和绝对值上限；它们仍
+不能解决 OOD 状态泛化，需后续仿真分支实验。
 
 ## 小规模真实冒烟
 

@@ -14,8 +14,8 @@ Usage:
     --sft-cache /path/to/cache/sft \
     --heldout-cache /path/to/cache/heldout \
     --hil-cache /path/to/cache/hil \
-    --run-dir /path/to/runs/stable_mean \
-    --report-dir /path/to/reports/stable_mean_step5000
+    --run-dir /path/to/runs/expert_bootstrap \
+    --report-dir /path/to/reports/expert_bootstrap_step5000
 
 The wrapper starts train_tail.py with --steps 10000 by default, waits until
 step 5000 has been checkpointed, runs eval_tail_value.py on that checkpoint,
@@ -32,8 +32,6 @@ RUN_DIR=
 REPORT_DIR=
 TARGET_STEP=5000
 TOTAL_STEPS=10000
-MODE=stabilized
-REDUCTION=mean
 SUITE=all
 DEVICE=cuda
 POLL_SECONDS=10
@@ -50,8 +48,6 @@ while (($#)); do
     --report-dir) REPORT_DIR=$2; shift 2 ;;
     --target-step) TARGET_STEP=$2; shift 2 ;;
     --total-steps) TOTAL_STEPS=$2; shift 2 ;;
-    --mode) MODE=$2; shift 2 ;;
-    --candidate-reduction) REDUCTION=$2; shift 2 ;;
     --suite) SUITE=$2; shift 2 ;;
     --device) DEVICE=$2; shift 2 ;;
     --poll-seconds) POLL_SECONDS=$2; shift 2 ;;
@@ -125,8 +121,6 @@ echo "Starting critic training in background; log: $TRAIN_LOG"
 "$PYTHON" "$ROBOTWIN_ROOT/scripts/train_tail.py" \
   --cache-dir "$SFT_CACHE" \
   --output-dir "$RUN_DIR" \
-  --mode "$MODE" \
-  --candidate-reduction "$REDUCTION" \
   --steps "$TOTAL_STEPS" \
   --eval-every "$EVAL_EVERY" \
   --device "$DEVICE" \

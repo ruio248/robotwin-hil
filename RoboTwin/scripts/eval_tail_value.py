@@ -46,7 +46,7 @@ def run(args):
     for ckpt_index, path in enumerate(args.checkpoint):
         payload = load_checkpoint(path)
         model, target = models_from_checkpoint(payload, args.device)
-        label = f"{ckpt_index:02d}_{payload['config']['mode']}_{payload['config']['candidate_reduction']}_step{payload['step']}"
+        label = f"{ckpt_index:02d}_expert_bootstrap_step{payload['step']}"
         checkpoint_metrics = {"path": str(path.resolve()), "sha256": sha256(path), "config": payload["config"], "suites": {}}
         for suite in sorted(suites):
             output = args.output_dir / label / suite

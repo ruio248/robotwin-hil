@@ -1,4 +1,4 @@
-"""Support Q critic and explicit mean/farthest conservative objectives."""
+"""Expert-trajectory bootstrap and candidate-action support objectives."""
 from __future__ import annotations
 
 import copy
@@ -56,7 +56,7 @@ class TransitionTable:
     def batch(self, positions, device):
         idx = self.indices[positions]
         result = {k: v[idx].to(device) for k, v in self.data.items()}
-        result.update({"next_" + k: self.data[k][idx + 1].to(device) for k in ("features", "state", "a_pi")})
+        result.update({"next_" + k: self.data[k][idx + 1].to(device) for k in ("features", "state", "a_demo")})
         return result
 
     def normalization(self):
@@ -110,31 +110,23 @@ def farthest_indices(candidates, expert, scale):
     return action_distances(candidates, expert, scale).argmax(dim=1)
 
 
-def loss_from_scores(q_demo, q_pi, target, farthest, *, alpha, output_reg, reduction, mode):
-    if reduction not in ("mean", "farthest") or mode not in ("original", "stabilized"):
-        raise ValueError("Unknown objective mode")
-    conservative_value = q_pi.mean(1) if reduction == "mean" else q_pi.gather(1, farthest[:, None]).squeeze(1)
+def loss_from_scores(q_demo, q_pi, target, *, alpha):
     td = (q_demo - target.detach()).square().mean()
-    conservative = (conservative_value - q_demo).mean()
-    penalty = 0.5 * (q_demo.square() + q_pi.square().mean(1)).mean()
-    regularizer = output_reg * penalty if mode == "stabilized" else penalty * 0.0
-    return td + alpha * conservative + regularizer, {
-        "td": td, "conservative": conservative, "output_penalty": penalty, "regularizer": regularizer,
-    }
+    conservative = (q_pi.mean(1) - q_demo).mean()
+    return td + alpha * conservative, {"td": td, "conservative": conservative}
 
 
-def critic_loss(model, target_model, batch, *, gamma, alpha, output_reg, reduction, mode, score_limit=1e4):
+def critic_loss(model, target_model, batch, *, gamma, alpha, score_limit=1e4):
     with torch.no_grad():
-        q_next = target_model.score_many(batch["next_features"], batch["next_state"], batch["next_a_pi"])
-        target = 1.0 + gamma * q_next.mean(1)
+        q_next = target_model(batch["next_features"], batch["next_state"], batch["next_a_demo"])
+        target = 1.0 + gamma * q_next
     q_demo = model(batch["features"], batch["state"], batch["a_demo"])
     q_pi = model.score_many(batch["features"], batch["state"], batch["a_pi"])
     finite_guard({"q_demo": q_demo, "q_pi": q_pi, "q_next": q_next, "target": target}, score_limit)
-    farthest = farthest_indices(batch["a_pi"], batch["a_demo"], model.action_scale)
-    loss, metrics = loss_from_scores(q_demo, q_pi, target, farthest, alpha=alpha,
-                                     output_reg=output_reg, reduction=reduction, mode=mode)
+    loss, metrics = loss_from_scores(q_demo, q_pi, target, alpha=alpha)
     finite_guard({"loss": loss})
-    return loss, metrics, {"q_demo": q_demo.detach(), "q_pi": q_pi.detach(), "target": target}
+    return loss, metrics, {"q_demo": q_demo.detach(), "q_pi": q_pi.detach(),
+                           "q_next_expert": q_next.detach(), "target": target}
 
 
 @torch.no_grad()

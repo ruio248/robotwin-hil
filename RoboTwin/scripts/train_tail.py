@@ -20,8 +20,6 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--mode", choices=("original", "stabilized"), default="stabilized")
-    parser.add_argument("--candidate-reduction", choices=("mean", "farthest"), default="mean")
     parser.add_argument("--resume", type=Path, help="Trusted local checkpoint; repeat its hyperparameters")
     parser.add_argument("--steps", type=int, default=10000, help="Total steps including resumed steps")
     parser.add_argument("--batch-size", type=int, default=256)
@@ -30,7 +28,6 @@ def parse_args(argv=None):
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=.99)
     parser.add_argument("--alpha", type=float, default=.01)
-    parser.add_argument("--output-reg", type=float, default=1e-4)
     parser.add_argument("--grad-clip", type=float, default=1.)
     parser.add_argument("--target-tau", type=float, default=.005)
     parser.add_argument("--score-limit", type=float, default=1e4)
@@ -43,8 +40,7 @@ def parse_args(argv=None):
 
 
 def objective_kwargs(config):
-    return {"gamma": config["gamma"], "alpha": config["alpha"], "output_reg": config["output_reg"],
-            "reduction": config["candidate_reduction"], "mode": config["mode"], "score_limit": config["score_limit"]}
+    return {"gamma": config["gamma"], "alpha": config["alpha"], "score_limit": config["score_limit"]}
 
 
 def score_summary(scores):
@@ -80,7 +76,7 @@ def run(args):
     for name in ("lr", "grad_clip", "score_limit"):
         if not math.isfinite(getattr(args, name)) or not float(getattr(args, name)) > 0:
             raise ValueError(f"{name} must be positive")
-    for name in ("alpha", "weight_decay", "output_reg"):
+    for name in ("alpha", "weight_decay"):
         if not math.isfinite(getattr(args, name)) or not float(getattr(args, name)) >= 0:
             raise ValueError(f"{name} must be nonnegative")
     torch.set_num_threads(args.cpu_threads)
@@ -92,6 +88,7 @@ def run(args):
     fingerprint = cache_fingerprint(manifest)
     config = {key: value for key, value in vars(args).items()
               if key not in ("cache_dir", "output_dir", "resume", "steps", "device", "eval_every", "log_every", "cpu_threads")}
+    config.update({"bootstrap": "expert_next_action", "candidate_use": "current_state_conservative_term"})
     train = TransitionTable(args.cache_dir, manifest, "train")
     val = TransitionTable(args.cache_dir, manifest, "val")
     generator = torch.Generator().manual_seed(args.seed)
@@ -125,8 +122,9 @@ def run(args):
         with log_path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(record, allow_nan=False) + "\n")
         print(json.dumps(record, allow_nan=False), flush=True)
-    log({"event": "resume" if payload else "start", "step": start_step, "mode": args.mode,
-         "candidate_reduction": args.candidate_reduction, "train_transitions": len(train), "val_transitions": len(val)})
+    log({"event": "resume" if payload else "start", "step": start_step,
+         "bootstrap": "expert_next_action", "candidate_use": "current_state_conservative_term",
+         "train_transitions": len(train), "val_transitions": len(val)})
     started = time.monotonic()
     step = start_step
     try:
