@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from .model import action_distances, finite_guard
+from .model import POLICY_BOOTSTRAP, action_distances, finite_guard
 
 
 def distribution(values):
@@ -25,11 +25,15 @@ def correlation(x, y):
 
 
 @torch.no_grad()
-def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_limit):
+def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_limit,
+                  bootstrap=POLICY_BOOTSTRAP):
+    # Old checkpoints remain readable, but their TD metric must retain its meaning.
+    if bootstrap not in (POLICY_BOOTSTRAP, "expert_next_action"):
+        raise ValueError(f"Unsupported checkpoint bootstrap: {bootstrap}")
     model.eval()
     target.eval()
     fields = {key: torch.from_numpy(arrays[key].astype(np.float32)) for key in ("features", "state", "a_pi")}
-    demo, policy, target_expert, distances = [], [], [], []
+    demo, policy, target_values, distances = [], [], [], []
     n = len(arrays["state"])
     for start in range(0, n, batch_size):
         sl = slice(start, start + batch_size)
@@ -40,10 +44,15 @@ def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_
         if kind == "demo":
             expert = torch.from_numpy(arrays["a_demo"][sl]).to(device)
             q_e = model(z, state, expert)
-            q_next_expert = target(z, state, expert)
-            finite_guard({"q_demo": q_e, "q_target_expert": q_next_expert}, score_limit)
+            if bootstrap == POLICY_BOOTSTRAP:
+                q_target_candidates = target.score_many(z, state, actions)
+                finite_guard({"q_target_candidates": q_target_candidates}, score_limit)
+                q_target = q_target_candidates.mean(1)
+            else:
+                q_target = target(z, state, expert)
+            finite_guard({"q_demo": q_e, "q_target": q_target}, score_limit)
             demo.append(q_e.cpu().numpy())
-            target_expert.append(q_next_expert.cpu().numpy())
+            target_values.append(q_target.cpu().numpy())
             distances.append(action_distances(actions, expert, model.action_scale).cpu().numpy())
     q_pi = np.concatenate(policy)
     result = {"frame_index": arrays["frame_index"], "q_pi": q_pi,
@@ -51,7 +60,7 @@ def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_
               "q_pi_p95": np.quantile(q_pi, .95, axis=1), "q_pi_min": q_pi.min(1), "q_pi_max": q_pi.max(1),
               "candidate_std_mean": arrays["a_pi"].std(1).mean(1)}
     if kind == "demo":
-        q_demo, distance, q_target = np.concatenate(demo), np.concatenate(distances), np.concatenate(target_expert)
+        q_demo, distance, q_target = np.concatenate(demo), np.concatenate(distances), np.concatenate(target_values)
         farthest = distance.argmax(1)
         td_target = np.full(n, np.nan)
         valid = np.flatnonzero(arrays["valid_transition"])

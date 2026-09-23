@@ -14,8 +14,8 @@ Usage:
     --sft-cache /path/to/cache/sft \
     --heldout-cache /path/to/cache/heldout \
     --hil-cache /path/to/cache/hil \
-    --run-dir /path/to/runs/expert_bootstrap \
-    --report-dir /path/to/reports/expert_bootstrap_step5000
+    --run-dir /path/to/runs/policy_bootstrap_v2 \
+    --report-dir /path/to/reports/policy_bootstrap_v2_step5000
 
 The wrapper starts train_tail.py with --steps 10000 by default, waits until
 step 5000 has been checkpointed, runs eval_tail_value.py on that checkpoint,

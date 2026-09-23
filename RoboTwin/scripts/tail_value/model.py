@@ -1,7 +1,8 @@
-"""Expert-trajectory bootstrap and candidate-action support objectives."""
+"""Policy-candidate bootstrap and conservative state-action support objective."""
 from __future__ import annotations
 
 import copy
+import hashlib
 import os
 from pathlib import Path
 import random
@@ -12,6 +13,17 @@ import torch
 from torch import nn
 
 from .cache import ACTION_DIM, FEATURE_DIM, load_episode
+
+POLICY_BOOTSTRAP = "policy_next_action_mean"
+
+
+def model_digest(model):
+    """Record identical initial parameters and normalization across ablations."""
+    digest = hashlib.sha256()
+    for name, value in sorted(model.state_dict().items()):
+        digest.update(name.encode())
+        digest.update(value.detach().cpu().contiguous().numpy().tobytes())
+    return digest.hexdigest()
 
 
 def seed_all(seed):
@@ -56,7 +68,7 @@ class TransitionTable:
     def batch(self, positions, device):
         idx = self.indices[positions]
         result = {k: v[idx].to(device) for k, v in self.data.items()}
-        result.update({"next_" + k: self.data[k][idx + 1].to(device) for k in ("features", "state", "a_demo")})
+        result.update({"next_" + k: self.data[k][idx + 1].to(device) for k in ("features", "state", "a_pi")})
         return result
 
     def normalization(self):
@@ -113,20 +125,22 @@ def farthest_indices(candidates, expert, scale):
 def loss_from_scores(q_demo, q_pi, target, *, alpha):
     td = (q_demo - target.detach()).square().mean()
     conservative = (q_pi.mean(1) - q_demo).mean()
-    return td + alpha * conservative, {"td": td, "conservative": conservative}
+    weighted = alpha * conservative
+    return td + weighted, {"td": td, "conservative": conservative, "weighted_conservative": weighted}
 
 
 def critic_loss(model, target_model, batch, *, gamma, alpha, score_limit=1e4):
     with torch.no_grad():
-        q_next = target_model(batch["next_features"], batch["next_state"], batch["next_a_demo"])
-        target = 1.0 + gamma * q_next
+        q_next_pi = target_model.score_many(batch["next_features"], batch["next_state"], batch["next_a_pi"])
+        target = 1.0 + gamma * q_next_pi.mean(1)
     q_demo = model(batch["features"], batch["state"], batch["a_demo"])
     q_pi = model.score_many(batch["features"], batch["state"], batch["a_pi"])
-    finite_guard({"q_demo": q_demo, "q_pi": q_pi, "q_next": q_next, "target": target}, score_limit)
+    finite_guard({"q_demo": q_demo, "q_pi": q_pi, "q_next_pi": q_next_pi, "target": target}, score_limit)
     loss, metrics = loss_from_scores(q_demo, q_pi, target, alpha=alpha)
     finite_guard({"loss": loss})
     return loss, metrics, {"q_demo": q_demo.detach(), "q_pi": q_pi.detach(),
-                           "q_next_expert": q_next.detach(), "target": target}
+                           "q_next_pi": q_next_pi, "target": target,
+                           "expert_minus_policy": (q_demo - q_pi.mean(1)).detach()}
 
 
 @torch.no_grad()

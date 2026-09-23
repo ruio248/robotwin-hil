@@ -1,5 +1,9 @@
 # Tail coverage value：数据、训练与离线诊断
 
+当前分支 `tail-coverage-value-v2` 使用下一观测的策略候选均值做 TD target。
+四卡 alpha 消融入口、数据与命令见 [TAIL_VALUE_V2_ABLATION.md](TAIL_VALUE_V2_ABLATION.md)。
+`TAIL_COVERAGE_*` 历史报告保留原样，记录的是旧版实验，不能当作 v2 结果。
+
 三个入口位于 `RoboTwin/scripts/`：`tail_data.py`、`train_tail.py`、
 `eval_tail_value.py`。它们不会执行机器人动作、更新 Pi0.5、修改已有 HIL
 采集器或启动全量长时间训练。
@@ -13,7 +17,7 @@
 | 数据 | 划分 | 用途 |
 | --- | --- | --- |
 | 450 条 prompt-fixed LeRobot SFT | 按完整 episode、seed 42 固定为 405 train / 45 val | 训练 / 内部监控；45 条仍被基础策略见过 |
-| 原生 episode 450–499 | 原 manifest 的 `validation_episodes` | 50 条独立示范诊断，不参与拟合统计量、模型选择或调参 |
+| 原生 episode 450–499 | 原 manifest 的 `validation_episodes` | 仅当核验与 SFT 无重复后才可作为独立示范；现有 v1 重复数据不满足这一条件 |
 | 已保存 HIL raw | `hil` | 只看记录观测上的策略建议评分与接管区间 |
 
 **不使用** `outputs/sft_policy_eval_100`。HIL 接管不等于低覆盖，接管后成功
@@ -44,25 +48,21 @@ ResNet18 输出 3×512 维特征。MLP 输入 `1536 + 14 state + 14 action`，�
 256/LN/SiLU，实数输出。状态、动作 mean/std 只用 train 有效转移估计，
 std 下限为 0.05；metadata 不进入网络。
 
-当前版本固定为“专家轨迹 bootstrap + 当前状态候选分离”，不再提供旧的
-`original/stabilized` 模式，也不加入输出正则。对每个有效专家转移
-`(o_t, a_t^E, o_{t+1}, a_{t+1}^E)`，目标是：
+当前 v2 固定为“策略候选均值 bootstrap + 当前状态候选保守项”，不加入
+输出正则。对每个有效专家转移 `(o_t, a_t^E, o_{t+1})`，目标是：
 
-`y_t^E = 1 + gamma * C_target(o_next, a_demo_next)`，停止梯度。
+`y_t = 1 + gamma * mean_k C_target(o_next, a_pi_next[k])`，停止梯度。
 
 损失为：
 
-`loss = mean((C(o, a_demo) - y_expert_next)^2)`
+`loss = mean((C(o, a_demo) - y_t)^2)`
 `     + alpha * mean(mean_k C(o, a_pi[k]) - C(o, a_demo))`。
 
-因此，候选动作只进入当前状态的保守/分离项：梯度下降会压低候选动作
-`C(o, a_pi)`，同时抬高专家动作 `C(o, a_demo)`。TD target 使用数据中下一
-保存帧的专家动作，不使用 `next_a_pi`。`a_pi` 仍全部保留在缓存中，K 个
-候选在分离项中取平均，近似公式里的候选期望；不选择最远候选作为主算法。
-
-这不是图片中 `a'~pi_theta` 的策略 bootstrap 版本，而是明确的专家轨迹
-一致性版本。它的优点是 target 沿着记录的专家轨迹定义；它不能被表述为
-策略闭环未来覆盖的严格估计。当前实验仍然是下一保存帧关节目标的近似转移。
+当前观测候选进入保守项，下一观测候选进入 target。两处都是固定同一观测，
+分别对 K 个动作评分后求均值；不平均动作、不选择最远动作。TD 左侧和保守项
+里的专家动作保留。后继观测来自专家记录，不是实际执行当前候选得到的后继。
+这恢复了图片原式的策略动作期望；当前实验仍然使用下一保存帧关节目标的近似转移。
+旧 `expert_next_action` checkpoint 可单独评估并保留旧 TD 定义，但不能续训进 v2。
 
 默认 AdamW：lr=1e-4、weight_decay=1e-4、batch=256、gamma=.99、alpha=.01、
 gradient clip=1、target EMA=.005、10,000 steps。这些是起始值，不是调优结论。
@@ -78,14 +78,14 @@ gradient clip=1、target EMA=.005、10,000 steps。这些是起始值，不是�
 git -C /hdd/robotwin-hil fetch origin
 mkdir -p /hdd/robotwin-hil/outputs/tail
 git -C /hdd/robotwin-hil worktree add --detach \
-  /hdd/robotwin-hil/outputs/tail/checkout origin/codex/tail-coverage-value
+  /hdd/robotwin-hil/outputs/tail/checkout_v2 origin/tail-coverage-value-v2
 
 export TAIL_ROOT=/hdd/robotwin-hil/outputs/tail
 export TAIL_PYTHON=/hdd/miniconda3/envs/robotwin_hil/bin/python
 export ROBOTWIN_ROOT=/hdd/robotwin-hil/RoboTwin
 export TAIL_POLICY_CONFIG=$ROBOTWIN_ROOT/XPolicyLab/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml
 export TAIL_ENCODER=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
-cd "$TAIL_ROOT/checkout/RoboTwin"
+cd "$TAIL_ROOT/checkout_v2/RoboTwin"
 ```
 
 普通离线脚本使用现有 `robotwin_hil` conda Python；策略服务继续使用独立 OpenPI
@@ -119,7 +119,8 @@ rsync -a --info=progress2 -e 'ssh -i /home/ruio/.ssh/id_ed25519_JG' \
 ```
 
 同步没有 `--delete`，不会清理已有文件。完整 SFT 约 3 GB；native 只复制
-50 条留出记录和划分。HIL 直接读取 Ubuntu 现有 raw 文件，不更改它们。
+50 条记录和划分；独立性需要另外核验，现有 v1 重复记录不能当作独立 heldout。
+HIL 直接读取 Ubuntu 现有 raw 文件，不更改它们。
 
 ## 2. 独占策略服务（另一个终端）
 
@@ -189,20 +190,19 @@ episodes/<id>.npz         # features[T,1536], state[T,14], a_pi[T,K,14], frame_i
 
 ```bash
 "$TAIL_PYTHON" scripts/train_tail.py --cache-dir "$TAIL_ROOT/cache/sft" \
-  --output-dir "$TAIL_ROOT/runs/expert_bootstrap"
+  --output-dir "$TAIL_ROOT/runs/policy_bootstrap_v2"
 ```
 
 候选缓存相同，训练只使用 SFT train split 的专家转移；每个 batch 同时读取
-当前候选 `a_pi[t]` 和下一帧专家动作 `a_demo[t+1]`。不再比较 farthest 或
-输出正则变体；如果以后需要策略 bootstrap，必须作为另一个明确命名的算法
-版本实现，不能与本实验混称。
+当前候选 `a_pi[t]` 和下一帧候选 `a_pi[t+1]`。有效转移索引不会跨 episode，
+不会从末帧制造自循环。四组消融只改变 alpha，固定 seed、batch、候选、标准化及初始化。
 
 恢复时重复原超参数并增加总步数，例如：
 
 ```bash
 "$TAIL_PYTHON" scripts/train_tail.py --cache-dir "$TAIL_ROOT/cache/sft" \
-  --output-dir "$TAIL_ROOT/runs/expert_bootstrap" \
-  --resume "$TAIL_ROOT/runs/expert_bootstrap/last.pt" --steps 15000
+  --output-dir "$TAIL_ROOT/runs/policy_bootstrap_v2" \
+  --resume "$TAIL_ROOT/runs/policy_bootstrap_v2/last.pt" --steps 15000
 ```
 
 如果需要“后台启动一轮、达到指定 checkpoint 后离线评测、再挂起训练”，使用
@@ -217,10 +217,10 @@ nohup bash scripts/run_tail_train_eval.sh \
   --sft-cache "$TAIL_ROOT/cache/sft" \
   --heldout-cache "$TAIL_ROOT/cache/heldout" \
   --hil-cache "$TAIL_ROOT/cache/hil" \
-  --run-dir "$TAIL_ROOT/runs/expert_bootstrap" \
-  --report-dir "$TAIL_ROOT/reports/expert_bootstrap_step5000" \
-  > "$TAIL_ROOT/runs/expert_bootstrap_orchestrator.log" 2>&1 &
-echo $! > "$TAIL_ROOT/runs/expert_bootstrap_orchestrator.pid"
+  --run-dir "$TAIL_ROOT/runs/policy_bootstrap_v2" \
+  --report-dir "$TAIL_ROOT/reports/policy_bootstrap_v2_step5000" \
+  > "$TAIL_ROOT/runs/policy_bootstrap_v2_orchestrator.log" 2>&1 &
+echo $! > "$TAIL_ROOT/runs/policy_bootstrap_v2_orchestrator.pid"
 ```
 
 脚本拒绝覆盖非空的 run/report 目录；`run_dir.train.log` 保存训练输出，
@@ -234,7 +234,7 @@ Checkpoint 保存 online/target、optimizer、训练统计量、随机状态、�
 ```bash
 "$TAIL_PYTHON" scripts/eval_tail_value.py \
   --cache-dir "$TAIL_ROOT/cache/sft" "$TAIL_ROOT/cache/heldout" "$TAIL_ROOT/cache/hil" \
-  --checkpoint "$TAIL_ROOT/runs/expert_bootstrap/last.pt" \
+  --checkpoint "$TAIL_ROOT/runs/policy_bootstrap_v2/last.pt" \
   --suite all --output-dir "$TAIL_ROOT/reports/comparison_001"
 ```
 

@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tail_value.cache import (ACTION_SPACE, PROMPT, atomic_json, atomic_npz, assert_compatible, cache_fingerprint,
                               episode_split, load_episode, load_manifest, sha256, transition_mask, validate_episode)
 from tail_value.evaluate import report_rows, score_episode, summarize
-from tail_value.model import (CoverageCritic, TransitionTable, action_distances, critic_loss, farthest_indices,
+from tail_value.model import (POLICY_BOOTSTRAP, CoverageCritic, TransitionTable, action_distances, atomic_checkpoint, critic_loss, farthest_indices,
                               finite_guard, load_checkpoint, loss_from_scores, make_target, models_from_checkpoint, soft_update)
 from tail_value.prepare import first_action, generate_episode, image_tensor, sample_candidates
 from tail_value.sources import (CAMERAS, EpisodeSource, JOINT_FIELDS, control_mask, discover, iter_episode)
@@ -122,6 +122,17 @@ class CacheTests(unittest.TestCase):
     def test_representation_mismatch(self):
         with self.assertRaises(ValueError):
             assert_compatible({"k": 4}, {"k": 8})
+
+    def test_next_candidates_align_with_next_frame_without_crossing_episodes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = cache(root, (("train", False, 0.), ("train", False, 100.)))
+            table = TransitionTable(root, manifest, "train")
+            self.assertEqual(table.indices.tolist(), [0, 1, 2, 3, 5, 6, 7, 8])
+            batch = table.batch(torch.arange(8), "cpu")
+            expected = np.concatenate([arrays(offset=offset)["a_pi"][1:] for offset in (0., 100.)])
+            np.testing.assert_array_equal(batch["next_a_pi"].numpy(), expected)
+            self.assertNotIn("next_a_demo", batch)
 
     def test_incomplete_and_nonfinite_caches_are_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -284,34 +295,63 @@ class ObjectiveTests(unittest.TestCase):
         scale[0] = 100
         self.assertEqual(farthest_indices(candidates, torch.zeros(1, 14), scale).item(), 1)
 
-    def test_expert_bootstrap_loss_has_only_td_and_candidate_separation(self):
-        q_e, q_p, target = torch.tensor([2.]), torch.tensor([[1., 5.]]), torch.tensor([3.])
-        loss, metrics = loss_from_scores(q_e, q_p, target, alpha=.1)
-        self.assertAlmostEqual(loss.item(), 1.1, places=6)
-        self.assertAlmostEqual(metrics["td"].item(), 1., places=6)
-        self.assertAlmostEqual(metrics["conservative"].item(), 1., places=6)
-        self.assertNotIn("regularizer", metrics)
+    def test_alpha_ablation_losses_and_gradient_direction(self):
+        for alpha in (.1, .5, .01, 1.):
+            with self.subTest(alpha=alpha):
+                q_e = torch.tensor([2.], requires_grad=True)
+                q_p = torch.tensor([[1., 5.]], requires_grad=True)
+                target = torch.tensor([3.], requires_grad=True)
+                loss, metrics = loss_from_scores(q_e, q_p, target, alpha=alpha)
+                self.assertAlmostEqual(loss.item(), 1. + alpha, places=6)
+                self.assertAlmostEqual(metrics["td"].item(), 1., places=6)
+                self.assertAlmostEqual(metrics["conservative"].item(), 1., places=6)
+                self.assertAlmostEqual(metrics["weighted_conservative"].item(), alpha, places=6)
+                self.assertNotIn("regularizer", metrics)
+                loss.backward()
+                torch.testing.assert_close(q_e.grad, torch.tensor([-2. - alpha]))
+                torch.testing.assert_close(q_p.grad, torch.full((1, 2), alpha / 2))
+                self.assertIsNone(target.grad)
 
-    def test_target_uses_next_expert_action_and_has_no_gradient(self):
+    def test_target_uses_next_policy_candidates_and_has_no_gradient(self):
         data = arrays()
         batch = {k: torch.from_numpy(data[k][:-1]) for k in ("features", "state", "a_demo", "a_pi")}
-        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_demo")})
+        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_pi")})
+        self.target.requires_grad_(True)  # no_grad must hold even for a trainable target.
         loss, _, values = critic_loss(self.model, self.target, batch, gamma=.99, alpha=.01)
-        expected = 1. + .99 * self.target(batch["next_features"], batch["next_state"], batch["next_a_demo"])
+        expected = 1. + .99 * self.target.score_many(batch["next_features"], batch["next_state"], batch["next_a_pi"]).mean(1)
         torch.testing.assert_close(values["target"], expected)
+        self.assertFalse(values["target"].requires_grad)
         loss.backward()
         self.assertTrue(all(p.grad is None for p in self.target.parameters()))
         self.assertTrue(any(p.grad is not None for p in self.model.parameters()))
 
-    def test_target_is_defined_by_next_expert_action(self):
+    def test_target_depends_only_on_next_observation_policy_candidates(self):
         data = arrays()
         batch = {k: torch.from_numpy(data[k][:-1]) for k in ("features", "state", "a_demo", "a_pi")}
-        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_demo")})
+        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_pi")})
         first = critic_loss(self.model, self.target, batch, gamma=.99, alpha=.01)[2]["target"]
         altered = dict(batch)
-        altered["next_a_demo"] = batch["next_a_demo"] + 100.
+        altered["next_a_demo"] = torch.full_like(batch["a_demo"], 100.)
+        altered["a_pi"] = batch["a_pi"] + 100.
+        same = critic_loss(self.model, self.target, altered, gamma=.99, alpha=1.)[2]["target"]
+        torch.testing.assert_close(first, same)
+        altered["next_a_pi"] = batch["next_a_pi"] + 100.
         second = critic_loss(self.model, self.target, altered, gamma=.99, alpha=.01)[2]["target"]
         self.assertFalse(torch.allclose(first, second))
+
+    def test_mean_of_scores_not_score_of_mean_action(self):
+        class QuadraticCritic(torch.nn.Module):
+            score_many = CoverageCritic.score_many
+            def forward(self, features, state, actions):
+                return actions[..., 0].square() + state[..., 0] + features[..., 0]
+        data = arrays()
+        batch = {k: torch.from_numpy(data[k][:-1]) for k in ("features", "state", "a_demo", "a_pi")}
+        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_pi")})
+        batch["next_features"].zero_()
+        batch["next_state"].zero_()
+        batch["next_a_pi"][:, :, 0] = torch.tensor([0., 2., 4., 8.])
+        target = critic_loss(self.model, QuadraticCritic(), batch, gamma=.5, alpha=.1)[2]["target"]
+        torch.testing.assert_close(target, torch.full((4,), 11.5))  # 1 + .5 * (0+4+16+64)/4
 
     def test_ema_and_guards(self):
         before = next(self.target.parameters()).clone()
@@ -338,8 +378,35 @@ class ObjectiveTests(unittest.TestCase):
         self.assertTrue(np.isnan(result["td_target"][-1]))
         self.assertTrue(np.isfinite(result["td_target"][:-1]).all())
 
+    def test_evaluation_matches_training_target_and_supports_legacy_checkpoints(self):
+        data = arrays()
+        batch = {k: torch.from_numpy(data[k][:-1]) for k in ("features", "state", "a_demo", "a_pi")}
+        batch.update({"next_" + k: torch.from_numpy(data[k][1:]) for k in ("features", "state", "a_pi")})
+        values = critic_loss(self.model, self.target, batch, gamma=.99, alpha=.1)[2]
+        result = score_episode(self.model, self.target, data, "demo", .99, 2, "cpu", 1e4)
+        np.testing.assert_allclose(result["td_target"][:-1], values["target"].numpy(), rtol=1e-6)
+        legacy = score_episode(self.model, self.target, data, "demo", .99, 2, "cpu", 1e4, "expert_next_action")
+        expected = 1. + .99 * self.target(batch["next_features"], batch["next_state"], torch.from_numpy(data["a_demo"][1:]))
+        np.testing.assert_allclose(legacy["td_target"][:-1], expected.numpy(), rtol=1e-6)
+        with self.assertRaisesRegex(ValueError, "Unsupported"):
+            score_episode(self.model, self.target, data, "demo", .99, 2, "cpu", 1e4, "unknown")
+
 
 class EndToEndTests(unittest.TestCase):
+    def test_cannot_resume_expert_bootstrap_as_policy_bootstrap(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            cache(root / "cache")
+            base = ["--cache-dir", str(root / "cache"), "--output-dir", str(root / "run"),
+                    "--device", "cpu", "--cpu-threads", "1", "--width", "16"]
+            with patch("sys.stdout", new_callable=io.StringIO):
+                train_tail.run(train_tail.parse_args(base + ["--steps", "1"]))
+            payload = load_checkpoint(root / "run/last.pt")
+            payload["config"]["bootstrap"] = "expert_next_action"
+            atomic_checkpoint(root / "legacy.pt", payload)
+            with self.assertRaisesRegex(ValueError, "Resume hyperparameters"):
+                train_tail.run(train_tail.parse_args(base + ["--steps", "2", "--resume", str(root / "legacy.pt")]))
+
     def test_divergence_records_failure_without_checkpoint(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -364,6 +431,7 @@ class EndToEndTests(unittest.TestCase):
                 train_tail.run(train_tail.parse_args(base + ["--output-dir", str(root / "resume"), "--steps", "4",
                                                             "--resume", str(root / "resume/last.pt")]))
             full, resumed = load_checkpoint(root / "full/last.pt"), load_checkpoint(root / "resume/last.pt")
+            self.assertEqual(full["config"]["bootstrap"], POLICY_BOOTSTRAP)
             for key in full["model"]:
                 torch.testing.assert_close(full["model"][key], resumed["model"][key], rtol=0, atol=0)
             cache(root / "heldout", (("heldout", False, 0.),))

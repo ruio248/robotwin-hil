@@ -11,8 +11,8 @@ import time
 import torch
 
 from tail_value.cache import atomic_json, cache_fingerprint, load_manifest
-from tail_value.model import (CoverageCritic, TransitionTable, atomic_checkpoint, critic_loss, finite_guard,
-                              load_checkpoint, make_target, models_from_checkpoint, restore_rng,
+from tail_value.model import (POLICY_BOOTSTRAP, CoverageCritic, TransitionTable, atomic_checkpoint, critic_loss, finite_guard,
+                              load_checkpoint, make_target, model_digest, models_from_checkpoint, restore_rng,
                               rng_state, seed_all, soft_update)
 
 
@@ -52,7 +52,7 @@ def score_summary(scores):
 @torch.no_grad()
 def validate(model, target, table, device, config):
     model.eval()
-    sums, scores = {}, {"q_demo": [], "q_pi": []}
+    sums, scores = {}, {key: [] for key in ("q_demo", "q_pi", "q_next_pi", "target", "expert_minus_policy")}
     for start in range(0, len(table), config["batch_size"]):
         batch = table.batch(slice(start, start + config["batch_size"]), device)
         loss, components, values = critic_loss(model, target, batch, **objective_kwargs(config))
@@ -88,7 +88,8 @@ def run(args):
     fingerprint = cache_fingerprint(manifest)
     config = {key: value for key, value in vars(args).items()
               if key not in ("cache_dir", "output_dir", "resume", "steps", "device", "eval_every", "log_every", "cpu_threads")}
-    config.update({"bootstrap": "expert_next_action", "candidate_use": "current_state_conservative_term"})
+    config.update({"bootstrap": POLICY_BOOTSTRAP,
+                   "candidate_use": "current_conservative_and_next_target_mean"})
     train = TransitionTable(args.cache_dir, manifest, "train")
     val = TransitionTable(args.cache_dir, manifest, "val")
     generator = torch.Generator().manual_seed(args.seed)
@@ -123,7 +124,8 @@ def run(args):
             stream.write(json.dumps(record, allow_nan=False) + "\n")
         print(json.dumps(record, allow_nan=False), flush=True)
     log({"event": "resume" if payload else "start", "step": start_step,
-         "bootstrap": "expert_next_action", "candidate_use": "current_state_conservative_term",
+         "bootstrap": config["bootstrap"], "candidate_use": config["candidate_use"],
+         "alpha": args.alpha, "model_sha256": model_digest(model),
          "train_transitions": len(train), "val_transitions": len(val)})
     started = time.monotonic()
     step = start_step
@@ -142,7 +144,7 @@ def run(args):
             if step == 1 or step % args.log_every == 0 or step == args.steps:
                 log({"event": "train", "step": step, "loss": loss.item(),
                      **{k: v.item() for k, v in components.items()}, "grad_norm": norm.item(),
-                     "q_demo": score_summary(values["q_demo"]), "q_pi": score_summary(values["q_pi"]),
+                     **{key: score_summary(value) for key, value in values.items()},
                      "elapsed_seconds": time.monotonic() - started})
             if step % args.eval_every == 0 or step == args.steps:
                 validation = validate(model, target, val, device, {**config, "batch_size": args.batch_size})
