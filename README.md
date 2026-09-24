@@ -97,6 +97,13 @@ mean/farthest candidate ablations and separate demonstration/HIL diagnostics.
 This is an approximate-transition research prototype, not a success predictor
 or an online recovery benchmark. Existing HIL collection is unchanged.
 
+## Coverage-guided enhanced sampling
+
+Fixed-window MC coverage-guided action-chunk sampling and its matched Vanilla
+control are documented in [ENHANCED_SAMPLING.md](ENHANCED_SAMPLING.md). The
+existing evaluation entry point opts in with `--es-mode enhanced`; default
+evaluation remains `--es-mode off`.
+
 ## Upstream sources
 
 - RoboTwin: https://github.com/robotwin-Platform/RoboTwin
