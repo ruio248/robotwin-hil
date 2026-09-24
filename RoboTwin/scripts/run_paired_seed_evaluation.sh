@@ -268,7 +268,12 @@ EOF
     echo "Could not resolve evaluation result path for $name." >&2
     return 35
   fi
-  local result_dir="$ROOT/$(dirname "$result_path")"
+  local result_dir
+  if [[ "$result_path" = /* ]]; then
+    result_dir=$(dirname "$result_path")
+  else
+    result_dir="$group_dir/$(dirname "$result_path")"
+  fi
   printf '%s\n' "$result_dir" > "$group_dir/eval_result_dir.txt"
   find "$result_dir" -maxdepth 1 -type f -name 'episode*.mp4' | wc -l \
     > "$group_dir/video_count.txt"
