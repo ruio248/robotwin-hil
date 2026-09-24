@@ -8,6 +8,7 @@ import json
 import multiprocessing as mp
 import os
 import queue
+import random
 import subprocess
 import sys
 import traceback
@@ -570,6 +571,7 @@ def batch_eval_worker(
                 expert_check=expert_check,
                 video_size=video_size,
                 instruction_type=instruction_type,
+                instruction_source=str(usr_args.get("instruction_source", "scene_tags")),
                 test_num=test_num,
                 episode_counter=episode_counter,
             )
@@ -621,6 +623,7 @@ def run_one_batch_episode(
     expert_check: bool,
     video_size: str | None,
     instruction_type: str | None,
+    instruction_source: str,
     test_num: int,
     episode_counter,
 ) -> dict[str, Any]:
@@ -661,7 +664,13 @@ def run_one_batch_episode(
         return {"type": "seed_skipped", "worker_id": worker_id, "seed": seed_value, "reason": "unstable"}
 
     instruction = build_instruction(
-        args, episode_info, instruction_type, test_num, task_env=task_env
+        args,
+        episode_info,
+        instruction_type,
+        test_num,
+        task_env=task_env,
+        instruction_source=instruction_source,
+        instruction_seed=seed_value,
     )
     task_env.set_instruction(instruction=instruction)
 
@@ -866,7 +875,13 @@ def eval_remote_policy(
         succ_seed += 1
 
         instruction = build_instruction(
-            args, episode_info, instruction_type, test_num, task_env=task_env
+            args,
+            episode_info,
+            instruction_type,
+            test_num,
+            task_env=task_env,
+            instruction_source=str(usr_args.get("instruction_source", "scene_tags")),
+            instruction_seed=now_seed,
         )
         task_env.set_instruction(instruction=instruction)
 
@@ -1026,11 +1041,30 @@ def build_instruction(
     test_num: int,
     *,
     task_env: Any | None = None,
+    instruction_source: str = "scene_tags",
+    instruction_seed: int | None = None,
 ) -> str:
-    if not instruction_type:
-        return args["task_name"]
+    instruction_source = str(instruction_source).strip().lower()
+    if instruction_source not in {"scene_tags", "expert_episode"}:
+        raise ValueError(
+            "instruction_source must be 'scene_tags' or 'expert_episode', got "
+            f"{instruction_source!r}"
+        )
 
-    placeholder_info = episode_info.get("info", {})
+    if not instruction_type:
+        instruction = args["task_name"]
+        print(
+            f"Eval instruction seed={instruction_seed} "
+            f"source={instruction_source} text={instruction!r}"
+        )
+        return instruction
+
+    # Instruction source is intentionally independent from expert_check. The
+    # paired-evaluation protocol uses scene tags for every checkpoint so that
+    # running/skipping a scripted expert cannot change the policy's language input.
+    placeholder_info = (
+        episode_info.get("info", {}) if instruction_source == "expert_episode" else {}
+    )
     if (
         not placeholder_info
         and task_env is not None
@@ -1042,16 +1076,42 @@ def build_instruction(
             "{b}": str(task_env.receiver_arm_tag),
         }
 
-    try:
+    def generate_instruction() -> str | None:
         episode_info_list = [placeholder_info]
-        results = generate_episode_descriptions(args["task_name"], episode_info_list, test_num)
+        results = generate_episode_descriptions(
+            args["task_name"], episode_info_list, test_num
+        )
         candidates = results[0].get(instruction_type)
         if candidates:
-            return np.random.choice(candidates)
-    except Exception:
-        print("Failed to generate episode instruction; using task name as instruction.")
+            return str(np.random.choice(candidates))
+        return None
 
-    return args["task_name"]
+    python_rng_state = random.getstate()
+    numpy_rng_state = np.random.get_state()
+    try:
+        if instruction_seed is not None:
+            seed = int(instruction_seed) % (2**32)
+            random.seed(seed)
+            np.random.seed(seed)
+        try:
+            instruction = generate_instruction()
+        except Exception:
+            print(
+                "Failed to generate episode instruction; "
+                "using task name as instruction."
+            )
+            instruction = None
+    finally:
+        random.setstate(python_rng_state)
+        np.random.set_state(numpy_rng_state)
+
+    if instruction is None:
+        instruction = args["task_name"]
+    print(
+        f"Eval instruction seed={instruction_seed} "
+        f"source={instruction_source} text={instruction!r}"
+    )
+    return instruction
 
 
 def reset_policy(model_client) -> None:
@@ -1407,6 +1467,15 @@ def parse_args() -> dict[str, Any]:
     parser.add_argument("--task_config", default="demo_clean")
     parser.add_argument("--test_num", type=int, default=None)
     parser.add_argument("--instruction_type", choices=("seen", "unseen"))
+    parser.add_argument(
+        "--instruction_source",
+        choices=("scene_tags", "expert_episode"),
+        default="scene_tags",
+        help=(
+            "Where episode instruction placeholders come from. This is independent "
+            "of whether scripted-expert validity checking is enabled."
+        ),
+    )
     parser.add_argument("--expert_check", default=None)
     parser.add_argument("--frequency", type=int, default=None)
     parser.add_argument("--num_workers", type=int, default=None)
@@ -1428,6 +1497,7 @@ def parse_args() -> dict[str, Any]:
         "seed": args.seed,
         "task_config": args.task_config,
         "instruction_type": args.instruction_type,
+        "instruction_source": args.instruction_source,
         "xpolicylab_root": str(Path(args.root_dir).resolve() / "XPolicyLab"),
         "eval_batch": parse_bool(args.eval_batch),
     }
@@ -1436,6 +1506,12 @@ def parse_args() -> dict[str, Any]:
         usr_args["test_num"] = args.test_num
     if args.expert_check is not None:
         usr_args["expert_check"] = parse_bool(args.expert_check)
+    if (
+        args.instruction_source == "expert_episode"
+        and args.expert_check is not None
+        and not parse_bool(args.expert_check)
+    ):
+        parser.error("--instruction_source expert_episode requires --expert_check true")
     if args.frequency is not None:
         usr_args["frequency"] = args.frequency
     if args.num_workers is not None:
