@@ -17,7 +17,7 @@ SOURCE_MANIFEST=${SOURCE_MANIFEST:?set SOURCE_MANIFEST to the fixed seed manifes
 BASELINE_CKPT=${BASELINE_CKPT:?set BASELINE_CKPT}
 A_CKPT=${A_CKPT:?set A_CKPT}
 C_CKPT=${C_CKPT:?set C_CKPT}
-MANIFEST="$RUN_ROOT/seed_manifest_31000_31099.json"
+MANIFEST="$RUN_ROOT/seed_manifest.json"
 PORT=${PORT:-18301}
 RUN_ID=${RUN_ROOT##*/}
 TASK_CONFIG_NAME="handover_to_tray_v2_promptfix_paired_${RUN_ID}"
@@ -87,6 +87,13 @@ export CUDA_VISIBLE_DEVICES=0
 for required in "$EVAL_PY" "$POLICY_PY" "$SOURCE_MANIFEST" "$BASE_TASK_CONFIG" "$WAIT_HELPER"; do
   [[ -e "$required" ]] || { echo "Required path missing: $required" >&2; exit 2; }
 done
+SEED_COUNT=$("$EVAL_PY" -c \
+  'import json,sys; print(len(json.load(open(sys.argv[1], encoding="utf-8"))["test_seeds"]))' \
+  "$SOURCE_MANIFEST")
+[[ "$SEED_COUNT" =~ ^[1-9][0-9]*$ ]] || {
+  echo "Seed manifest has an invalid test_seeds count: $SEED_COUNT" >&2
+  exit 2
+}
 for asset_id in "$BASELINE_ASSET_REPO_ID" "$A_ASSET_REPO_ID" "$C_ASSET_REPO_ID"; do
   [[ -n "$asset_id" ]] || {
     echo "Set ASSET_REPO_ID or all of BASELINE_ASSET_REPO_ID, A_ASSET_REPO_ID, and C_ASSET_REPO_ID." >&2
@@ -170,7 +177,7 @@ evaluator_sha256=$(sha256sum "$ROOT/scripts/eval_policy_xpolicylab.py" | awk '{p
 seed_manifest=$MANIFEST
 seed_manifest_sha256=$(sha256sum "$MANIFEST" | awk '{print $1}')
 seed_split=test
-num_seeds=100
+num_seeds=$SEED_COUNT
 expert_check=false
 instruction_source=scene_tags
 instruction_type=seen
@@ -230,7 +237,7 @@ EOF
       --task_config "$TASK_CONFIG_NAME" \
       --instruction_type seen \
       --instruction_source scene_tags \
-      --test_num 100 \
+      --test_num "$SEED_COUNT" \
       --expert_check false \
       --frequency 30 \
       --seed_manifest "$MANIFEST" \
@@ -247,8 +254,8 @@ EOF
   fi
 
   result_line=$(grep -E '^Final success rate:' "$group_dir/eval.log" | tail -1 || true)
-  if [[ -z "$result_line" ]] || ! grep -qE '^Final success rate: [0-9]+/100 =' <<<"$result_line"; then
-    echo "Missing or incomplete 100-seed result for $name; see $group_dir/eval.log" >&2
+  if [[ -z "$result_line" ]] || ! grep -qE "^Final success rate: [0-9]+/$SEED_COUNT =" <<<"$result_line"; then
+    echo "Missing or incomplete $SEED_COUNT-seed result for $name; see $group_dir/eval.log" >&2
     return 34
   fi
   printf '%s\n' "$result_line" | tee "$group_dir/summary.txt"
