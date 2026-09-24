@@ -9,7 +9,10 @@ POLICY_DIR="$XPL_ROOT/policy/Pi_05_RobotTwin"
 WAIT_HELPER="$XPL_ROOT/utils/wait_for_policy_server.sh"
 EVAL_PY=${EVAL_PY:?set EVAL_PY to the robotwin_hil Python interpreter}
 POLICY_PY="$POLICY_DIR/openpi/.venv/bin/python"
-ASSET_ID=${ASSET_REPO_ID:?set ASSET_REPO_ID to the shared norm_stats asset ID}
+DEFAULT_ASSET_REPO_ID=${ASSET_REPO_ID:-}
+BASELINE_ASSET_REPO_ID=${BASELINE_ASSET_REPO_ID:-$DEFAULT_ASSET_REPO_ID}
+A_ASSET_REPO_ID=${A_ASSET_REPO_ID:-$DEFAULT_ASSET_REPO_ID}
+C_ASSET_REPO_ID=${C_ASSET_REPO_ID:-$DEFAULT_ASSET_REPO_ID}
 SOURCE_MANIFEST=${SOURCE_MANIFEST:?set SOURCE_MANIFEST to the fixed seed manifest}
 BASELINE_CKPT=${BASELINE_CKPT:?set BASELINE_CKPT}
 A_CKPT=${A_CKPT:?set A_CKPT}
@@ -84,6 +87,12 @@ export CUDA_VISIBLE_DEVICES=0
 for required in "$EVAL_PY" "$POLICY_PY" "$SOURCE_MANIFEST" "$BASE_TASK_CONFIG" "$WAIT_HELPER"; do
   [[ -e "$required" ]] || { echo "Required path missing: $required" >&2; exit 2; }
 done
+for asset_id in "$BASELINE_ASSET_REPO_ID" "$A_ASSET_REPO_ID" "$C_ASSET_REPO_ID"; do
+  [[ -n "$asset_id" ]] || {
+    echo "Set ASSET_REPO_ID or all of BASELINE_ASSET_REPO_ID, A_ASSET_REPO_ID, and C_ASSET_REPO_ID." >&2
+    exit 2
+  }
+done
 if ss -ltn 2>/dev/null | grep -qE ":${PORT}[[:space:]]"; then
   echo "Port $PORT is already occupied; refusing to use or stop another service." >&2
   exit 2
@@ -132,14 +141,15 @@ printf 'STARTED time=%s run_root=%s\n' "$(date -Is)" "$RUN_ROOT" > "$RUN_ROOT/st
 run_one() {
   local name=$1
   local ckpt=$2
+  local asset_id=$3
   local group_dir="$RUN_ROOT/$name"
   local rc
   local result_line
 
   CURRENT_GROUP=$name
   [[ -d "$ckpt/params" ]] || { echo "Checkpoint params missing: $ckpt" >&2; return 30; }
-  [[ -s "$ckpt/assets/$ASSET_ID/norm_stats.json" ]] || {
-    echo "Matching norm_stats missing: $ckpt/assets/$ASSET_ID/norm_stats.json" >&2
+  [[ -s "$ckpt/assets/$asset_id/norm_stats.json" ]] || {
+    echo "Matching norm_stats missing: $ckpt/assets/$asset_id/norm_stats.json" >&2
     return 31
   }
   mkdir -p "$group_dir"
@@ -148,12 +158,12 @@ run_one() {
   fi
   find "$ckpt/params" -type f -print0 | sort -z | xargs -0 -r sha256sum \
     > "$group_dir/checkpoint_params.sha256"
-  sha256sum "$ckpt/assets/$ASSET_ID/norm_stats.json" \
+  sha256sum "$ckpt/assets/$asset_id/norm_stats.json" \
     > "$group_dir/norm_stats.sha256"
   cat > "$group_dir/run_config.txt" <<EOF
 name=$name
 checkpoint=$ckpt
-asset_repo_id=$ASSET_ID
+asset_repo_id=$asset_id
 task_name=handover_to_tray
 task_config=$TASK_CONFIG_NAME
 evaluator_sha256=$(sha256sum "$ROOT/scripts/eval_policy_xpolicylab.py" | awk '{print $1}')
@@ -191,7 +201,7 @@ EOF
         port="$PORT" host=127.0.0.1 bench_name=RobotTwin \
         task_name=handover_to_tray ckpt_name="$ckpt" \
         env_cfg_type=aloha_agilex seed=0 policy_name=Pi_05_RobotTwin \
-        action_type=joint action_dim=14 repo_id="$ASSET_ID" \
+        action_type=joint action_dim=14 repo_id="$asset_id" \
     > "$group_dir/policy_server.log" 2>&1 &
   SERVER_PID=$!
   printf 'policy_server_pid=%s\n' "$SERVER_PID" >> "$group_dir/run_config.txt"
@@ -258,9 +268,9 @@ EOF
   write_status "COMPLETE group=$name finished=$(date -Is) result=$result_dir"
 }
 
-run_one baseline_sft9999 "$BASELINE_CKPT"
-run_one A_sft_hil_original "$A_CKPT"
-run_one C_sft_policy_hil_original "$C_CKPT"
+run_one baseline_sft9999 "$BASELINE_CKPT" "$BASELINE_ASSET_REPO_ID"
+run_one A_sft_hil_original "$A_CKPT" "$A_ASSET_REPO_ID"
+run_one C_sft_policy_hil_original "$C_CKPT" "$C_ASSET_REPO_ID"
 
 printf 'ALL_COMPLETE time=%s\n' "$(date -Is)" > "$RUN_ROOT/status.txt"
 echo "All paired evaluations completed."
