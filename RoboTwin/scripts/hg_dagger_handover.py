@@ -158,6 +158,7 @@ class HumanInterventionInput:
         }
         self._fd: int | None = None
         self._term_attrs = None
+        self._viewer_held: set[str] = set()
 
     def __enter__(self):
         try:
@@ -184,7 +185,17 @@ class HumanInterventionInput:
             return None
         for key, event in self.key_map.items():
             try:
-                if bool(window.key_press(key)) or bool(window.key_down(key)):
+                pressed = bool(window.key_press(key))
+                down = bool(window.key_down(key))
+                if event == "sampling_toggle":
+                    if not down:
+                        self._viewer_held.discard(key)
+                    elif key not in self._viewer_held:
+                        self._viewer_held.add(key)
+                        return event
+                    if pressed and not down:
+                        return event
+                elif pressed or down:
                     return event
             except (AttributeError, RuntimeError):
                 continue
@@ -735,6 +746,14 @@ def parse_args() -> argparse.Namespace:
         "--takeover-eval", action="store_true",
         help="Run matched-seed rollouts and report the manual i-key request rate.",
     )
+    parser.add_argument(
+        "--es-activation", choices=("fixed", "manual"), default="fixed",
+        help="fixed: use the configured decision window; manual: press e to start a fresh window.",
+    )
+    parser.add_argument(
+        "--es-manual-duration", type=int, default=10,
+        help="Number of policy decisions enhanced after pressing e in manual mode.",
+    )
     add_sampling_arguments(parser)
     return parser.parse_args()
 
@@ -743,6 +762,11 @@ def main() -> int:
     cli = parse_args()
     if cli.render_freq <= 0 and os.environ.get("HIL_DIAG_ALLOW_NO_VIEWER") != "1":
         raise ValueError("--render-freq must be positive for human supervision")
+    if cli.es_activation == "manual":
+        if cli.es_mode == "off" or cli.es_manual_duration < 1:
+            raise ValueError("Manual sampling requires vanilla/enhanced mode and a positive duration")
+        cli.es_window_start = 0
+        cli.es_window_end = cli.es_manual_duration - 1
     if cli.takeover_eval:
         if cli.acceptance or cli.seed_mode != "sequential":
             raise ValueError("Takeover comparison requires sequential matched seeds and no acceptance mode")
@@ -800,6 +824,8 @@ def main() -> int:
     print("\n" + "=" * 72)
     print("RoboTwin handover_to_tray human-gated DAgger")
     print("Keys: i=takeover, r=hand back to policy, x=abort episode, q=quit.")
+    if cli.es_activation == "manual":
+        print(f"Press e during policy control to toggle {cli.es_manual_duration} enhanced decisions.")
     print("After each episode: s/f=success/failure, y/n=save/discard.")
     print(f"Prompt: {PROMPT}")
     print(f"Sampling: {cli.es_mode}; takeover evaluation: {cli.takeover_eval}")
@@ -857,6 +883,7 @@ def main() -> int:
             intervention_count = 0
             manual_takeover_requests = 0
             takeover_request_events: list[dict[str, Any]] = []
+            sampling_activation_events: list[dict[str, Any]] = []
             segments: list[dict[str, Any]] = []
             interventions: list[dict[str, Any]] = []
             current_source = "policy"
@@ -898,21 +925,41 @@ def main() -> int:
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
                 f"saved valid HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
                 f"seed={seed}; "
+                f"{'e=sampling, ' if cli.es_activation == 'manual' else ''}"
                 "i=takeover, r=handback, x=abort episode, q=quit.\033[0m"
             )
 
-            with HumanInterventionInput(task_env) as keyboard:
+            key_map = {**DEFAULT_KEYS, **({"e": "sampling_toggle"} if cli.es_activation == "manual" else {})}
+            with HumanInterventionInput(task_env, key_map=key_map) as keyboard:
                 sampler = None
+                manual_window = None
                 if sampling_config is not None:
-                    from coverage_sampling.core import DecisionSampler, EpisodeLog
+                    from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow
                     from coverage_sampling.robotwin import RobotwinRollout
+
+                    if cli.es_activation == "manual":
+                        manual_window = ManualSamplingWindow(cli.es_manual_duration)
+
+                    def toggle_sampling() -> None:
+                        enabled = manual_window.toggle(decision_step)
+                        record = {
+                            "event": "sampling_activation", "enabled": enabled,
+                            "decision": int(decision_step), "policy_steps": int(policy_steps),
+                            "frame_idx": int(task_env.FRAME_IDX),
+                            "window_end_exclusive": int(decision_step + cli.es_manual_duration) if enabled else None,
+                        }
+                        sampling_activation_events.append(record)
+                        sampling_log.write(record)
+                        status = (f"ON for decisions {decision_step}–{decision_step + cli.es_manual_duration - 1}"
+                                  if enabled else "OFF")
+                        print(f"\n[ENHANCED] {status}; policy remains in control.", flush=True)
 
                     def poll_live_control() -> None:
                         # Lookahead never displays hypothetical states. Process
                         # pending keys only after restoring the real scene.
                         task_env._render_viewer_if_available()
                         pending = keyboard.poll()
-                        if pending in {"intervene", "abort", "quit"}:
+                        if pending in {"intervene", "abort", "quit", "sampling_toggle"}:
                             raise OperatorInterrupt(pending)
 
                     sampler = DecisionSampler(
@@ -927,6 +974,8 @@ def main() -> int:
                         {**scorer.metadata, "episode_seed": seed, "instruction": PROMPT,
                          "policy_checkpoint": cli.ckpt_name, "task_config": cli.task_config,
                          "frequency": int(cli.frequency), "evaluation_type": "human_gated",
+                         "sampling_activation": cli.es_activation,
+                         "manual_duration": cli.es_manual_duration if manual_window is not None else None,
                          "executor": "Base_Task.take_action(qpos)",
                          "window_units": "zero-based policy decision calls; inclusive"},
                     )
@@ -942,6 +991,9 @@ def main() -> int:
                         break
 
                     if mode == "policy":
+                        if event == "sampling_toggle":
+                            toggle_sampling()
+                            continue
                         if event == "intervene":
                             manual_takeover_requests += 1
                             request_event = {
@@ -1004,7 +1056,10 @@ def main() -> int:
                                 return chunk
 
                             try:
-                                action_chunk, selection = sampler.select(decision_step, sample_chunk)
+                                action_chunk, selection = sampler.select(
+                                    decision_step, sample_chunk,
+                                    active_override=manual_window.active(decision_step) if manual_window is not None else None,
+                                )
                             except OperatorInterrupt as interruption:
                                 event = interruption.event
                                 action_chunk = []
@@ -1024,7 +1079,7 @@ def main() -> int:
 
                         for action_idx, action in enumerate(action_chunk):
                             event = keyboard.poll()
-                            if event in {"quit", "abort", "intervene"}:
+                            if event in {"quit", "abort", "intervene", "sampling_toggle"}:
                                 if event == "quit":
                                     quit_requested = True
                                 chunk_interrupted = True
@@ -1047,7 +1102,7 @@ def main() -> int:
                                 )
                             actual_coverage = scorer(observation, flat_action) if scorer is not None else None
                             pending = keyboard.poll() if scorer is not None else None
-                            if pending in {"quit", "abort", "intervene"}:
+                            if pending in {"quit", "abort", "intervene", "sampling_toggle"}:
                                 event = pending
                                 if event == "quit":
                                     quit_requested = True
@@ -1112,6 +1167,9 @@ def main() -> int:
                         if chunk_interrupted and event == "abort":
                             episode_aborted = True
                             break
+                        if chunk_interrupted and event == "sampling_toggle":
+                            toggle_sampling()
+                            continue
                         if chunk_interrupted and event == "intervene":
                             if manual_trigger:
                                 manual_takeover_requests += 1
@@ -1222,6 +1280,7 @@ def main() -> int:
                         "policy_steps": int(policy_steps),
                         "manual_takeover_requests": manual_takeover_requests,
                         "takeover_request_events": takeover_request_events,
+                        "sampling_activation_events": sampling_activation_events,
                         "intervention_count": intervention_count,
                         "interventions": interventions,
                         "autonomous_success": False, "save_decision": False,
@@ -1280,6 +1339,7 @@ def main() -> int:
                 "policy_decisions": int(decision_step),
                 "manual_takeover_requests": manual_takeover_requests,
                 "takeover_request_events": takeover_request_events,
+                "sampling_activation_events": sampling_activation_events,
                 "intervention_count": intervention_count,
                 "interventions": interventions,
                 "segments": segments,
@@ -1375,6 +1435,8 @@ def main() -> int:
     session_report = {
         "aborted": aborted,
         "sampling_mode": cli.es_mode,
+        "sampling_activation": cli.es_activation,
+        "sampling_manual_duration": cli.es_manual_duration if cli.es_activation == "manual" else None,
         "sampling_config": asdict(sampling_config) if sampling_config is not None else None,
         "sampling_window": [cli.es_window_start, cli.es_window_end],
         "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,

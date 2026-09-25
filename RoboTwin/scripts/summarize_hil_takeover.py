@@ -28,6 +28,8 @@ def load_session(path: Path, mode: str) -> dict:
 
 
 def summarize(sessions: dict[str, dict]) -> dict:
+    if any(sessions[mode].get("sampling_activation", "fixed") != "fixed" for mode in MODES):
+        raise ValueError("Manual e-key timing is operator-selected; paired takeover comparison requires fixed activation")
     baseline = sessions["off"]
     common = ("policy_name", "policy_host", "policy_port", "checkpoint_name", "task_config", "instruction",
               "frequency", "step_limit", "sampling_window", "seed_mode")

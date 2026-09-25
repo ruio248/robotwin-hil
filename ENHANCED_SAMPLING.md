@@ -191,6 +191,39 @@ recovery. `local_serving/run_hg_dagger_manual.sh` accepts `HIL_ES_MODE=off`,
 The other two modes use the same frozen critic, candidate count, branch
 simulation and action executor as `eval_policy_xpolicylab.py`.
 
+### Press a key to start enhanced sampling at the stage you choose
+
+The interactive HIL launcher also supports `HIL_ES_ACTIVATION=manual` with
+`HIL_ES_MODE=enhanced`. The policy runs with ordinary one-chunk sampling until
+you press **e** in the SAPIEN viewer or its launching terminal. From the next
+policy decision, the sampler draws four candidates, simulates and scores their
+full chunks, and resamples one. It stays active for
+`HIL_ES_MANUAL_DURATION` policy decisions (default 10); another **e** press
+within that window turns it off early. Once the window expires, pressing **e**
+starts a fresh one. If pressed during an action chunk, the remaining chunk is
+discarded and the new decision uses the current real observation. The `i`
+key still requests human/expert takeover, and `r` hands control back.
+
+This can be launched with the existing dedicated policy server on 18311:
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+export HIL_TAKEOVER_EVAL=1 HIL_ES_MODE=enhanced HIL_ES_ACTIVATION=manual
+export HIL_ES_MANUAL_DURATION=10 MANUAL_POLICY_PORT=18311
+export HIL_ES_CRITIC=/hdd/robotwin-hil/outputs/sft_policy_eval_100/coverage_v2_alpha_ablation_step10000_20260924/inference_checkpoints/alpha_0p1.pt
+export HIL_ES_ENCODER_WEIGHTS=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+export HIL_ES_DEVICE=cpu
+export MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/manual_001/enhanced"
+bash local_serving/run_hg_dagger_manual.sh
+```
+
+The terminal prints the decision range when `e` arms the sampler. Every
+activation or cancellation is saved in the episode sampling JSONL and the HIL
+rollout record. This manual timing depends on operator judgment. To compare
+takeover probabilities across Off, Vanilla and Enhanced as a controlled
+experiment, use the fixed-window protocol below with the same window for all
+arms, or define a stage trigger that fires identically for every arm.
+
 Run each arm separately from the **isolated branch checkout** in a desktop
 session with a visible SAPIEN viewer and one dedicated policy server. The
 wrapper now derives the code root from its own location and passes it through

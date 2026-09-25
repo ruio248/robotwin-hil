@@ -14,6 +14,13 @@ export HIL_VIEWER_MAX_FPS="${HIL_VIEWER_MAX_FPS:-10}"
 
 sampling_mode="${HIL_ES_MODE:-off}"
 case "$sampling_mode" in off|vanilla|enhanced) ;; *) echo "Invalid HIL_ES_MODE=$sampling_mode" >&2; exit 2 ;; esac
+activation="${HIL_ES_ACTIVATION:-fixed}"
+case "$activation" in fixed|manual) ;; *) echo "Invalid HIL_ES_ACTIVATION=$activation" >&2; exit 2 ;; esac
+duration="${HIL_ES_MANUAL_DURATION:-10}"
+if [[ "$activation" == manual ]]; then
+  [[ "$sampling_mode" != off ]] || { echo "Manual activation requires vanilla or enhanced sampling" >&2; exit 2; }
+  [[ "$duration" =~ ^[1-9][0-9]*$ ]] || { echo "HIL_ES_MANUAL_DURATION must be a positive integer" >&2; exit 2; }
+fi
 takeover_eval="${HIL_TAKEOVER_EVAL:-0}"
 case "$takeover_eval" in 0|1) ;; *) echo "HIL_TAKEOVER_EVAL must be 0 or 1" >&2; exit 2 ;; esac
 
@@ -32,8 +39,10 @@ else
 fi
 output_dir="${MANUAL_OUTPUT_DIR:-$default_output}"
 
-sampling_args=(--es-mode "$sampling_mode")
-if [[ "$takeover_eval" == 1 ]]; then
+sampling_args=(--es-mode "$sampling_mode" --es-activation "$activation" --es-manual-duration "$duration")
+if [[ "$activation" == manual ]]; then
+  sampling_args+=(--es-window-start 0 --es-window-end "$((duration - 1))")
+elif [[ "$takeover_eval" == 1 ]]; then
   : "${HIL_ES_WINDOW_START:?Set the same zero-based decision window for all three arms}"
   : "${HIL_ES_WINDOW_END:?Set the same zero-based decision window for all three arms}"
   sampling_args+=(--es-window-start "$HIL_ES_WINDOW_START" --es-window-end "$HIL_ES_WINDOW_END")
@@ -41,7 +50,7 @@ fi
 if [[ "$sampling_mode" != off ]]; then
   : "${HIL_ES_CRITIC:?Set the frozen coverage critic checkpoint}"
   : "${HIL_ES_ENCODER_WEIGHTS:?Set the local ResNet18 weights}"
-  if [[ "$takeover_eval" != 1 ]]; then
+  if [[ "$takeover_eval" != 1 && "$activation" == fixed ]]; then
     : "${HIL_ES_WINDOW_START:?Set the active decision window}"
     : "${HIL_ES_WINDOW_END:?Set the active decision window}"
     sampling_args+=(--es-window-start "$HIL_ES_WINDOW_START" --es-window-end "$HIL_ES_WINDOW_END")

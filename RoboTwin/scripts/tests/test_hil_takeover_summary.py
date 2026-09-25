@@ -57,6 +57,10 @@ class TakeoverSummaryTests(unittest.TestCase):
         changed["enhanced"]["critic_sha256"] = "different"
         with self.assertRaisesRegex(ValueError, "same critic"):
             summarize(changed)
+        changed = deepcopy(sessions)
+        changed["enhanced"]["sampling_activation"] = "manual"
+        with self.assertRaisesRegex(ValueError, "operator-selected"):
+            summarize(changed)
 
 
 if __name__ == "__main__":

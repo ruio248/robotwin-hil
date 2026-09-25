@@ -43,6 +43,27 @@ class SamplingConfig:
         return self.window_start <= decision <= self.window_end
 
 
+class ManualSamplingWindow:
+    """Arm a bounded sampling window at a real policy decision with a key press."""
+
+    def __init__(self, duration: int):
+        if isinstance(duration, bool) or not isinstance(duration, int) or duration < 1:
+            raise ValueError("Manual sampling duration must be a positive integer")
+        self.duration = duration
+        self.start: int | None = None
+
+    def active(self, decision: int) -> bool:
+        return self.start is not None and self.start <= decision < self.start + self.duration
+
+    def toggle(self, decision: int) -> bool:
+        """Return True when this press arms the window, False when it cancels it."""
+        if self.active(decision):
+            self.start = None
+            return False
+        self.start = decision
+        return True
+
+
 def coverage_weights(scores, beta):
     """Self-normalized importance weights; the proposal is already the policy."""
     scores = np.asarray(scores, dtype=np.float64)
@@ -79,10 +100,10 @@ class DecisionSampler:
         self.rng = np.random.default_rng(np.random.SeedSequence([config.seed, int(episode_seed)]))
         self.checked_replay = False
 
-    def select(self, decision, sample_chunk):
+    def select(self, decision, sample_chunk, *, active_override=None):
         start = time.monotonic()
         cfg = self.config
-        active = cfg.active(decision)
+        active = cfg.active(decision) if active_override is None else bool(active_override)
         count = cfg.num_candidates if active else 1
         candidates = np.stack([validated_chunk(sample_chunk(), cfg.horizon) for _ in range(count)])
         sampling_seconds = time.monotonic() - start

@@ -20,7 +20,7 @@ from collections.abc import Mapping, Sequence
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from coverage_sampling.core import DecisionSampler, EpisodeLog, SamplingConfig, coverage_weights
+from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow, SamplingConfig, coverage_weights
 from coverage_sampling.options import config_from_args
 from coverage_sampling.robotwin import RobotwinRollout, SceneSnapshot
 
@@ -132,6 +132,59 @@ class SamplingTests(unittest.TestCase):
             self.assertEqual(selected.shape, (2, 14))
             self.assertEqual(record["num_candidates"], expected)
         self.assertEqual(verifies, [True, False])
+
+    def test_manual_key_arms_current_decision_then_expires_or_cancels(self):
+        calls = []
+        class Backend:
+            def evaluate(self, candidates, **kwargs):
+                return [{"coverage": [float(candidate[0, 0])]} for candidate in candidates], None
+        window = ManualSamplingWindow(2)
+        sampler = DecisionSampler(SamplingConfig("enhanced", 0, 1, num_candidates=4, horizon=2), Backend(), 7)
+        def sample():
+            calls.append(1)
+            return chunk(1)
+        for decision, expected_active, expected_calls in (
+            (4, False, 1), (4, True, 4), (5, True, 4),
+            (6, False, 1), (6, True, 4), (7, False, 1),
+        ):
+            if decision == 4 and expected_active:
+                self.assertTrue(window.toggle(decision))
+            if decision == 6 and expected_active:
+                self.assertTrue(window.toggle(decision))
+            if decision == 7:
+                self.assertFalse(window.toggle(decision))
+            before = len(calls)
+            _, record = sampler.select(decision, sample, active_override=window.active(decision))
+            self.assertEqual(record["active"], expected_active)
+            self.assertEqual(record["decision"], decision)
+            self.assertEqual(len(calls) - before, expected_calls)
+        with self.assertRaises(ValueError):
+            ManualSamplingWindow(0)
+
+    def test_viewer_sampling_key_is_edge_triggered(self):
+        source = Path(__file__).resolve().parents[1] / "hg_dagger_handover.py"
+        tree = ast.parse(source.read_text())
+        tree.body = [node for node in tree.body if isinstance(node, ast.ClassDef)
+                     and node.name == "HumanInterventionInput"]
+        namespace = {"DEFAULT_KEYS": {"i": "intervene"}, "os": __import__("os"),
+                     "select": __import__("select"), "sys": sys,
+                     "termios": __import__("termios"), "tty": __import__("tty")}
+        exec(compile(tree, str(source), "exec"), namespace)
+        class Window:
+            down = False
+            def key_press(self, key): return False
+            def key_down(self, key): return self.down if key == "e" else False
+        window = Window()
+        env = SimpleNamespace(viewer=SimpleNamespace(window=window))
+        keyboard = namespace["HumanInterventionInput"](
+            env, key_map={"i": "intervene", "e": "sampling_toggle"})
+        window.down = True
+        self.assertEqual(keyboard.poll(), "sampling_toggle")
+        self.assertIsNone(keyboard.poll())
+        window.down = False
+        self.assertIsNone(keyboard.poll())
+        window.down = True
+        self.assertEqual(keyboard.poll(), "sampling_toggle")
 
     def test_stochastic_selection_not_argmin(self):
         class Backend:
