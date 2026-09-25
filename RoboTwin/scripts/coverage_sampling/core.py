@@ -157,7 +157,9 @@ class EpisodeLog:
         self.write({"event": "decision", **record})
 
     def executed(self, decision, action_index, coverage, active, action, **extra):
-        coverage = float(coverage)
+        if coverage is None and active:
+            raise ValueError("Active sampling decisions require a real coverage score")
+        coverage = float(coverage) if coverage is not None else None
         if active:
             self.active_scores.append(coverage)
         self.write({"event": "executed", "decision": decision, "action_index": action_index,

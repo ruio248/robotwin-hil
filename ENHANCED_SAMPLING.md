@@ -207,7 +207,7 @@ key still requests human/expert takeover, and `r` hands control back.
 This can be launched with the existing dedicated policy server on 18311:
 
 ```bash
-cd /hdd/robotwin-hil-enhanced-sampling
+cd /hdd/robotwin-hil-enhanced-manual
 export HIL_TAKEOVER_EVAL=1 HIL_ES_MODE=enhanced HIL_ES_ACTIVATION=manual
 export HIL_ES_MANUAL_DURATION=10 MANUAL_POLICY_PORT=18311
 export HIL_ES_CRITIC=/hdd/robotwin-hil/outputs/sft_policy_eval_100/coverage_v2_alpha_ablation_step10000_20260924/inference_checkpoints/alpha_0p1.pt
@@ -219,7 +219,8 @@ bash local_serving/run_hg_dagger_manual.sh
 
 The terminal prints the decision range when `e` arms the sampler. Every
 activation or cancellation is saved in the episode sampling JSONL and the HIL
-rollout record. This manual timing depends on operator judgment. To compare
+rollout record. Before `e`, ordinary policy steps do not run the critic, and
+their coverage field is null. This manual timing depends on operator judgment. To compare
 takeover probabilities across Off, Vanilla and Enhanced as a controlled
 experiment, use the fixed-window protocol below with the same window for all
 arms, or define a stage trigger that fires identically for every arm.

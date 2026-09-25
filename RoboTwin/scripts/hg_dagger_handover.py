@@ -977,7 +977,9 @@ def main() -> int:
                          "sampling_activation": cli.es_activation,
                          "manual_duration": cli.es_manual_duration if manual_window is not None else None,
                          "executor": "Base_Task.take_action(qpos)",
-                         "window_units": "zero-based policy decision calls; inclusive"},
+                         "window_units": ("zero-based policy decisions relative to e activation; inclusive"
+                                          if manual_window is not None else
+                                          "zero-based policy decision calls; inclusive")},
                     )
                 while True:
                     event = keyboard.poll()
@@ -1100,7 +1102,10 @@ def main() -> int:
                                     bias_dims,
                                     cli.bias_magnitude,
                                 )
-                            actual_coverage = scorer(observation, flat_action) if scorer is not None else None
+                            should_score = scorer is not None and (
+                                manual_window is None or selection["active"]
+                            )
+                            actual_coverage = scorer(observation, flat_action) if should_score else None
                             pending = keyboard.poll() if scorer is not None else None
                             if pending in {"quit", "abort", "intervene", "sampling_toggle"}:
                                 event = pending

@@ -327,6 +327,18 @@ class RolloutTests(unittest.TestCase):
             self.assertIsNone(result["active_min"])
             with self.assertRaises(FileExistsError): EpisodeLog(path, config, {})
 
+    def test_manual_inactive_steps_do_not_require_critic_scores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manual.jsonl"
+            log = EpisodeLog(path, SamplingConfig("enhanced", 0, 1), {})
+            log.executed(0, 0, None, False, np.zeros(14))
+            with self.assertRaisesRegex(ValueError, "require a real coverage"):
+                log.executed(1, 0, None, True, np.zeros(14))
+            log.finish(False, None, 1)
+            records = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertIsNone(records[1]["coverage"])
+            self.assertEqual(records[-1]["active_executed_scores"], 0)
+
 
 class EvaluatorIntegrationTests(unittest.TestCase):
     """Run the actual evaluator function, with the simulator/server injected.
