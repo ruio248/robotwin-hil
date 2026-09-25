@@ -25,7 +25,8 @@ class _Discard(io.TextIOBase):
 
 class SceneSnapshot:
     ENV_FIELDS = ("take_action_cnt", "eval_success", "now_obs", "current_stage_id",
-                  "plan_success", "left_js", "right_js", "eval_video_path", "save_data", "render_freq")
+                  "plan_success", "left_js", "right_js", "eval_video_path", "save_data", "render_freq",
+                  "FRAME_IDX", "current_control_source", "control_mask")
     ROBOT_FIELDS = ("left_gripper_val", "right_gripper_val", "left_js", "right_js")
 
     def __init__(self, env):
@@ -87,8 +88,9 @@ def physical_signature(env):
 
 
 class RobotwinRollout:
-    def __init__(self, env, scorer):
+    def __init__(self, env, scorer, on_restored=None):
         self.env, self.scorer = env, scorer
+        self.on_restored = on_restored
 
     def _branch(self, actions):
         env = self.env
@@ -115,6 +117,8 @@ class RobotwinRollout:
             with contextlib.redirect_stdout(_Discard()):
                 for chunk in candidates:
                     snapshot.restore()
+                    if self.on_restored is not None:
+                        self.on_restored()
                     branch, signature = self._branch(chunk)
                     branches.append(branch)
                     signatures.append(signature)
@@ -122,6 +126,8 @@ class RobotwinRollout:
                 # active decision of EVERY episode (including the vanilla arm).
                 if verify:
                     snapshot.restore()
+                    if self.on_restored is not None:
+                        self.on_restored()
                     repeated, signature = self._branch(candidates[0])
                     original = branches[0]
                     same = (repeated["scored_steps"] == original["scored_steps"]

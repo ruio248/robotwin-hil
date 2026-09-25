@@ -170,6 +170,36 @@ class SamplingTests(unittest.TestCase):
 
 
 class RolloutTests(unittest.TestCase):
+    def test_live_key_poll_runs_on_restored_scene_and_interrupt_preserves_hil_state(self):
+        class RecordingEnv(FakeEnv):
+            def __init__(self):
+                super().__init__()
+                self.FRAME_IDX = 5
+                self.control_mask = ["policy"]
+                self.current_control_source = "policy"
+            def take_action(self, action, action_type):
+                super().take_action(action, action_type)
+                self.FRAME_IDX += 1
+                self.control_mask.append("hypothetical")
+                self.current_control_source = "hypothetical"
+
+        env = RecordingEnv()
+        polls = []
+        def poll():
+            polls.append((env.x, env.FRAME_IDX, list(env.control_mask)))
+            if len(polls) == 2:
+                raise RuntimeError("operator pressed i")
+
+        rollout = RobotwinRollout(env, score, on_restored=poll)
+        with self.assertRaisesRegex(RuntimeError, "operator pressed i"):
+            rollout.evaluate(np.stack([chunk(1), chunk(2)]), verify=False, atol=1e-4)
+        self.assertEqual(polls, [(0.0, 5, ["policy"]), (0.0, 5, ["policy"])])
+        self.assertEqual(env.x, 0)
+        self.assertEqual(env.FRAME_IDX, 5)
+        self.assertEqual(env.control_mask, ["policy"])
+        self.assertEqual(env.current_control_source, "policy")
+        self.assertEqual(env.external_writes, 0)
+
     def test_real_future_states_pre_action_and_restoration(self):
         env = FakeEnv()
         snapshot = SceneSnapshot(env)
@@ -255,7 +285,8 @@ class EvaluatorIntegrationTests(unittest.TestCase):
         from coverage_sampling.core import SamplingConfig
         source = Path(__file__).resolve().parents[1] / "eval_policy_xpolicylab.py"
         tree = ast.parse(source.read_text())
-        names = {"eval_remote_policy", "normalize_action_chunk", "xpolicylab_action_to_robotwin",
+        names = {"eval_remote_policy", "normalize_action_chunk", "sample_absolute_joint_chunk",
+                 "xpolicylab_action_to_robotwin",
                  "normalize_robotwin_action_type", "is_episode_end"}
         tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
         ns = {"np": np, "Path": Path, "Mapping": Mapping, "Sequence": Sequence, "Any": object,

@@ -89,9 +89,9 @@ dominate this minimum objective; inspect full curves alongside its minimum.
 Randomly changing lights and other tasks/action spaces are rejected. The
 existing action executor, evaluation frequency setting, task termination and
 policy adapter are retained. The sampler does not create an automatic HIL
-trigger or change the DAgger recorder. The first experiment measures deviation
-under frozen-critic scores; additional human-intervention collection is a
-separate experiment.
+trigger. An opt-in interactive HIL entry point uses the existing `i` key and
+expert recovery flow to measure human-requested takeovers separately from
+the offline coverage comparison.
 
 ## Run on Ubuntu
 
@@ -181,6 +181,77 @@ A lower selected J is encouraged by construction and does not on its own
 prove useful deviation. Inspect actual execution curves and task outcomes.
 The comparison does not infer HIL labels or report unobserved interventions.
 There is no online performance claim from unit tests or synthetic-image smoke.
+
+## Human-requested takeover comparison
+
+The same sampler can now run inside the interactive HIL loop. The operator
+presses `i` to request a takeover; the existing scripted expert performs the
+recovery. `local_serving/run_hg_dagger_manual.sh` accepts `HIL_ES_MODE=off`,
+`vanilla`, or `enhanced`. `off` executes the original one-chunk policy path.
+The other two modes use the same frozen critic, candidate count, branch
+simulation and action executor as `eval_policy_xpolicylab.py`.
+
+Run each arm separately from the **isolated branch checkout** in a desktop
+session with a visible SAPIEN viewer and one dedicated policy server. The
+wrapper now derives the code root from its own location and passes it through
+`enter_robotwin_hil.sh`; it does not start the policy server. Keep the same
+server/checkpoint, operator instructions, task config, sequential seed range,
+sampling window, and candidate settings for all arms. Pick the decision window
+using development rollouts before testing. The following is a three-seed
+interface smoke. Its `20..29` window is only an example; replace it with your
+chosen indices before measuring takeover probabilities.
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+export HIL_TAKEOVER_EVAL=1 MANUAL_POLICY_PORT=18311
+export MANUAL_SEED_START=40000 MANUAL_MAX_ROLLOUTS=3
+export HIL_ES_WINDOW_START=20 HIL_ES_WINDOW_END=29
+export HIL_ES_CRITIC=/path/to/alpha_0p1.pt
+export HIL_ES_ENCODER_WEIGHTS=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+export HIL_ES_DEVICE=cuda:0
+
+HIL_ES_MODE=off MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/pilot01/off" \
+  bash local_serving/run_hg_dagger_manual.sh
+HIL_ES_MODE=vanilla MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/pilot01/vanilla" \
+  bash local_serving/run_hg_dagger_manual.sh
+HIL_ES_MODE=enhanced MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/pilot01/enhanced" \
+  bash local_serving/run_hg_dagger_manual.sh
+```
+
+Set `MANUAL_CKPT_NAME` to the checkpoint label served on `MANUAL_POLICY_PORT`
+if it differs from `v2_promptfix_9999`. A run in takeover-evaluation mode
+continues for `MANUAL_MAX_ROLLOUTS` rather than stopping when enough HIL
+episodes have been saved. It defaults to no trajectory saving and no save
+prompt. Pressing `x` aborts that rollout and records it; pressing `q` stops the
+session, which the comparison script rejects as incomplete. Use a new output
+directory for each run because candidate logs refuse to overwrite old logs.
+
+Each `session_*.json` contains `takeover_measurement`. Its primary numerator
+is the number of valid started rollouts with at least one **real `i` key
+request**; its denominator includes completed and operator-aborted rollouts
+that executed a policy action or received an `i` request. An `i` request still
+counts if stage confirmation is cancelled. Accepted expert recoveries have a
+separate rate. The per-rollout JSONL and candidate logs let you inspect the
+first request step and the selected actions. Hypothetical branch actions never
+count as interventions. During a long lookahead branch the viewer may pause;
+pending keys are processed after the real scene is restored, before the next
+live action.
+
+After all three sessions finish, compare their saved session paths:
+
+```bash
+python RoboTwin/scripts/summarize_hil_takeover.py \
+  --off /path/to/off/session_YYYYMMDD_HHMMSS.json \
+  --vanilla /path/to/vanilla/session_YYYYMMDD_HHMMSS.json \
+  --enhanced /path/to/enhanced/session_YYYYMMDD_HHMMSS.json \
+  --output outputs/enhanced_sampling/human_takeover/pilot01/comparison.json
+```
+
+The comparison checks seed order, policy label, task setup, window, critic and
+candidate settings. It reports the paired `Enhanced - Off` and
+`Enhanced - Vanilla` differences in human request probability. To reduce
+operator expectation effects in the main experiment, randomize the arm order
+and keep the arm label and critic scores off the supervisor's display.
 
 ## Verification
 

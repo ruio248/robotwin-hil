@@ -19,7 +19,7 @@ if ! mountpoint -q /media/ruio/hdd; then
   mount --bind /hdd /media/ruio/hdd
 fi
 
-export ROBOTWIN_HIL_ROOT=/media/ruio/hdd/robotwin-hil
+export ROBOTWIN_HIL_ROOT="${ROBOTWIN_HIL_ROOT:-/media/ruio/hdd/robotwin-hil}"
 export ROBOTWIN_ROOT="$ROBOTWIN_HIL_ROOT/RoboTwin"
 export ROBOTWIN_OPENPI_ROOT="$ROBOTWIN_ROOT/XPolicyLab/policy/Pi_05_RobotTwin/openpi"
 export OPENPI_ROOT="$ROBOTWIN_OPENPI_ROOT"

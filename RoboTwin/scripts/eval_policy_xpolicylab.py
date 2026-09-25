@@ -944,12 +944,7 @@ def eval_remote_policy(
                 selection = None
                 if sampler is not None:
                     def sample_absolute_chunk():
-                        raw = normalize_action_chunk(model_client.call(func_name="get_action"))
-                        converted = [xpolicylab_action_to_robotwin(
-                            action, action_type=action_type, current_observation=observation) for action in raw]
-                        if not converted or any(kind != "qpos" for _, kind in converted):
-                            raise ValueError("MC candidates must contain absolute joint actions")
-                        return np.stack([action for action, _ in converted])
+                        return sample_absolute_joint_chunk(model_client, observation, action_type)
                     action_chunk, selection = sampler.select(decision_step, sample_absolute_chunk)
                     sampling_log.decision(selection)
                 else:
@@ -1202,6 +1197,20 @@ def normalize_action_chunk(actions: Any) -> list[Any]:
         return list(actions)
 
     raise TypeError(f"Unsupported action response type: {type(actions)!r}")
+
+
+def sample_absolute_joint_chunk(model_client, observation: Mapping[str, Any], action_type: str) -> np.ndarray:
+    """Draw one policy chunk and convert it to physical absolute joint targets."""
+    raw = normalize_action_chunk(model_client.call(func_name="get_action"))
+    converted = [
+        xpolicylab_action_to_robotwin(
+            action, action_type=action_type, current_observation=observation
+        )
+        for action in raw
+    ]
+    if not converted or any(kind != "qpos" or action.shape != (14,) for action, kind in converted):
+        raise ValueError("MC candidates must contain absolute 14D joint actions")
+    return np.stack([action for action, _ in converted])
 
 
 def xpolicylab_action_to_robotwin(

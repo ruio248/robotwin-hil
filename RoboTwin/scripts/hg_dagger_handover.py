@@ -22,6 +22,7 @@ import time
 import traceback
 import tty
 from datetime import datetime
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -46,8 +47,10 @@ from eval_policy_xpolicylab import (  # noqa: E402
     reset_policy,
     robotwin_obs_to_xpolicylab,
     safe_close_env,
+    sample_absolute_joint_chunk,
     xpolicylab_action_to_robotwin,
 )
+from coverage_sampling.options import add_arguments as add_sampling_arguments, config_from_args  # noqa: E402
 
 
 PROMPT = "Pass the red bar from the left arm to the right arm and place it in the blue tray."
@@ -99,6 +102,14 @@ DEFAULT_KEYS = {
     "x": "abort",
     "q": "quit",
 }
+
+
+class OperatorInterrupt(Exception):
+    """A real operator key arrived while policy sampling was in progress."""
+
+    def __init__(self, event: str):
+        super().__init__(event)
+        self.event = event
 
 # Human-readable stage names shown at takeover time. Stage 2 (source_lift) is
 # an intermediate motion folded into the resume_handover entry point (3);
@@ -720,6 +731,11 @@ def parse_args() -> argparse.Namespace:
         default=-1,
         help="Test-only hook: simulate pressing x after this many policy steps.",
     )
+    parser.add_argument(
+        "--takeover-eval", action="store_true",
+        help="Run matched-seed rollouts and report the manual i-key request rate.",
+    )
+    add_sampling_arguments(parser)
     return parser.parse_args()
 
 
@@ -727,6 +743,23 @@ def main() -> int:
     cli = parse_args()
     if cli.render_freq <= 0 and os.environ.get("HIL_DIAG_ALLOW_NO_VIEWER") != "1":
         raise ValueError("--render-freq must be positive for human supervision")
+    if cli.takeover_eval:
+        if cli.acceptance or cli.seed_mode != "sequential":
+            raise ValueError("Takeover comparison requires sequential matched seeds and no acceptance mode")
+        if cli.auto_intervene_step >= 0 or cli.auto_abort_step >= 0:
+            raise ValueError("Takeover comparison cannot use automatic intervention or abort hooks")
+        if cli.es_window_start is None or cli.es_window_end is None:
+            raise ValueError("Takeover comparison requires the same declared window in all three arms")
+    if (cli.es_mode != "off" or cli.takeover_eval) and cli.bias_magnitude:
+        raise ValueError("Action bias is incompatible with simulated candidate scoring")
+    sampling_config = config_from_args({
+        **vars(cli), "task_name": "handover_to_tray", "action_type": "joint", "eval_batch": False,
+    })
+    scorer = None
+    if sampling_config is not None:
+        from coverage_sampling.critic import OnlineCoverage
+
+        scorer = OnlineCoverage(cli.es_critic, cli.es_encoder_weights, device=cli.es_device)
     if cli.acceptance:
         cli.episodes = 1
         cli.save_data = "false"
@@ -753,7 +786,7 @@ def main() -> int:
             flush=True,
         )
     auto_label = None if cli.auto_label == "none" else cli.auto_label
-    auto_save = None if cli.auto_save == "none" else parse_bool(cli.auto_save)
+    auto_save = (False if cli.takeover_eval else None) if cli.auto_save == "none" else parse_bool(cli.auto_save)
     bias_dims = joint_bias_dims(
         cli.bias_dims,
         int(user_args["left_arm_dim"]),
@@ -762,12 +795,14 @@ def main() -> int:
     data_episode_index = next_episode_index(cli.output_dir)
     records: list[dict[str, Any]] = []
     aborted = False
+    sampling_log = None
 
     print("\n" + "=" * 72)
     print("RoboTwin handover_to_tray human-gated DAgger")
     print("Keys: i=takeover, r=hand back to policy, x=abort episode, q=quit.")
     print("After each episode: s/f=success/failure, y/n=save/discard.")
     print(f"Prompt: {PROMPT}")
+    print(f"Sampling: {cli.es_mode}; takeover evaluation: {cli.takeover_eval}")
     print(f"Output: {cli.output_dir}")
     print("=" * 72 + "\n")
 
@@ -778,7 +813,7 @@ def main() -> int:
         session_started = time.time()
         while (
             rollout_index < int(cli.episodes)
-            and saved_hil_count < int(cli.target_saved)
+            and (cli.takeover_eval or saved_hil_count < int(cli.target_saved))
         ):
             seed = next(seed_iter)
             rollout_started = time.time()
@@ -818,7 +853,10 @@ def main() -> int:
 
             mode = "policy"
             policy_steps = 0
+            decision_step = 0
             intervention_count = 0
+            manual_takeover_requests = 0
+            takeover_request_events: list[dict[str, Any]] = []
             segments: list[dict[str, Any]] = []
             interventions: list[dict[str, Any]] = []
             current_source = "policy"
@@ -843,6 +881,19 @@ def main() -> int:
                 current_source = new_source
                 source_start_step = int(task_env.FRAME_IDX)
 
+            def finish_sampling_log(status: str, error: str | None = None) -> None:
+                nonlocal sampling_log
+                if sampling_log is None:
+                    return
+                sampling_log.write({
+                    "event": "hil_outcome", "status": status,
+                    "manual_takeover_requests": manual_takeover_requests,
+                    "interventions": intervention_count,
+                    "policy_steps": policy_steps,
+                })
+                sampling_log.finish(bool(task_env.eval_success), error, policy_steps)
+                sampling_log = None
+
             print(
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
                 f"saved valid HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
@@ -851,6 +902,34 @@ def main() -> int:
             )
 
             with HumanInterventionInput(task_env) as keyboard:
+                sampler = None
+                if sampling_config is not None:
+                    from coverage_sampling.core import DecisionSampler, EpisodeLog
+                    from coverage_sampling.robotwin import RobotwinRollout
+
+                    def poll_live_control() -> None:
+                        # Lookahead never displays hypothetical states. Process
+                        # pending keys only after restoring the real scene.
+                        task_env._render_viewer_if_available()
+                        pending = keyboard.poll()
+                        if pending in {"intervene", "abort", "quit"}:
+                            raise OperatorInterrupt(pending)
+
+                    sampler = DecisionSampler(
+                        sampling_config,
+                        RobotwinRollout(task_env, scorer, on_restored=poll_live_control),
+                        seed,
+                    )
+                    log_dir = Path(cli.es_log_dir) if cli.es_log_dir else cli.output_dir / "sampling"
+                    sampling_log = EpisodeLog(
+                        log_dir / f"episode_{rollout_index:04d}_seed_{seed}.jsonl",
+                        sampling_config,
+                        {**scorer.metadata, "episode_seed": seed, "instruction": PROMPT,
+                         "policy_checkpoint": cli.ckpt_name, "task_config": cli.task_config,
+                         "frequency": int(cli.frequency), "evaluation_type": "human_gated",
+                         "executor": "Base_Task.take_action(qpos)",
+                         "window_units": "zero-based policy decision calls; inclusive"},
+                    )
                 while True:
                     event = keyboard.poll()
                     if event == "quit":
@@ -864,6 +943,17 @@ def main() -> int:
 
                     if mode == "policy":
                         if event == "intervene":
+                            manual_takeover_requests += 1
+                            request_event = {
+                                "policy_steps": int(policy_steps), "decision": int(decision_step),
+                                "frame_idx": int(task_env.FRAME_IDX),
+                                "elapsed_seconds": round(time.time() - rollout_started, 2),
+                                "accepted": False,
+                            }
+                            takeover_request_events.append(request_event)
+                            if sampling_log is not None:
+                                sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
+                                                    "decision": decision_step, "source": "human"})
                             recovery_iter, chosen_stage = choose_recovery_stage(
                                 task_env, keyboard
                             )
@@ -872,6 +962,7 @@ def main() -> int:
                                     "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
                                 )
                                 continue
+                            request_event["accepted"] = True
                             switch_source("hil")
                             intervention_count += 1
                             interventions.append(
@@ -902,20 +993,40 @@ def main() -> int:
                             task_env=task_env,
                         )
                         model_client.call(func_name="update_obs", obs=xpl_obs)
-                        action_chunk = normalize_action_chunk(
-                            model_client.call(func_name="get_action")
-                        )
-                        if not action_chunk:
-                            raise RuntimeError("Policy returned an empty action chunk.")
-
                         chunk_interrupted = False
-                        for action in action_chunk:
-                            event = keyboard.poll()
-                            if event == "quit":
-                                quit_requested = True
+                        manual_trigger = True
+                        selection = None
+                        if sampler is not None:
+                            def sample_chunk():
+                                poll_live_control()
+                                chunk = sample_absolute_joint_chunk(model_client, observation, "joint")
+                                poll_live_control()
+                                return chunk
+
+                            try:
+                                action_chunk, selection = sampler.select(decision_step, sample_chunk)
+                            except OperatorInterrupt as interruption:
+                                event = interruption.event
+                                action_chunk = []
                                 chunk_interrupted = True
-                                break
-                            if event == "intervene":
+                                if event == "quit":
+                                    quit_requested = True
+                            else:
+                                sampling_log.decision(selection)
+                        else:
+                            action_chunk = normalize_action_chunk(
+                                model_client.call(func_name="get_action")
+                            )
+                        if len(action_chunk) == 0 and not chunk_interrupted:
+                            raise RuntimeError("Policy returned an empty action chunk.")
+                        if not chunk_interrupted:
+                            decision_step += 1
+
+                        for action_idx, action in enumerate(action_chunk):
+                            event = keyboard.poll()
+                            if event in {"quit", "abort", "intervene"}:
+                                if event == "quit":
+                                    quit_requested = True
                                 chunk_interrupted = True
                                 break
 
@@ -934,12 +1045,33 @@ def main() -> int:
                                     bias_dims,
                                     cli.bias_magnitude,
                                 )
+                            actual_coverage = scorer(observation, flat_action) if scorer is not None else None
+                            pending = keyboard.poll() if scorer is not None else None
+                            if pending in {"quit", "abort", "intervene"}:
+                                event = pending
+                                if event == "quit":
+                                    quit_requested = True
+                                chunk_interrupted = True
+                                break
                             task_env.current_control_source = "policy"
                             task_env.take_action(
                                 flat_action,
                                 action_type=robotwin_action_type,
                             )
                             policy_steps += 1
+                            if sampling_log is not None:
+                                predicted = None
+                                if selection["active"]:
+                                    curve = selection["branches"][selection["selected"]]["coverage"]
+                                    if action_idx < len(curve):
+                                        predicted = curve[action_idx]
+                                sampling_log.executed(
+                                    decision_step - 1, action_idx, actual_coverage,
+                                    selection["active"], flat_action,
+                                    predicted_coverage=predicted,
+                                    prediction_error=actual_coverage - predicted if predicted is not None else None,
+                                    success=bool(task_env.eval_success), rollout_step=policy_steps,
+                                )
                             if save_data and policy_steps % int(cli.save_freq) == 0:
                                 task_env._take_picture()
 
@@ -952,6 +1084,7 @@ def main() -> int:
                                 and intervention_count == 0
                             ):
                                 event = "intervene"
+                                manual_trigger = False
                                 chunk_interrupted = True
                                 break
                             if (
@@ -980,6 +1113,18 @@ def main() -> int:
                             episode_aborted = True
                             break
                         if chunk_interrupted and event == "intervene":
+                            if manual_trigger:
+                                manual_takeover_requests += 1
+                                request_event = {
+                                    "policy_steps": int(policy_steps), "decision": int(decision_step),
+                                    "frame_idx": int(task_env.FRAME_IDX),
+                                    "elapsed_seconds": round(time.time() - rollout_started, 2),
+                                    "accepted": False,
+                                }
+                                takeover_request_events.append(request_event)
+                                if sampling_log is not None:
+                                    sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
+                                                        "decision": decision_step, "source": "human"})
                             recovery_iter, chosen_stage = choose_recovery_stage(
                                 task_env, keyboard
                             )
@@ -988,6 +1133,8 @@ def main() -> int:
                                     "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
                                 )
                                 continue
+                            if manual_trigger:
+                                request_event["accepted"] = True
                             switch_source("hil")
                             intervention_count += 1
                             interventions.append(
@@ -1021,6 +1168,8 @@ def main() -> int:
                             switch_source("policy")
                             mode = "policy"
                             reset_policy(model_client)
+                            if sampler is not None:
+                                sampler.checked_replay = False
                             print("\033[93m[HG-DAGGER] Hand back to policy.\033[0m")
                             continue
 
@@ -1047,6 +1196,7 @@ def main() -> int:
 
             if quit_requested:
                 aborted = True
+                finish_sampling_log("quit")
                 notify_trial_end(model_client, "handover_to_tray", seed, False)
                 safe_close_env(task_env)
                 break
@@ -1056,6 +1206,7 @@ def main() -> int:
                 # immediately instead of waiting for the episode to finish or
                 # sitting through the save prompt.
                 aborted_rollouts += 1
+                finish_sampling_log("aborted")
                 discard_recovery_cache(task_env)
                 notify_trial_end(model_client, "handover_to_tray", seed, False)
                 print(
@@ -1064,6 +1215,20 @@ def main() -> int:
                     f"(frame_idx={int(task_env.FRAME_IDX)}, "
                     f"interventions={intervention_count}); discarded, next rollout.\033[0m"
                 )
+                if cli.takeover_eval:
+                    aborted_record = {
+                        "rollout_index": rollout_index, "seed": int(seed),
+                        "sampling_mode": cli.es_mode, "rollout_status": "aborted",
+                        "policy_steps": int(policy_steps),
+                        "manual_takeover_requests": manual_takeover_requests,
+                        "takeover_request_events": takeover_request_events,
+                        "intervention_count": intervention_count,
+                        "interventions": interventions,
+                        "autonomous_success": False, "save_decision": False,
+                        "rollout_seconds": round(time.time() - rollout_started, 2),
+                    }
+                    records.append(aborted_record)
+                    append_jsonl(cli.output_dir / "takeover_rollouts.jsonl", aborted_record)
                 safe_close_env(task_env)
                 rollout_index += 1
                 continue
@@ -1106,10 +1271,15 @@ def main() -> int:
 
             episode_record = {
                 "rollout_index": rollout_index,
+                "rollout_status": "completed",
+                "sampling_mode": cli.es_mode,
                 "episode_index": int(data_episode_index),
                 "seed": int(seed),
                 "instruction": PROMPT,
                 "policy_steps": int(policy_steps),
+                "policy_decisions": int(decision_step),
+                "manual_takeover_requests": manual_takeover_requests,
+                "takeover_request_events": takeover_request_events,
                 "intervention_count": intervention_count,
                 "interventions": interventions,
                 "segments": segments,
@@ -1148,6 +1318,9 @@ def main() -> int:
                 ):
                     saved_hil_count += 1
             records.append(episode_record)
+            if cli.takeover_eval:
+                append_jsonl(cli.output_dir / "takeover_rollouts.jsonl", episode_record)
+            finish_sampling_log("completed")
             notify_trial_end(
                 model_client,
                 "handover_to_tray",
@@ -1189,6 +1362,11 @@ def main() -> int:
     except Exception:
         print("\n\033[91mHG-DAgger session error:\033[0m")
         print(traceback.format_exc())
+        if sampling_log is not None:
+            try:
+                sampling_log.finish(False, traceback.format_exc(), 0)
+            except Exception:
+                pass
         safe_close_env(task_env, clear_cache=True)
         return 3
     finally:
@@ -1196,6 +1374,19 @@ def main() -> int:
 
     session_report = {
         "aborted": aborted,
+        "sampling_mode": cli.es_mode,
+        "sampling_config": asdict(sampling_config) if sampling_config is not None else None,
+        "sampling_window": [cli.es_window_start, cli.es_window_end],
+        "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,
+        "takeover_eval": bool(cli.takeover_eval),
+        "policy_name": cli.policy_name,
+        "policy_host": cli.host,
+        "policy_port": int(cli.port),
+        "checkpoint_name": cli.ckpt_name,
+        "task_config": cli.task_config,
+        "instruction": PROMPT,
+        "frequency": int(cli.frequency),
+        "step_limit": cli.step_limit,
         "seed_mode": cli.seed_mode,
         "rng_seed": cli.rng_seed,
         "seed_range": (
@@ -1233,10 +1424,28 @@ def main() -> int:
         ),
         "records": records,
     }
+    valid_records = [
+        item for item in records
+        if int(item.get("policy_steps", 0)) > 0 or int(item.get("manual_takeover_requests", 0)) > 0
+    ]
+    requested = sum(int(item.get("manual_takeover_requests", 0)) > 0 for item in valid_records)
+    triggered = sum(int(item.get("intervention_count", 0)) > 0 for item in valid_records)
+    session_report["takeover_measurement"] = {
+        "valid_rollouts": len(valid_records),
+        "manual_request_episodes": requested,
+        "manual_request_probability": requested / len(valid_records) if valid_records else None,
+        "recovery_trigger_episodes": triggered,
+        "recovery_trigger_probability": triggered / len(valid_records) if valid_records else None,
+        "excluded_zero_step_rollouts": len(records) - len(valid_records),
+        "aborted_valid_rollouts": sum(item.get("rollout_status") == "aborted" for item in valid_records),
+    }
     session_report["seeds"] = [item.get("seed") for item in records]
     report_path = cli.output_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     write_json(report_path, session_report)
     print(f"session_report={report_path}")
+    if cli.takeover_eval:
+        print(f"[TAKEOVER] {requested}/{len(valid_records)} valid rollouts requested takeover "
+              f"({session_report['takeover_measurement']['manual_request_probability']})")
     return 130 if aborted else 0
 
 
