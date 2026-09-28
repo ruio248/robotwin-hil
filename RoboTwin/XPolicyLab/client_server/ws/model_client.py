@@ -23,7 +23,7 @@ class WsModelClient:
     calls would interleave requests and the reconnect logic on one client).
 
     The `step` sent on each frame counts INFERENCE calls (get_action /
-    get_action_batch), not environment control steps — one inference call
+    get_action_batch / get_action_candidates), not environment control steps — one inference call
     yields a whole action chunk. The server currently only echoes it back.
     """
 
@@ -189,7 +189,7 @@ class WsModelClient:
                 step=self._step,
             )
         )
-        if func_name in {"get_action", "get_action_batch"}:
+        if func_name in {"get_action", "get_action_batch", "get_action_candidates"}:
             self._step += 1
         return response.payload.get("result")
 

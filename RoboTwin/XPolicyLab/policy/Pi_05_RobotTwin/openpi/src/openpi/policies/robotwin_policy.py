@@ -13,9 +13,17 @@ def _parse_image(image) -> np.ndarray:
     image = np.asarray(image)
     if np.issubdtype(image.dtype, np.floating):
         image = (255 * image).astype(np.uint8)
-    if image.shape[0] == 3:
+    if image.ndim == 3 and image.shape[0] == 3:
         image = einops.rearrange(image, "c h w -> h w c")
+    elif image.ndim == 4 and image.shape[1] == 3:
+        image = einops.rearrange(image, "b c h w -> b h w c")
+    elif image.ndim not in (3, 4) or image.shape[-1] != 3:
+        raise ValueError(f"Expected RGB image [C,H,W], [H,W,C], [B,C,H,W] or [B,H,W,C], got {image.shape}")
     return image
+
+
+def _image_mask(image: np.ndarray, valid: bool) -> np.ndarray | np.bool_:
+    return np.full((image.shape[0],), valid, dtype=bool) if image.ndim == 4 else np.bool_(valid)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -66,9 +74,9 @@ class RoboTwinInputs(transforms.DataTransformFn):
                 "right_wrist_0_rgb": right_wrist,
             },
             "image_mask": {
-                "base_0_rgb": np.True_,
-                "left_wrist_0_rgb": np.True_ if self.has_left_wrist else np.False_,
-                "right_wrist_0_rgb": np.True_ if self.has_right_wrist else np.False_,
+                "base_0_rgb": _image_mask(head, True),
+                "left_wrist_0_rgb": _image_mask(head, self.has_left_wrist),
+                "right_wrist_0_rgb": _image_mask(head, self.has_right_wrist),
             },
         }
         if "actions" in data:
@@ -85,4 +93,4 @@ class RoboTwinOutputs(transforms.DataTransformFn):
     action_dim: int = 14
 
     def __call__(self, data: dict) -> dict:
-        return {"actions": np.asarray(data["actions"][:, : self.action_dim])}
+        return {"actions": np.asarray(data["actions"])[..., : self.action_dim]}

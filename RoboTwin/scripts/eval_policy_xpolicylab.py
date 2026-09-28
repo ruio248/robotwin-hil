@@ -945,7 +945,11 @@ def eval_remote_policy(
                 if sampler is not None:
                     def sample_absolute_chunk():
                         return sample_absolute_joint_chunk(model_client, observation, action_type)
-                    action_chunk, selection = sampler.select(decision_step, sample_absolute_chunk)
+                    def sample_candidates(count):
+                        return sample_absolute_joint_candidates(model_client, observation, action_type, count)
+                    action_chunk, selection = sampler.select(
+                        decision_step, sample_absolute_chunk, sample_candidates=sample_candidates
+                    )
                     sampling_log.decision(selection)
                 else:
                     action_chunk = normalize_action_chunk(model_client.call(func_name="get_action"))
@@ -1201,16 +1205,39 @@ def normalize_action_chunk(actions: Any) -> list[Any]:
 
 def sample_absolute_joint_chunk(model_client, observation: Mapping[str, Any], action_type: str) -> np.ndarray:
     """Draw one policy chunk and convert it to physical absolute joint targets."""
-    raw = normalize_action_chunk(model_client.call(func_name="get_action"))
+    return absolute_joint_chunk_from_response(
+        model_client.call(func_name="get_action"), observation, action_type
+    )
+
+
+def absolute_joint_chunk_from_response(raw, observation: Mapping[str, Any], action_type: str) -> np.ndarray:
+    raw = normalize_action_chunk(raw)
     converted = [
         xpolicylab_action_to_robotwin(
             action, action_type=action_type, current_observation=observation
         )
         for action in raw
     ]
-    if not converted or any(kind != "qpos" or action.shape != (14,) for action, kind in converted):
+    if not converted or any(kind != "qpos" or action.shape != (14,) or not np.isfinite(action).all()
+                            for action, kind in converted):
         raise ValueError("MC candidates must contain absolute 14D joint actions")
     return np.stack([action for action, _ in converted])
+
+
+def sample_absolute_joint_candidates(
+    model_client, observation: Mapping[str, Any], action_type: str, num_candidates: int
+) -> np.ndarray:
+    """Fetch K same-observation chunks in one RPC / one Pi0.5 batched inference."""
+    if (isinstance(num_candidates, bool) or not isinstance(num_candidates, int)
+            or not 2 <= num_candidates <= 8):
+        raise ValueError("num_candidates must be an integer between 2 and 8")
+    raw = model_client.call(func_name="get_action_candidates", obs=num_candidates)
+    if not isinstance(raw, (list, tuple, np.ndarray)) or len(raw) != num_candidates:
+        raise ValueError("policy must return exactly K candidate chunks")
+    chunks = [absolute_joint_chunk_from_response(candidate, observation, action_type) for candidate in raw]
+    if len({chunk.shape for chunk in chunks}) != 1:
+        raise ValueError("candidate chunks must have the same shape")
+    return np.stack(chunks)
 
 
 def xpolicylab_action_to_robotwin(

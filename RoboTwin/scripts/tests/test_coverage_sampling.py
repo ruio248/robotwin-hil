@@ -115,7 +115,7 @@ class SamplingTests(unittest.TestCase):
             with self.assertRaises(ValueError): SamplingConfig(**params)
 
     def test_inclusive_window_and_same_candidate_generation(self):
-        calls, verifies = [], []
+        calls, batch_calls, verifies = [], [], []
         class Backend:
             def evaluate(self, candidates, verify, atol):
                 verifies.append(verify)
@@ -125,16 +125,21 @@ class SamplingTests(unittest.TestCase):
         def sample():
             calls.append(len(calls))
             return chunk(len(calls))
-        for decision, expected in enumerate([1, 3, 3, 1]):
+        def sample_batch(count):
+            batch_calls.append(count)
+            return np.stack([chunk(index + 1) for index in range(count)])
+        for decision, expected in enumerate([1, 0, 0, 1]):
             before = len(calls)
-            selected, record = sampler.select(decision, sample)
+            selected, record = sampler.select(decision, sample, sample_candidates=sample_batch)
             self.assertEqual(len(calls)-before, expected)
             self.assertEqual(selected.shape, (2, 14))
-            self.assertEqual(record["num_candidates"], expected)
+            self.assertEqual(record["num_candidates"], 3 if decision in (1, 2) else 1)
+            self.assertEqual(record["policy_inference_requests"], 1)
+        self.assertEqual(batch_calls, [3, 3])
         self.assertEqual(verifies, [True, False])
 
     def test_manual_key_arms_current_decision_then_expires_or_cancels(self):
-        calls = []
+        calls, batch_calls = [], []
         class Backend:
             def evaluate(self, candidates, **kwargs):
                 return [{"coverage": [float(candidate[0, 0])]} for candidate in candidates], None
@@ -143,9 +148,12 @@ class SamplingTests(unittest.TestCase):
         def sample():
             calls.append(1)
             return chunk(1)
+        def sample_batch(count):
+            batch_calls.append(count)
+            return np.stack([chunk(index + 1) for index in range(count)])
         for decision, expected_active, expected_calls in (
-            (4, False, 1), (4, True, 4), (5, True, 4),
-            (6, False, 1), (6, True, 4), (7, False, 1),
+            (4, False, 1), (4, True, 0), (5, True, 0),
+            (6, False, 1), (6, True, 0), (7, False, 1),
         ):
             if decision == 4 and expected_active:
                 self.assertTrue(window.toggle(decision))
@@ -154,10 +162,12 @@ class SamplingTests(unittest.TestCase):
             if decision == 7:
                 self.assertFalse(window.toggle(decision))
             before = len(calls)
-            _, record = sampler.select(decision, sample, active_override=window.active(decision))
+            _, record = sampler.select(decision, sample, sample_candidates=sample_batch,
+                                       active_override=window.active(decision))
             self.assertEqual(record["active"], expected_active)
             self.assertEqual(record["decision"], decision)
             self.assertEqual(len(calls) - before, expected_calls)
+        self.assertEqual(batch_calls, [4, 4, 4])
         with self.assertRaises(ValueError):
             ManualSamplingWindow(0)
 
@@ -192,7 +202,9 @@ class SamplingTests(unittest.TestCase):
                 return [{"coverage": [x]} for x in (1., 1.2, 1.4, 1.6)], None
         cfg = SamplingConfig("enhanced", 0, 0, horizon=2, beta=2)
         sampler = DecisionSampler(cfg, Backend(), 123)
-        selected = [sampler.select(0, lambda: chunk(0))[1]["selected"] for _ in range(3000)]
+        selected = [sampler.select(0, lambda: chunk(0),
+                                  sample_candidates=lambda count: np.stack([chunk(0)] * count))[1]["selected"]
+                    for _ in range(3000)]
         observed = np.bincount(selected, minlength=4)/len(selected)
         np.testing.assert_allclose(observed, coverage_weights([1, 1.2, 1.4, 1.6], 2), atol=.03)
         self.assertTrue((observed > 0).all())
@@ -201,7 +213,8 @@ class SamplingTests(unittest.TestCase):
         config = SamplingConfig("vanilla", 0, 0, horizon=2)
         env = FakeEnv()
         sampler = DecisionSampler(config, RobotwinRollout(env, score), 7)
-        _, record = sampler.select(0, lambda: chunk(1))
+        _, record = sampler.select(0, lambda: chunk(1),
+                                   sample_candidates=lambda count: np.stack([chunk(1)] * count))
         self.assertEqual(len(record["branches"]), 4)
         self.assertEqual(record["weights"], [.25]*4)
         self.assertEqual(env.take_action_cnt, 0)
@@ -210,7 +223,14 @@ class SamplingTests(unittest.TestCase):
         cfg = SamplingConfig("enhanced", 1, 2, horizon=2)
         sampler = DecisionSampler(cfg, None, 7)
         for candidate in (chunk(0, 10), np.zeros((2, 13)), chunk(np.nan)):
-            with self.assertRaises(ValueError): sampler.select(0, lambda: candidate)
+            with self.assertRaises(ValueError):
+                sampler.select(0, lambda: candidate,
+                               sample_candidates=lambda count: np.stack([chunk(1)] * count))
+        for candidate_batch in (np.zeros((3, 2, 14)), np.zeros((4, 3, 14)),
+                                np.full((4, 2, 14), np.nan)):
+            with self.assertRaises(ValueError):
+                sampler.select(1, lambda: chunk(1),
+                               sample_candidates=lambda count: candidate_batch)
 
     def test_cli_rejects_unsupported_or_missing_inputs(self):
         self.assertIsNone(config_from_args({"es_mode": "off"}))
@@ -351,6 +371,7 @@ class EvaluatorIntegrationTests(unittest.TestCase):
         source = Path(__file__).resolve().parents[1] / "eval_policy_xpolicylab.py"
         tree = ast.parse(source.read_text())
         names = {"eval_remote_policy", "normalize_action_chunk", "sample_absolute_joint_chunk",
+                 "sample_absolute_joint_candidates", "absolute_joint_chunk_from_response",
                  "xpolicylab_action_to_robotwin",
                  "normalize_robotwin_action_type", "is_episode_end"}
         tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
@@ -374,6 +395,8 @@ class EvaluatorIntegrationTests(unittest.TestCase):
                 if func_name == "update_obs":
                     self.observations.append(kwargs["obs"]["joint_action"]["vector"][0])
                 if func_name == "get_action": return chunk(1, 1 if bad_chunk else 2)
+                if func_name == "get_action_candidates":
+                    return np.stack([chunk(1, 1 if bad_chunk else 2)] * kwargs["obs"])
         class Scorer:
             metadata = {"critic_sha256": "test", "encoder_sha256": "test_encoder"}
             def __init__(self, *args, **kwargs): pass
@@ -395,7 +418,8 @@ class EvaluatorIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             env, client = self._run("enhanced", directory)
             self.assertEqual(client.calls.count("reset"), 1)
-            self.assertEqual(client.calls.count("get_action"), 4)  # one outside, three inside
+            self.assertEqual(client.calls.count("get_action"), 1)
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
             self.assertEqual(client.observations, [0, 1, 2, 3])  # only real execution, never lookahead
             self.assertEqual(env.take_action_cnt, 4)
             self.assertEqual(env.external_writes, 4)
@@ -405,6 +429,8 @@ class EvaluatorIntegrationTests(unittest.TestCase):
             self.assertEqual([r["prediction_error"] for r in executed], [None, None, 0, 0])
             self.assertTrue(records[-1]["window_reached"])
             self.assertEqual(records[-1]["active_executed_scores"], 2)
+            decisions = [r for r in records if r["event"] == "decision"]
+            self.assertEqual([r["candidate_generation"] for r in decisions], ["single", "batched"])
 
     def test_off_path_preserves_single_policy_call_per_decision(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -4,6 +4,18 @@ Based on `tail-coverage-value-v2` (`74af6f1`). Entry point:
 `RoboTwin/scripts/eval_policy_xpolicylab.py`, opt in with `--es-mode enhanced`.
 Default `off` preserves the existing single-policy-call evaluation path.
 
+## Code layout
+
+- `RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/model.py` owns same-observation
+  Pi0.5 candidate batching; its OpenPI `robotwin_policy.py` transform preserves
+  batch axes for images, masks and actions.
+- `RoboTwin/scripts/eval_policy_xpolicylab.py` converts one batched RPC result
+  into physical 14D joint chunks. Both offline evaluation and
+  `RoboTwin/scripts/hg_dagger_handover.py` use this helper.
+- `RoboTwin/scripts/coverage_sampling/core.py` owns candidate selection and
+  branch evaluation; it never calls the remote policy itself. Thus `e` changes
+  only the active HIL decision, while `off` retains the original path.
+
 ## Algorithm and experiment contract
 
 Choose an inclusive **zero-based policy decision window** `[t_on, t_off]`
@@ -14,10 +26,14 @@ from coverage or adjusted separately for the two experiment arms.
 
 Outside the window, draw and execute one ordinary policy chunk. Inside:
 
-1. Send the current observation to Pi0.5 once, then call `get_action` N times
-   without resetting policy noise between calls. The supported
-   `Pi_05_RobotTwin` adapter calls Flow inference on every call. This first
-   version uses sequential inference; it does not claim batched inference.
+1. Send the current observation to Pi0.5 once, then call
+   `get_action_candidates(N)` once. The `Pi_05_RobotTwin` adapter repeats that
+   observation across N batch rows and makes **one** Flow inference call;
+   each row receives independent Flow noise. This is distinct from
+   `get_action_batch`, which accepts different environment observations and
+   currently loops over them. The PiperX chunk-queue deployment executes
+   part of one inferred chunk; here N distinct chunks are sampled for one
+   current observation and one is selected after branch evaluation.
 2. Capture the live simulator state. Starting from that state for each
    candidate, execute its full H-step chunk through the existing
    `Base_Task.take_action(qpos)` and get fresh observations at every step.
@@ -60,8 +76,9 @@ per episode. Outside the window, policy inference is called once in both arms.
   `0c1dbf97ca0ece2c6e8154c59f5a43a9a9616f38f8dd87b867846b26c586f670`.
 - The expected full chunk length defaults to H=10. A differently shaped
   response fails explicitly; it is not silently truncated or reinterpreted
-  as N candidates. Candidate count defaults to N=4 and beta to 10; beta is a
-  configurable sampling parameter, distinct from the critic-training alpha.
+  as N candidates. Candidate count is limited to 2..8 and defaults to N=4;
+  beta defaults to 10. Beta is a configurable sampling parameter, distinct
+  from the critic-training alpha.
 
 ## Simulator isolation and limits
 
@@ -102,6 +119,10 @@ service is available for this experiment.
 
 Start a dedicated Pi0.5 policy service using the existing baseline config on
 an unused port, e.g. 18311 (run from the isolated checkout's `RoboTwin/`):
+The **service code** must come from this branch: `get_action_candidates` and
+the batch-aware image/output transforms run on the server. An older service
+fails explicitly; it cannot silently substitute N serial calls. Restart only
+the dedicated experiment service, not a separate active HIL service.
 
 ```bash
 POLICY_PY=/hdd/robotwin-hil/RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/openpi/.venv/bin/python
@@ -156,6 +177,18 @@ The `frequency=30` field is retained exactly as in the baseline; it is sent
 to the policy adapter, and does not change TOPP physics execution into a new
 fixed-duration controller. The actual executor remains `take_action`.
 
+The first request for a new batch size can take longer while JAX compiles
+that shape. Batching reduces N policy inference requests to one, but the N
+simulator branch rollouts, critic/image scoring and live execution are still
+serial. It does not promise an N-fold improvement in total HIL latency. Keep
+N and the serving config fixed when comparing timings or experiment arms.
+On Ubuntu's 4090, a direct synthetic-observation smoke with the real `9999`
+checkpoint and H=10 measured about 0.069 s for one warmed inference versus
+0.184 s for one warmed N=4 batch (roughly 0.276 s for four warmed singles).
+The first N=4 call took about 11 s to compile. These timings exclude websocket,
+simulator branches, rendering and critic scoring; they are not end-to-end HIL
+measurements.
+
 ## Recorded metrics and interpretation
 
 Each `episode_*.jsonl` records:
@@ -163,7 +196,8 @@ Each `episode_*.jsonl` records:
 - Artifact hashes/config, task seed, instruction and executor.
 - Each decision's window flag, all candidate action arrays, all simulated
   coverage curves, J, categorical probabilities, selected index, effective
-  sample size, inference/selection timing and replay check errors.
+  sample size, candidate-generation mode, policy request count,
+  inference/selection timing and replay check errors.
 - Every actual executed action's pre-action coverage, predicted coverage,
   prediction error, action index, rollout step and success flag. Actual
   scores are recomputed from actual observations, not copied from lookahead.
@@ -196,8 +230,8 @@ simulation and action executor as `eval_policy_xpolicylab.py`.
 The interactive HIL launcher also supports `HIL_ES_ACTIVATION=manual` with
 `HIL_ES_MODE=enhanced`. The policy runs with ordinary one-chunk sampling until
 you press **e** in the SAPIEN viewer or its launching terminal. From the next
-policy decision, the sampler draws four candidates, simulates and scores their
-full chunks, and resamples one. It stays active for
+policy decision, the sampler draws four candidates in one Pi0.5 batch,
+simulates and scores their full chunks, and resamples one. It stays active for
 `HIL_ES_MANUAL_DURATION` policy decisions (default 10); another **e** press
 within that window turns it off early. Once the window expires, pressing **e**
 starts a fresh one. If pressed during an action chunk, the remaining chunk is

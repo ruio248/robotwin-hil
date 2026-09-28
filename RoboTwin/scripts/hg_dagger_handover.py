@@ -48,6 +48,7 @@ from eval_policy_xpolicylab import (  # noqa: E402
     robotwin_obs_to_xpolicylab,
     safe_close_env,
     sample_absolute_joint_chunk,
+    sample_absolute_joint_candidates,
     xpolicylab_action_to_robotwin,
 )
 from coverage_sampling.options import add_arguments as add_sampling_arguments, config_from_args  # noqa: E402
@@ -1057,9 +1058,16 @@ def main() -> int:
                                 poll_live_control()
                                 return chunk
 
+                            def sample_candidates(count):
+                                poll_live_control()
+                                chunks = sample_absolute_joint_candidates(model_client, observation, "joint", count)
+                                poll_live_control()
+                                return chunks
+
                             try:
                                 action_chunk, selection = sampler.select(
                                     decision_step, sample_chunk,
+                                    sample_candidates=sample_candidates,
                                     active_override=manual_window.active(decision_step) if manual_window is not None else None,
                                 )
                             except OperatorInterrupt as interruption:

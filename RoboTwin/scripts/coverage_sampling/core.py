@@ -30,8 +30,8 @@ class SamplingConfig:
                 raise ValueError(f"{name} must be an integer")
         if self.window_start < 0 or self.window_end < self.window_start:
             raise ValueError("Require 0 <= window_start <= window_end (inclusive, zero-based)")
-        if self.num_candidates < 2 or self.horizon < 1 or self.seed < 0:
-            raise ValueError("Require N >= 2, H >= 1 and seed >= 0")
+        if not 2 <= self.num_candidates <= 8 or self.horizon < 1 or self.seed < 0:
+            raise ValueError("Require 2 <= N <= 8, H >= 1 and seed >= 0")
         if not np.isfinite(self.beta) or self.beta < 0:
             raise ValueError("beta must be finite and nonnegative")
         if not np.isfinite(self.replay_atol) or self.replay_atol <= 0:
@@ -90,25 +90,34 @@ def validated_chunk(chunk, horizon):
 class DecisionSampler:
     """Outside the fixed window: one ordinary policy draw, without lookahead.
 
-    Inside: N independent policy draws, N physical branch rollouts, followed
-    by categorical selection. Vanilla also evaluates all N branches, but
-    selects uniformly. The rollout backend must restore the live scene even
-    on errors. The remote policy RNG is never reset between candidates.
+    Inside: one batched policy draw produces N independent-noise chunks, then
+    N physical branch rollouts are evaluated before categorical selection.
+    Vanilla also evaluates all N branches, but selects uniformly. The rollout
+    backend must restore the live scene even on errors.
     """
     def __init__(self, config, rollout, episode_seed):
         self.config, self.rollout = config, rollout
         self.rng = np.random.default_rng(np.random.SeedSequence([config.seed, int(episode_seed)]))
         self.checked_replay = False
 
-    def select(self, decision, sample_chunk, *, active_override=None):
+    def select(self, decision, sample_chunk, *, sample_candidates, active_override=None):
         start = time.monotonic()
         cfg = self.config
         active = cfg.active(decision) if active_override is None else bool(active_override)
         count = cfg.num_candidates if active else 1
-        candidates = np.stack([validated_chunk(sample_chunk(), cfg.horizon) for _ in range(count)])
+        if active:
+            candidates = np.asarray(sample_candidates(count), dtype=np.float32)
+            if candidates.shape != (count, cfg.horizon, 14) or not np.isfinite(candidates).all():
+                raise ValueError(f"Expected finite batched candidates [{count},{cfg.horizon},14], "
+                                 f"got {candidates.shape}")
+            candidates = candidates.copy()
+        else:
+            candidates = np.stack([validated_chunk(sample_chunk(), cfg.horizon)])
         sampling_seconds = time.monotonic() - start
         record = {"decision": int(decision), "active": active, "mode": cfg.mode,
                   "num_candidates": count, "candidates": candidates.tolist(),
+                  "candidate_generation": "batched" if active else "single",
+                  "policy_inference_requests": 1,
                   "sampling_seconds": sampling_seconds}
         if active:
             branches, replay = self.rollout.evaluate(candidates, verify=not self.checked_replay,
