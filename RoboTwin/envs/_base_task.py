@@ -278,19 +278,26 @@ class Base_Task(gym.Env):
 
         # initialize viewer with camera position and orientation
         if self.render_freq:
-            # Fix the intrinsic render-target resolution instead of relying on
-            # the OS window size. The OS window can be resized or scaled by the
-            # desktop manager, but the framebuffer size is what determines the
-            # render cost.
-            viewer_resolution = os.environ.get("HIL_VIEWER_RESOLUTION", "1600x900").strip().lower()
-            try:
-                width, height = (
-                    int(part) for part in viewer_resolution.split("x", 1)
+            backend = os.environ.get("HIL_VIEWER_BACKEND", "sapien").strip().lower()
+            if backend == "preview":
+                from .hil_preview import LowResolutionViewer, parse_resolution
+
+                self.viewer = LowResolutionViewer(
+                    resolutions=parse_resolution(os.environ.get("HIL_VIEWER_RENDER_RESOLUTION", "320x180")),
+                    window_size=parse_resolution(os.environ.get("HIL_VIEWER_WINDOW_RESOLUTION", "1600x900")),
+                    fullscreen=os.environ.get("HIL_VIEWER_FULLSCREEN", "0").lower() in {"1", "true", "yes", "on"},
                 )
-            except ValueError:
-                width, height = 1600, 900
-            self.viewer = Viewer(self.renderer, resolutions=(width, height))
-            self.viewer.window.resize(width, height)
+            elif backend == "sapien":
+                # Native SAPIEN resizes its framebuffer with the OS window.
+                # Use the preview backend for independently sized presentation.
+                viewer_resolution = os.environ.get("HIL_VIEWER_RESOLUTION", "1280x720").strip().lower()
+                try:
+                    width, height = (int(part) for part in viewer_resolution.split("x", 1))
+                except ValueError:
+                    width, height = 1280, 720
+                self.viewer = Viewer(self.renderer, resolutions=(width, height))
+            else:
+                raise ValueError(f"Unknown HIL_VIEWER_BACKEND={backend!r}; use preview or sapien")
             self.viewer.set_scene(self.scene)
             self.viewer.set_camera_xyz(
                 x=kwargs.get("camera_xyz_x", 0.4),

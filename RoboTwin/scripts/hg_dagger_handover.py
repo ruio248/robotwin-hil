@@ -451,9 +451,9 @@ def render_initial_frame(task_env) -> None:
     # SAPIEN exposes resize but not a portable fullscreen API. Ask the active
     # X11 window manager to fullscreen only the X window owned by this process.
     # Keep this best-effort so headless diagnostics and non-X11 sessions work.
-    if not getattr(task_env, "_hil_fullscreen_checked", False):
+    if not getattr(viewer, "manages_fullscreen", False) and getattr(task_env, "_hil_fullscreen_viewer", None) is not viewer:
         request_fullscreen_for_current_process()
-        task_env._hil_fullscreen_checked = True
+        task_env._hil_fullscreen_viewer = viewer
 
 
 def setup_viewer_diagnostics(task_env) -> None:

@@ -233,10 +233,21 @@ There is no online performance claim from unit tests or synthetic-image smoke.
 
 ### Interactive viewer performance
 
-The desktop launcher now defaults to a 960×540 viewer capped at 30 fps,
-GPU coverage scoring (`HIL_ES_DEVICE=cuda`) and four CPU preprocessing
-threads. These are display/runtime settings; policy cameras retain their
-original ray-tracing settings, image dimensions and RGB preprocessing.
+The HIL launchers default to `HIL_VIEWER_BACKEND=preview`: an independent
+320×180 rasterized spectator camera presented in a 1600×900 SDL window.
+`HIL_VIEWER_RENDER_RESOLUTION` and `HIL_VIEWER_WINDOW_RESOLUTION` control these
+separately; resizing the display never reallocates the spectator framebuffer.
+`HIL_VIEWER_FULLSCREEN=0` preserves the large window; `1` uses SDL fullscreen.
+The preview retains `e/i/r/x/q`, right-drag camera rotation and wheel movement.
+It does not include SAPIEN's entity-inspection panels. Select
+`HIL_VIEWER_BACKEND=sapien` for that UI; its `HIL_VIEWER_RESOLUTION` is coupled
+to the OS window size, including subsequent resizing/fullscreen changes.
+
+Both launchers cap display at 30 fps by default; this can be overridden with
+`HIL_VIEWER_MAX_FPS`. The preview uses Pygame/SDL (2.1.3 is already installed on Ubuntu).
+GPU coverage scoring (`HIL_ES_DEVICE=cuda`) and four CPU preprocessing threads
+remain enabled. Policy cameras retain their original ray-tracing settings,
+image dimensions and RGB preprocessing.
 `HIL_VIEWER_MAX_FPS` is a cap, not a guarantee of the delivered frame rate.
 Set `HIL_DIAG_VIEWER=1` to log measured drawing rate and maximum draw gap.
 
@@ -285,10 +296,35 @@ bash local_serving/run_hg_dagger_smooth.sh
 ```
 
 This preset uses the alpha=1.0 critic and ResNet18 artifact
-paths, manual `e` activation, CUDA scoring, a 45 fps display cap, and a fresh
+paths, manual `e` activation, CUDA scoring, a 320×180 preview in a 1600×900
+window, a 30 fps display cap, and a fresh
 timestamped recording directory. Environment overrides above remain available.
-The 45 fps cap leaves room for observation/inference gaps; it is not a claim
-that the remote desktop delivers 45 fps. `i/r/x/q` retain their existing meanings.
+The display cap leaves time for physics between drawing calls; it is not a claim
+that the remote desktop delivers 30 fps. `i/r/x/q` retain their existing meanings.
+
+The optional desktop integration smoke opens one temporary preview window and
+checks framebuffer size after window enlargement, policy-camera dimensions,
+key edges and graceful close. It never connects to the policy service:
+
+```bash
+HIL_TEST_PREVIEW=1 bash ./enter_robotwin_hil.sh \
+  python scripts/tests/test_hil_preview.py
+```
+
+On Ubuntu's RTX 4090 (2026-09-29), a separate static `handover_to_tray` scene
+at seed 74912 was used for 20 warmed drawing calls per backend, without any
+policy requests or robot steps. Both display windows were 1600×900:
+
+| Viewer | Actual scene framebuffer | Mean draw time |
+|---|---|---|
+| Native SAPIEN | 1600×900 | 27.34 ms |
+| SDL preview | 320×180 | 18.21 ms |
+
+All observation-camera RGB shapes stayed at 240×320×3. Four warmed `get_obs`
+calls averaged 36.28 ms. These are component measurements under concurrent
+host load, not an end-to-end rollout speed claim. The 25× pixel reduction
+reduced drawing time by about one third; presentation, scene updates,
+observation rendering, inference and synchronous lookahead still cost time.
 
 The same sampler can now run inside the interactive HIL loop. The operator
 presses `i` to request a takeover; the existing scripted expert performs the
