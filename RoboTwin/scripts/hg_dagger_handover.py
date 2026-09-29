@@ -52,6 +52,7 @@ from eval_policy_xpolicylab import (  # noqa: E402
     xpolicylab_action_to_robotwin,
 )
 from coverage_sampling.options import add_arguments as add_sampling_arguments, config_from_args  # noqa: E402
+from x11_fullscreen import request_fullscreen_for_current_process  # noqa: E402
 
 
 PROMPT = "Pass the red bar from the left arm to the right arm and place it in the blue tray."
@@ -447,6 +448,12 @@ def render_initial_frame(task_env) -> None:
         )
     task_env._update_render()
     viewer.render()
+    # SAPIEN exposes resize but not a portable fullscreen API. Ask the active
+    # X11 window manager to fullscreen only the X window owned by this process.
+    # Keep this best-effort so headless diagnostics and non-X11 sessions work.
+    if not getattr(task_env, "_hil_fullscreen_checked", False):
+        request_fullscreen_for_current_process()
+        task_env._hil_fullscreen_checked = True
 
 
 def setup_viewer_diagnostics(task_env) -> None:

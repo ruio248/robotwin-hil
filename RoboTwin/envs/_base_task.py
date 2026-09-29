@@ -282,13 +282,13 @@ class Base_Task(gym.Env):
             # the OS window size. The OS window can be resized or scaled by the
             # desktop manager, but the framebuffer size is what determines the
             # render cost.
-            viewer_resolution = os.environ.get("HIL_VIEWER_RESOLUTION", "1280x720").strip().lower()
+            viewer_resolution = os.environ.get("HIL_VIEWER_RESOLUTION", "1600x900").strip().lower()
             try:
                 width, height = (
                     int(part) for part in viewer_resolution.split("x", 1)
                 )
             except ValueError:
-                width, height = 1280, 720
+                width, height = 1600, 900
             self.viewer = Viewer(self.renderer, resolutions=(width, height))
             self.viewer.window.resize(width, height)
             self.viewer.set_scene(self.scene)
