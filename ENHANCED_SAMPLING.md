@@ -33,7 +33,8 @@ Outside the window, draw and execute one ordinary policy chunk. Inside:
    `get_action_batch`, which accepts different environment observations and
    currently loops over them. The PiperX chunk-queue deployment executes
    part of one inferred chunk; here N distinct chunks are sampled for one
-   current observation and one is selected after branch evaluation.
+   current observation and their 14D absolute-joint chunks are averaged after
+   branch evaluation.
 2. Capture the live simulator state. Starting from that state for each
    candidate, execute its full H-step chunk through the existing
    `Base_Task.take_action(qpos)` and get fresh observations at every step.
@@ -41,22 +42,29 @@ Outside the window, draw and execute one ordinary policy chunk. Inside:
    `J[i] = min_h c[i,h]`. Thus h=0 uses the current observation, and h>0 uses
    genuinely simulated future observations. Restore the live state after
    every branch, including exception paths.
-4. Enhanced: `w = softmax(-beta * J)`, sample `I ~ Categorical(w)`, then
-   execute candidate I on the restored live scene. Vanilla: perform the same
-   candidate inference and branch scoring, but select uniformly. No uniform
-   component is mixed into Enhanced weights; beta=0 naturally gives uniform
-   selection. `J-min(J)` is used solely for numerical stability.
+4. Enhanced: `w = softmax(-beta * J)` and execute the complete weighted chunk
+   `A_bar[h, j] = sum_i w[i] * A[i, h, j]` on the restored live scene. Vanilla
+   uses the same candidates and rollouts, but averages them uniformly. The
+   weights apply once per full chunk, not separately at each time step or
+   joint. `J-min(J)` is used solely for numerical stability.
 
-This is finite-N self-normalized importance resampling, approximating
-`q_beta(A|s) ∝ pi(A|s) exp(-beta J(A;s))`. It is not exact sampling from
-q_beta at finite N. Since proposals already come from pi, do not multiply
-the weights by a second policy-likelihood factor.
+This is a finite-N, self-normalized Monte Carlo estimate of the mean action
+under `q_beta(A|s) ∝ pi(A|s) exp(-beta J(A;s))`. The executed average need not
+be one of the sampled chunks and is not a draw from `q_beta`. Since proposals
+already come from pi, do not multiply by a second policy-likelihood factor.
+The 14D targets, including both grippers, are continuous absolute joints;
+convex averaging stays within each candidate dimension's range. The blended
+chunk is not separately simulated. Its coverage is measured on actual
+execution, not inferred from a candidate branch curve.
 
 The two arms use identical policy/critic weights, task config, initial scene
 seed list, window, N, H and execution code. Identical scene seeds do not imply
 identical remote Flow RNG streams or states after actions diverge. All actual
-candidate arrays are logged; the local resampling RNG is independently seeded
-per episode. Outside the window, policy inference is called once in both arms.
+candidate arrays and blended chunks are logged. Outside the window, policy
+inference is called once in both arms. Earlier categorical-resampling logs
+have a different action-aggregation config and must not be mixed with these
+weighted-mean runs. `--es-seed` remains in the log for CLI compatibility; it
+does not seed a local selection draw in this deterministic averaging method.
 
 ## Action, observation, and checkpoint conventions
 
@@ -71,9 +79,12 @@ per episode. Outside the window, policy inference is called once in both arms.
 - Supply the critic checkpoint and local encoder weight file explicitly.
   Full training and inference-only critic payloads are accepted. Record their
   SHA-256, training step, alpha and bootstrap type in every episode log.
-  The tested current alpha=0.1 inference artifact is step 10000,
+  The Ubuntu preset now uses the alpha=1.0 inference artifact at step 10000,
   `bootstrap=policy_next_action_mean`, SHA-256
-  `0c1dbf97ca0ece2c6e8154c59f5a43a9a9616f38f8dd87b867846b26c586f670`.
+  `e925f81c4b84537930ecbdfbfaa69089c6622e444b1e80ef5f739a174420c055`.
+  It had the largest success/failure score gap on the offline 100-rollout
+  diagnostic; alpha=0.5 had the highest final-third outcome AUC. Neither
+  metric establishes online action-selection benefit.
 - The expected full chunk length defaults to H=10. A differently shaped
   response fails explicitly; it is not silently truncated or reinterpreted
   as N candidates. Candidate count is limited to 2..8 and defaults to N=4;
@@ -144,7 +155,7 @@ window; replace it with the development-set window chosen for your experiment.
 
 ```bash
 EVAL_PY=/hdd/miniconda3/envs/robotwin_hil/bin/python
-CRITIC=/path/to/alpha_0p1.pt
+CRITIC=/path/to/alpha_1p0.pt
 ENCODER=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
 SEEDS=/path/to/fixed_seed_manifest.json
 POLICY_CKPT=/path/to/the/served/baseline/9999
@@ -195,12 +206,14 @@ Each `episode_*.jsonl` records:
 
 - Artifact hashes/config, task seed, instruction and executor.
 - Each decision's window flag, all candidate action arrays, all simulated
-  coverage curves, J, categorical probabilities, selected index, effective
-  sample size, candidate-generation mode, policy request count,
-  inference/selection timing and replay check errors.
-- Every actual executed action's pre-action coverage, predicted coverage,
-  prediction error, action index, rollout step and success flag. Actual
-  scores are recomputed from actual observations, not copied from lookahead.
+  coverage curves, J, averaging weights, blended chunk, effective sample
+  size, candidate-generation mode, policy request count, timing and replay
+  check errors. `selected` and `selected_score` are null for active blends;
+  the weighted candidate score is only a surrogate, not the blend's score.
+- Every actual executed action's pre-action coverage, action index, rollout
+  step and success flag. The actual score is recomputed from the real
+  observation. Predicted coverage and prediction error are null for blends,
+  because no candidate branch represents their future trajectory.
 - Episode completion/error, whether the window was reached, active-window
   executed coverage minimum/mean and task outcome.
 
@@ -211,12 +224,71 @@ episode seed sets, critics, policy identifiers, instructions or configs. It
 reports all outcomes plus paired coverage differences among episodes that
 reach the window in both arms; missing-window episodes remain visible.
 
-A lower selected J is encouraged by construction and does not on its own
+A lower weighted candidate J is encouraged by construction and does not on its own
 prove useful deviation. Inspect actual execution curves and task outcomes.
 The comparison does not infer HIL labels or report unobserved interventions.
 There is no online performance claim from unit tests or synthetic-image smoke.
 
 ## Human-requested takeover comparison
+
+### Interactive viewer performance
+
+The desktop launcher now defaults to a 960×540 viewer capped at 30 fps,
+GPU coverage scoring (`HIL_ES_DEVICE=cuda`) and four CPU preprocessing
+threads. These are display/runtime settings; policy cameras retain their
+original ray-tracing settings, image dimensions and RGB preprocessing.
+`HIL_VIEWER_MAX_FPS` is a cap, not a guarantee of the delivered frame rate.
+Set `HIL_DIAG_VIEWER=1` to log measured drawing rate and maximum draw gap.
+
+The HIL viewer draws during live physics substeps, so a long `take_action`
+need not jump straight from its start to its end. Lookahead still sets
+`render_freq=0` and never displays hypothetical branches. The drawing hook
+is rebound after each episode creates a new viewer.
+
+`HIL_CHUNK_OBSERVATIONS=1` skips redundant intermediate camera captures and
+`update_obs` calls only for Pi0.5's complete absolute-joint sampling chunks.
+The policy receives the latest observation before every new chunk request.
+Active coverage scoring still receives fresh pre-action observations and
+`_take_picture` retains its original recording schedule. Set this variable
+to `0` to restore the old per-action observation path.
+
+Launch the policy from this worktree with its shared OpenPI runtime and the
+existing checkpoint config; do not substitute the simulator's Python:
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+ROBOTWIN_HIL_ROOT="$PWD" \
+POLICY_CONFIG_PATH=/hdd/robotwin-hil/RoboTwin/XPolicyLab/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml \
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.3 \
+bash local_serving/start_local_policy_server.sh
+```
+
+This launcher imports the selected worktree's batch-aware adapter and OpenPI
+source, falling back to the installed main-worktree Python environment when
+the worktree has no `.venv`. `OPENPI_PYTHON` can override that interpreter.
+The memory fraction leaves GPU space for SAPIEN, remote desktop and the
+coverage encoder. Bypassing the launcher can reserve most of the GPU for JAX.
+
+The first requests for batch sizes 1 and 4 compile independently. Warm both
+before an interactive comparison. Even after warming, enhanced selection
+synchronously evaluates four 10-step branches and performs an additional
+replay at the first active decision of each episode. The live robot holds
+its current state during this computation; viewer improvements do not turn
+this algorithm into asynchronous control. Selection timings are recorded in
+each decision's `sampling_seconds` and `selection_seconds` fields.
+
+After the service is ready, the saved Ubuntu desktop preset is:
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+bash local_serving/run_hg_dagger_smooth.sh
+```
+
+This preset uses the alpha=1.0 critic and ResNet18 artifact
+paths, manual `e` activation, CUDA scoring, a 45 fps display cap, and a fresh
+timestamped recording directory. Environment overrides above remain available.
+The 45 fps cap leaves room for observation/inference gaps; it is not a claim
+that the remote desktop delivers 45 fps. `i/r/x/q` retain their existing meanings.
 
 The same sampler can now run inside the interactive HIL loop. The operator
 presses `i` to request a takeover; the existing scripted expert performs the
@@ -231,7 +303,8 @@ The interactive HIL launcher also supports `HIL_ES_ACTIVATION=manual` with
 `HIL_ES_MODE=enhanced`. The policy runs with ordinary one-chunk sampling until
 you press **e** in the SAPIEN viewer or its launching terminal. From the next
 policy decision, the sampler draws four candidates in one Pi0.5 batch,
-simulates and scores their full chunks, and resamples one. It stays active for
+simulates and scores their full chunks, then executes their weighted mean. It
+stays active for
 `HIL_ES_MANUAL_DURATION` policy decisions (default 10); another **e** press
 within that window turns it off early. Once the window expires, pressing **e**
 starts a fresh one. If pressed during an action chunk, the remaining chunk is
@@ -244,7 +317,7 @@ This can be launched with the existing dedicated policy server on 18311:
 cd /hdd/robotwin-hil-enhanced-manual
 export HIL_TAKEOVER_EVAL=1 HIL_ES_MODE=enhanced HIL_ES_ACTIVATION=manual
 export HIL_ES_MANUAL_DURATION=10 MANUAL_POLICY_PORT=18311
-export HIL_ES_CRITIC=/hdd/robotwin-hil/outputs/sft_policy_eval_100/coverage_v2_alpha_ablation_step10000_20260924/inference_checkpoints/alpha_0p1.pt
+export HIL_ES_CRITIC=/hdd/robotwin-hil/outputs/sft_policy_eval_100/coverage_v2_alpha_ablation_step10000_20260924/inference_checkpoints/alpha_1p0.pt
 export HIL_ES_ENCODER_WEIGHTS=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
 export HIL_ES_DEVICE=cpu
 export MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/manual_001/enhanced"
@@ -274,7 +347,7 @@ cd /hdd/robotwin-hil-enhanced-sampling
 export HIL_TAKEOVER_EVAL=1 MANUAL_POLICY_PORT=18311
 export MANUAL_SEED_START=40000 MANUAL_MAX_ROLLOUTS=3
 export HIL_ES_WINDOW_START=20 HIL_ES_WINDOW_END=29
-export HIL_ES_CRITIC=/path/to/alpha_0p1.pt
+export HIL_ES_CRITIC=/path/to/alpha_1p0.pt
 export HIL_ES_ENCODER_WEIGHTS=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
 export HIL_ES_DEVICE=cuda:0
 
@@ -300,7 +373,7 @@ request**; its denominator includes completed and operator-aborted rollouts
 that executed a policy action or received an `i` request. An `i` request still
 counts if stage confirmation is cancelled. Accepted expert recoveries have a
 separate rate. The per-rollout JSONL and candidate logs let you inspect the
-first request step and the selected actions. Hypothetical branch actions never
+first request step and the executed blended actions. Hypothetical branch actions never
 count as interventions. During a long lookahead branch the viewer may pause;
 pending keys are processed after the real scene is restored, before the next
 live action.
@@ -329,24 +402,35 @@ python -m unittest discover -s RoboTwin/scripts/tests -p 'test_tail_value.py' -v
 ```
 
 The SAPIEN test skips when SAPIEN is unavailable. It constructs a real CPU
-articulation pushing a box, compares branch replay under contact, and checks
-that the selected candidate can be executed from the restored scene with the
-predicted trajectory. It needs no renderer, robot assets or policy service.
+articulation pushing a box and compares branch replay under contact. A blended
+action is not one of those replayed candidate branches, so its future curve
+cannot be claimed as a prediction. The test needs no renderer, robot assets
+or policy service.
 
-Validation completed on 2026-09-24:
+Historical validation of the earlier categorical sampler on 2026-09-24:
 
 - Local Python 3.11: 45 tests passed (18 new sampler/integration/report tests
   and all 27 existing tail tests). The optional SAPIEN test was skipped on
   macOS and run separately on Ubuntu.
 - Ubuntu Python 3.10 / SAPIEN 3.0.0b1: real CPU articulation/contact snapshot,
   replay and selected-execution test passed without a renderer or policy call.
-- Current alpha=0.1 / step10000 critic loaded successfully. On synthetic RGB,
+- The alpha=0.1 / step10000 critic loaded successfully. On synthetic RGB,
   `OnlineCoverage` equaled a direct call using the training preprocessing and
   model exactly: both returned `40.34922790527344`. This is an interface
   check, not an evaluated task trajectory or a performance result.
 - Source compilation and `git diff --check` passed. The existing Ubuntu
   evaluation process and its policy service were not modified or restarted.
 
-A complete Pi0.5 + visual handover A/B episode has not yet been run with this
-branch. The first online smoke should use a short fixed seed list, inspect
-replay checks and execution/prediction errors, and then expand the experiment.
+The weighted-mean sampler and alpha=1.0 preset require a fresh online smoke
+after the current HIL process is restarted. Inspect branch replay checks,
+the logged blended chunk, and the real executed coverage curve before
+expanding the experiment. Previous categorical-sampler results are not
+results for this revised action aggregation.
+
+Local weighted-mean verification: 24 CPU sampling tests passed, one optional
+SAPIEN test skipped, and two takeover-summary tests passed. The evaluator
+integration test confirmed that distinct candidate chunks produce real
+executed blended actions and no borrowed branch prediction. The Ubuntu HIL
+Python environment loaded the alpha=1.0 artifact above and produced a finite
+score (`39.99695587158203`) for a synthetic three-camera/14D input. This is
+an interface smoke, not an online success measurement.

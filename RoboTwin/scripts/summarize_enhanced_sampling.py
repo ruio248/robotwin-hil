@@ -51,7 +51,10 @@ def compare(vanilla, enhanced):
             row[mode] = {key: end[key] for key in ("success", "window_reached", "active_min", "active_mean",
                                                    "active_low_fraction", "active_low_hit", "active_decisions",
                                                    "active_executed_scores")}
-            row[mode]["mean_selected_lookahead_min"] = mean_or_none([d["selected_score"] for d in decisions])
+            row[mode]["mean_selected_lookahead_min"] = mean_or_none(
+                [d["selected_score"] for d in decisions if d.get("selected_score") is not None])
+            row[mode]["mean_weighted_candidate_min"] = mean_or_none(
+                [d["weighted_candidate_min"] for d in decisions if d.get("weighted_candidate_min") is not None])
             row[mode]["mean_selection_seconds"] = mean_or_none([d["selection_seconds"] for d in decisions])
             errors = [abs(a["prediction_error"]) for a in actual if a["prediction_error"] is not None]
             row[mode]["max_execution_prediction_error"] = max(errors) if errors else None
@@ -63,7 +66,8 @@ def compare(vanilla, enhanced):
               "paired_enhanced_minus_vanilla_active_mean": mean_or_none(
                   [r["enhanced"]["active_mean"] - r["vanilla"]["active_mean"] for r in paired]),
               "interpretation": "Coverage is the frozen selection critic score, not a calibrated failure probability. "
-                                "Finite-N importance resampling approximates the tilted policy. "
+                                "Active actions are weighted averages of the candidates, not sampled candidates. "
+                                "The weighted candidate score is not a simulated score of the blended action. "
                                 "No HIL intervention data is inferred by this evaluator."}
     for mode in ("vanilla", "enhanced"):
         result[mode] = {"success_rate": mean_or_none([int(r[mode]["success"]) for r in rows]),

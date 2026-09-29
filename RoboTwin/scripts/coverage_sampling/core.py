@@ -20,6 +20,7 @@ class SamplingConfig:
     seed: int = 42
     replay_atol: float = 1e-4
     low_threshold: float | None = None
+    action_aggregation: str = "weighted_mean"
 
     def __post_init__(self):
         if self.mode not in {"vanilla", "enhanced"}:
@@ -38,6 +39,8 @@ class SamplingConfig:
             raise ValueError("replay_atol must be finite and positive")
         if self.low_threshold is not None and not np.isfinite(self.low_threshold):
             raise ValueError("low_threshold must be finite")
+        if self.action_aggregation != "weighted_mean":
+            raise ValueError("Only weighted_mean action aggregation is supported")
 
     def active(self, decision):
         return self.window_start <= decision <= self.window_end
@@ -91,13 +94,12 @@ class DecisionSampler:
     """Outside the fixed window: one ordinary policy draw, without lookahead.
 
     Inside: one batched policy draw produces N independent-noise chunks, then
-    N physical branch rollouts are evaluated before categorical selection.
-    Vanilla also evaluates all N branches, but selects uniformly. The rollout
+    N physical branch rollouts are evaluated before action averaging.
+    Vanilla also evaluates all N branches, but averages uniformly. The rollout
     backend must restore the live scene even on errors.
     """
     def __init__(self, config, rollout, episode_seed):
         self.config, self.rollout = config, rollout
-        self.rng = np.random.default_rng(np.random.SeedSequence([config.seed, int(episode_seed)]))
         self.checked_replay = False
 
     def select(self, decision, sample_chunk, *, sample_candidates, active_override=None):
@@ -133,17 +135,25 @@ class DecisionSampler:
                 scores.append(float(curve.min()))
             beta = cfg.beta if cfg.mode == "enhanced" else 0.0
             weights = coverage_weights(scores, beta)
-            chosen = int(self.rng.choice(count, p=weights))
+            # One weight per full chunk; blend matching time steps in physical
+            # absolute-joint space. The blend was not itself simulated, so a
+            # candidate branch curve must never be logged as its prediction.
+            action_chunk = np.tensordot(weights, candidates.astype(np.float64),
+                                        axes=(0, 0)).astype(np.float32)
             record.update(branches=branches, scores=scores, weights=weights.tolist(),
-                          selected=chosen, selected_score=scores[chosen],
+                          action_aggregation="weighted_mean", selected=None,
+                          selected_score=None,
+                          weighted_candidate_min=float(np.dot(weights, scores)),
+                          blended_chunk=action_chunk.tolist(),
                           uniform_expected_score=float(np.mean(scores)),
                           effective_sample_size=float(1.0 / np.square(weights).sum()),
                           replay_check=replay)
         else:
-            chosen = 0
-            record.update(selected=0, weights=[1.0], branches=[], scores=[])
+            action_chunk = candidates[0].copy()
+            record.update(action_aggregation="single", selected=0,
+                          weights=[1.0], branches=[], scores=[])
         record["selection_seconds"] = time.monotonic() - start
-        return candidates[chosen].copy(), record
+        return action_chunk, record
 
 
 class EpisodeLog:

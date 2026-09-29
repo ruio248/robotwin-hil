@@ -196,20 +196,76 @@ class SamplingTests(unittest.TestCase):
         window.down = True
         self.assertEqual(keyboard.poll(), "sampling_toggle")
 
-    def test_stochastic_selection_not_argmin(self):
+    def test_weighted_mean_blends_matching_steps_and_all_14_dimensions(self):
         class Backend:
             def evaluate(self, candidates, **kwargs):
-                return [{"coverage": [x]} for x in (1., 1.2, 1.4, 1.6)], None
+                return [{"coverage": [x + 10, x]} for x in (1., 1.2, 1.4, 1.6)], None
         cfg = SamplingConfig("enhanced", 0, 0, horizon=2, beta=2)
         sampler = DecisionSampler(cfg, Backend(), 123)
-        selected = [sampler.select(0, lambda: chunk(0),
-                                  sample_candidates=lambda count: np.stack([chunk(0)] * count))[1]["selected"]
-                    for _ in range(3000)]
-        observed = np.bincount(selected, minlength=4)/len(selected)
-        np.testing.assert_allclose(observed, coverage_weights([1, 1.2, 1.4, 1.6], 2), atol=.03)
-        self.assertTrue((observed > 0).all())
+        candidates = np.stack([chunk(i + 1) for i in range(4)])
+        candidates[:, 1, :] += 10
+        candidates[:, :, 6] = np.array([0, .25, .5, 1.])[:, None]
+        candidates[:, :, 13] = np.array([1., .5, .25, 0.])[:, None]
+        blended, record = sampler.select(0, lambda: chunk(0),
+                                         sample_candidates=lambda count: candidates)
+        weights = coverage_weights([1, 1.2, 1.4, 1.6], 2)
+        expected = np.tensordot(weights, candidates, axes=(0, 0))
+        np.testing.assert_allclose(blended, expected, rtol=1e-6)
+        np.testing.assert_allclose(record["blended_chunk"], expected, rtol=1e-6)
+        np.testing.assert_allclose(record["weights"], weights)
+        self.assertIsNone(record["selected"])
+        self.assertIsNone(record["selected_score"])
+        self.assertAlmostEqual(record["weighted_candidate_min"], np.dot(weights, [1, 1.2, 1.4, 1.6]))
+        self.assertFalse(any(np.array_equal(blended, candidate) for candidate in candidates))
 
-    def test_vanilla_uses_same_rollouts_and_uniform_selection(self):
+        vanilla = DecisionSampler(SamplingConfig("vanilla", 0, 0, horizon=2), Backend(), 123)
+        uniform, vanilla_record = vanilla.select(0, lambda: chunk(0),
+                                                 sample_candidates=lambda count: candidates)
+        np.testing.assert_allclose(uniform, candidates.mean(axis=0))
+        self.assertEqual(vanilla_record["weights"], [.25] * 4)
+
+    def test_live_substeps_draw_but_lookahead_never_reaches_viewer(self):
+        source = Path(__file__).resolve().parents[1] / "hg_dagger_handover.py"
+        tree = ast.parse(source.read_text())
+        tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                     and node.name == "install_viewer_frame_limit"]
+        clock = [10.0]
+        draws, updates = [], []
+        namespace = {"os": SimpleNamespace(environ={"HIL_VIEWER_MAX_FPS": "30"}),
+                     "time": SimpleNamespace(perf_counter=lambda: clock[0])}
+        exec(compile(tree, str(source), "exec"), namespace)
+        env = SimpleNamespace(render_freq=10,
+                              viewer=SimpleNamespace(render=lambda: draws.append(clock[0])),
+                              _update_render=lambda: updates.append(clock[0]))
+        env._render_viewer_if_available = lambda: env.viewer.render()
+        namespace["install_viewer_frame_limit"](env)
+        for step in range(100):
+            clock[0] = 10.0 + step * .01
+            env._update_render()
+        self.assertEqual(len(updates), 100)
+        self.assertGreaterEqual(len(draws), 24)
+        self.assertLessEqual(len(draws), 30)
+        before = len(draws)
+        env.render_freq = 0
+        for step in range(100):
+            clock[0] = 11.0 + step * .01
+            env._update_render()
+        self.assertEqual(len(draws), before)
+        self.assertEqual(len(updates), 200)
+        env.render_freq = 10
+        clock[0] = 12.0
+        env._update_render()
+        self.assertEqual(len(draws), before + 1)
+        next_draws = []
+        env.viewer = SimpleNamespace(render=lambda: next_draws.append(clock[0]))
+        namespace["install_viewer_frame_limit"](env)
+        clock[0] = 13.0
+        env._update_render()
+        self.assertEqual(len(next_draws), 1)
+        self.assertEqual(len(draws), before + 1)
+        self.assertEqual(len(updates), 202)
+
+    def test_vanilla_uses_same_rollouts_and_uniform_mean(self):
         config = SamplingConfig("vanilla", 0, 0, horizon=2)
         env = FakeEnv()
         sampler = DecisionSampler(config, RobotwinRollout(env, score), 7)
@@ -366,7 +422,7 @@ class EvaluatorIntegrationTests(unittest.TestCase):
     Extracting functions avoids importing SAPIEN's GPU renderer in CPU tests;
     the evaluator loop and action adapters are compiled unchanged from source.
     """
-    def _run(self, mode, directory, bad_chunk=False):
+    def _run(self, mode, directory, bad_chunk=False, distinct_candidates=False):
         from coverage_sampling.core import SamplingConfig
         source = Path(__file__).resolve().parents[1] / "eval_policy_xpolicylab.py"
         tree = ast.parse(source.read_text())
@@ -396,7 +452,9 @@ class EvaluatorIntegrationTests(unittest.TestCase):
                     self.observations.append(kwargs["obs"]["joint_action"]["vector"][0])
                 if func_name == "get_action": return chunk(1, 1 if bad_chunk else 2)
                 if func_name == "get_action_candidates":
-                    return np.stack([chunk(1, 1 if bad_chunk else 2)] * kwargs["obs"])
+                    return np.stack([chunk(1 + (i if distinct_candidates else 0),
+                                           1 if bad_chunk else 2)
+                                     for i in range(kwargs["obs"])])
         class Scorer:
             metadata = {"critic_sha256": "test", "encoder_sha256": "test_encoder"}
             def __init__(self, *args, **kwargs): pass
@@ -426,7 +484,7 @@ class EvaluatorIntegrationTests(unittest.TestCase):
             records = [json.loads(line) for line in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
             executed = [r for r in records if r["event"] == "executed"]
             self.assertEqual([r["coverage"] for r in executed], [1, 2, 3, 4])
-            self.assertEqual([r["prediction_error"] for r in executed], [None, None, 0, 0])
+            self.assertEqual([r["prediction_error"] for r in executed], [None] * 4)
             self.assertTrue(records[-1]["window_reached"])
             self.assertEqual(records[-1]["active_executed_scores"], 2)
             decisions = [r for r in records if r["event"] == "decision"]
@@ -438,6 +496,20 @@ class EvaluatorIntegrationTests(unittest.TestCase):
             self.assertEqual(client.calls.count("get_action"), 2)
             self.assertEqual(env.take_action_cnt, 4)
             self.assertFalse(list(Path(directory).iterdir()))
+
+    def test_real_evaluator_executes_blended_chunk_not_a_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True)
+            rows = [json.loads(line) for line in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            active = next(r for r in rows if r["event"] == "decision" and r["active"])
+            blend = np.asarray(active["blended_chunk"])
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
+            self.assertIsNone(active["selected"])
+            self.assertTrue(1 < blend[0, 0] < 3)
+            executed = [r for r in rows if r["event"] == "executed" and r["active"]]
+            np.testing.assert_allclose([r["action"] for r in executed], blend)
+            self.assertTrue(all(r["predicted_coverage"] is None for r in executed))
+            self.assertAlmostEqual(env.x, 2 + 2 * blend[0, 0], places=5)
 
     def test_bad_candidate_aborts_instead_of_counting_as_policy_failure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -457,7 +529,8 @@ class EvaluatorIntegrationTests(unittest.TestCase):
             result = compare(vanilla, enhanced)
             self.assertEqual(result["paired_window_reached"], 1)
             self.assertEqual(result["paired_enhanced_minus_vanilla_active_min"], 0)
-            self.assertEqual(result["per_seed"][0]["enhanced"]["max_execution_prediction_error"], 0)
+            self.assertIsNone(result["per_seed"][0]["enhanced"]["max_execution_prediction_error"])
+            self.assertIsNotNone(result["per_seed"][0]["enhanced"]["mean_weighted_candidate_min"])
             enhanced[7]["head"]["critic_sha256"] = "different"
             with self.assertRaisesRegex(ValueError, "critic_sha256"): compare(vanilla, enhanced)
 

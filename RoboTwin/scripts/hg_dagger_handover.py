@@ -521,49 +521,67 @@ def setup_viewer_diagnostics(task_env) -> None:
 
 
 def install_viewer_frame_limit(task_env) -> None:
-    """Redraw the viewer at most ``HIL_VIEWER_MAX_FPS`` times per second.
+    """Refresh the live viewer during physics substeps, with a wall-clock cap.
 
-    ``Base_Task.take_action`` redraws the viewer on entry and exit regardless
-    of ``--render-freq``, so a supervised rollout pays for two viewer renders
-    per policy step (~2 x 15 ms at 960x540, more at higher resolutions).  The
-    supervisor only needs the window to look smooth, so throttle the redraw by
-    wall-clock time instead. ``HIL_VIEWER_MAX_FPS=0`` restores the old
-    behaviour of rendering on every call.
+    Entry/exit-only drawing makes a long action appear as a jump. Use the
+    existing render-update hook inside the physics loop as an opportunity to
+    draw. Lookahead sets render_freq=0, so hypothetical states remain hidden.
+    This does not change physics steps, commands, recording or model images.
     """
-    if getattr(task_env, "_hil_viewer_fps_installed", False):
+    viewer = getattr(task_env, "viewer", None)
+    if viewer is None or getattr(task_env, "_hil_viewer_bound_instance", None) is viewer:
         return
-    task_env._hil_viewer_fps_installed = True
+    task_env._hil_viewer_bound_instance = viewer
 
-    raw = os.environ.get("HIL_VIEWER_MAX_FPS", "10").strip()
+    raw = os.environ.get("HIL_VIEWER_MAX_FPS", "30").strip()
     try:
         max_fps = float(raw)
     except ValueError:
-        print(f"[VIEWER] invalid HIL_VIEWER_MAX_FPS={raw!r}; keeping 10 fps", flush=True)
-        max_fps = 10.0
+        print(f"[VIEWER] invalid HIL_VIEWER_MAX_FPS={raw!r}; keeping 30 fps", flush=True)
+        max_fps = 30.0
 
-    viewer = getattr(task_env, "viewer", None)
-    if viewer is None or max_fps <= 0:
+    if max_fps <= 0:
         print(f"[VIEWER] frame limit disabled (HIL_VIEWER_MAX_FPS={raw})", flush=True)
         return
 
     min_interval = 1.0 / max_fps
     original_render = viewer.render
-    state = {"last": 0.0, "rendered": 0, "skipped": 0}
+    state = {"last": 0.0, "rendered": 0, "skipped": 0,
+             "report_time": time.perf_counter(), "report_frames": 0, "max_gap": 0.0}
+    task_env._hil_viewer_stats = state
 
     def throttled_render(*args, **kwargs):
         now = time.perf_counter()
         if now - state["last"] < min_interval:
             state["skipped"] += 1
             return None
+        if state["last"]:
+            state["max_gap"] = max(state["max_gap"], now - state["last"])
         state["last"] = now
         state["rendered"] += 1
-        return original_render(*args, **kwargs)
+        result = original_render(*args, **kwargs)
+        if os.environ.get("HIL_DIAG_VIEWER") == "1" and now - state["report_time"] >= 5:
+            elapsed = now - state["report_time"]
+            fps = (state["rendered"] - state["report_frames"]) / elapsed
+            print(f"\n[VIEWER] measured={fps:.1f} fps max_gap={state['max_gap']:.3f}s", flush=True)
+            state.update(report_time=now, report_frames=state["rendered"], max_gap=0.0)
+        return result
 
     viewer.render = throttled_render
+    original_update = getattr(task_env, "_hil_viewer_original_update", task_env._update_render)
+    task_env._hil_viewer_original_update = original_update
+
+    def update_live_viewer(*args, **kwargs):
+        result = original_update(*args, **kwargs)
+        if task_env.render_freq and getattr(task_env, "viewer", None) is not None:
+            task_env._render_viewer_if_available()
+        return result
+
+    task_env._update_render = update_live_viewer
     print(
         f"[VIEWER] render limited to {max_fps:g} fps "
         f"(min interval {min_interval * 1000:.0f} ms); "
-        "set HIL_VIEWER_MAX_FPS=0 to disable",
+        "drawing live physics substeps; set HIL_VIEWER_MAX_FPS=0 for legacy drawing",
         flush=True,
     )
 
@@ -859,7 +877,7 @@ def main() -> int:
             render_initial_frame(task_env)
             if rollout_index == 0:
                 setup_viewer_diagnostics(task_env)
-                install_viewer_frame_limit(task_env)
+            install_viewer_frame_limit(task_env)
             prepare_policy_case(model_client, "handover_to_tray", seed, PROMPT, "joint")
             reset_policy(model_client)
 
@@ -1129,7 +1147,7 @@ def main() -> int:
                             policy_steps += 1
                             if sampling_log is not None:
                                 predicted = None
-                                if selection["active"]:
+                                if selection["active"] and selection["selected"] is not None:
                                     curve = selection["branches"][selection["selected"]]["coverage"]
                                     if action_idx < len(curve):
                                         predicted = curve[action_idx]
@@ -1163,15 +1181,28 @@ def main() -> int:
                                 chunk_interrupted = True
                                 break
 
-                            observation = task_env.get_obs()
-                            xpl_obs = robotwin_obs_to_xpolicylab(
-                                observation,
-                                instruction=PROMPT,
-                                env_idx=0,
-                                frequency=int(cli.frequency),
-                                task_env=task_env,
+                            # Pi0.5 consumes only the latest observation at the next
+                            # chunk boundary. Its sampler supplies complete absolute
+                            # joint targets, so no intermediate image is needed to
+                            # resolve an action. Active coverage scoring still needs
+                            # a fresh pre-action observation; recording has its own
+                            # unchanged _take_picture schedule above.
+                            chunk_observations = (
+                                cli.policy_name == "Pi_05_RobotTwin"
+                                and sampler is not None
+                                and os.environ.get("HIL_CHUNK_OBSERVATIONS", "0") == "1"
                             )
-                            model_client.call(func_name="update_obs", obs=xpl_obs)
+                            if not chunk_observations or (should_score and action_idx + 1 < len(action_chunk)):
+                                observation = task_env.get_obs()
+                            if not chunk_observations:
+                                xpl_obs = robotwin_obs_to_xpolicylab(
+                                    observation,
+                                    instruction=PROMPT,
+                                    env_idx=0,
+                                    frequency=int(cli.frequency),
+                                    task_env=task_env,
+                                )
+                                model_client.call(func_name="update_obs", obs=xpl_obs)
 
                         if quit_requested:
                             break

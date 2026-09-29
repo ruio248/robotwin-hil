@@ -13,7 +13,8 @@ from summarize_hil_takeover import summarize
 
 def session(mode, requests, steps=(3, 3, 3)):
     config = {"mode": mode, "window_start": 2, "window_end": 4,
-              "num_candidates": 4, "horizon": 10, "beta": 10, "seed": 42, "replay_atol": 1e-4}
+              "num_candidates": 4, "horizon": 10, "beta": 10, "seed": 42, "replay_atol": 1e-4,
+              "action_aggregation": "weighted_mean"}
     return {
         "sampling_mode": mode, "sampling_config": None if mode == "off" else config,
         "sampling_window": [2, 4], "critic_sha256": None if mode == "off" else "same-critic",
@@ -56,6 +57,10 @@ class TakeoverSummaryTests(unittest.TestCase):
         changed = deepcopy(sessions)
         changed["enhanced"]["critic_sha256"] = "different"
         with self.assertRaisesRegex(ValueError, "same critic"):
+            summarize(changed)
+        changed = deepcopy(sessions)
+        changed["enhanced"]["sampling_config"]["action_aggregation"] = "categorical"
+        with self.assertRaisesRegex(ValueError, "action_aggregation"):
             summarize(changed)
         changed = deepcopy(sessions)
         changed["enhanced"]["sampling_activation"] = "manual"

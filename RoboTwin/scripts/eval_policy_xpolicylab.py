@@ -967,7 +967,7 @@ def eval_remote_policy(
                     rollout_steps += 1
                     if sampling_log is not None:
                         predicted = None
-                        if selection["active"]:
+                        if selection["active"] and selection["selected"] is not None:
                             curve = selection["branches"][selection["selected"]]["coverage"]
                             if action_idx < len(curve):
                                 predicted = curve[action_idx]

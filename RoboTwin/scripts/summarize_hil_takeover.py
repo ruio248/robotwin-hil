@@ -44,8 +44,9 @@ def summarize(sessions: dict[str, dict]) -> dict:
     vanilla, enhanced = sessions["vanilla"], sessions["enhanced"]
     if vanilla.get("critic_sha256") != enhanced.get("critic_sha256"):
         raise ValueError("Vanilla and Enhanced must use the same critic")
-    for field in ("window_start", "window_end", "num_candidates", "horizon", "beta", "seed", "replay_atol"):
-        if vanilla["sampling_config"][field] != enhanced["sampling_config"][field]:
+    for field in ("window_start", "window_end", "num_candidates", "horizon", "beta", "seed",
+                  "replay_atol", "action_aggregation"):
+        if vanilla["sampling_config"].get(field) != enhanced["sampling_config"].get(field):
             raise ValueError(f"Vanilla and Enhanced differ in {field}")
 
     rows = {mode: {int(record["seed"]): record for record in sessions[mode]["records"]}

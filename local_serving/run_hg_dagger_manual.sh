@@ -10,7 +10,10 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY no_proxy
 export DISPLAY="${DISPLAY:-:1}"
 export XAUTHORITY="${XAUTHORITY:-/home/ruio/.Xauthority}"
 export HIL_VIEWER_RESOLUTION="${HIL_VIEWER_RESOLUTION:-960x540}"
-export HIL_VIEWER_MAX_FPS="${HIL_VIEWER_MAX_FPS:-10}"
+export HIL_VIEWER_MAX_FPS="${HIL_VIEWER_MAX_FPS:-30}"
+export HIL_CHUNK_OBSERVATIONS="${HIL_CHUNK_OBSERVATIONS:-1}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
 
 sampling_mode="${HIL_ES_MODE:-off}"
 case "$sampling_mode" in off|vanilla|enhanced) ;; *) echo "Invalid HIL_ES_MODE=$sampling_mode" >&2; exit 2 ;; esac
@@ -58,7 +61,7 @@ if [[ "$sampling_mode" != off ]]; then
   sampling_args+=(
     --es-critic "$HIL_ES_CRITIC"
     --es-encoder-weights "$HIL_ES_ENCODER_WEIGHTS"
-    --es-device "${HIL_ES_DEVICE:-cpu}"
+    --es-device "${HIL_ES_DEVICE:-cuda}"
     --es-num-candidates "${HIL_ES_NUM_CANDIDATES:-4}"
     --es-horizon "${HIL_ES_HORIZON:-10}"
     --es-beta "${HIL_ES_BETA:-10}"
