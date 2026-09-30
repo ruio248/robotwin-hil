@@ -805,7 +805,6 @@ def eval_remote_policy(
     if sampling_config is not None:
         from coverage_sampling.core import DecisionSampler, EpisodeLog
         from coverage_sampling.critic import OnlineCoverage
-        from coverage_sampling.robotwin import RobotwinRollout
         scorer = OnlineCoverage(usr_args["es_critic"], usr_args["es_encoder_weights"],
                                 device=usr_args.get("es_device", "cpu"))
 
@@ -923,12 +922,13 @@ def eval_remote_policy(
         reset_policy(model_client)
         try:
             if sampling_config is not None:
-                sampler = DecisionSampler(sampling_config, RobotwinRollout(task_env, scorer), now_seed)
+                sampler = DecisionSampler(sampling_config, None, now_seed)
                 sampling_log = EpisodeLog(
                     Path(usr_args["es_log_dir"]) / f"episode_{task_env.test_num:04d}_seed_{now_seed}.jsonl",
                     sampling_config, {**scorer.metadata, "episode_seed": now_seed,
                                       "instruction": instruction, "policy_checkpoint": args["ckpt_setting"],
                                       "task_config": args["task_config"], "frequency": frequency,
+                                      "selection_score_basis": "current_observation_first_action",
                                       "executor": "Base_Task.take_action(qpos)",
                                       "window_units": "zero-based policy decision calls; inclusive"})
             while not is_episode_end(task_env):
@@ -948,7 +948,8 @@ def eval_remote_policy(
                     def sample_candidates(count):
                         return sample_absolute_joint_candidates(model_client, observation, action_type, count)
                     action_chunk, selection = sampler.select(
-                        decision_step, sample_absolute_chunk, sample_candidates=sample_candidates
+                        decision_step, sample_absolute_chunk, sample_candidates=sample_candidates,
+                        score_candidates=lambda actions: scorer.score_actions(observation, actions),
                     )
                     sampling_log.decision(selection)
                 else:
@@ -962,7 +963,8 @@ def eval_remote_policy(
                         action_type=action_type,
                         current_observation=observation,
                     )
-                    actual_coverage = scorer(observation, flat_action) if scorer is not None else None
+                    actual_coverage = (scorer(observation, flat_action)
+                                       if scorer is not None and selection["active"] and action_idx == 0 else None)
                     task_env.take_action(flat_action, action_type=robotwin_action_type)
                     rollout_steps += 1
                     if sampling_log is not None:

@@ -33,16 +33,22 @@ class OnlineCoverage:
                          "state_semantics": "RoboTwin joint_action.vector (same drive-target state as training)"}
 
     @torch.inference_mode()
-    def __call__(self, observation, action):
+    def score_actions(self, observation, actions):
         state = np.asarray(observation["joint_action"]["vector"], dtype=np.float32)
-        action = np.asarray(action, dtype=np.float32)
-        if state.shape != (14,) or action.shape != (14,):
-            raise ValueError("Coverage critic requires 14D state and absolute joint action")
+        actions = np.asarray(actions, dtype=np.float32)
+        if state.shape != (14,) or actions.ndim != 2 or actions.shape[1] != 14 or not len(actions):
+            raise ValueError("Coverage critic requires 14D state and [K,14] absolute joint actions")
         cameras = ("head_camera", "left_camera", "right_camera")
         images = {key: observation["observation"][camera]["rgb"] for key, camera in zip(CAMERAS, cameras)}
         features = self.encoder(images)
-        tensors = [torch.as_tensor(x, device=self.device)[None] for x in (features, state, action)]
+        tensors = [torch.as_tensor(x, device=self.device)[None] for x in (features, state, actions)]
         finite_guard(dict(zip(("features", "state", "action"), tensors)))
-        score = self.model(*tensors)
-        finite_guard({"coverage": score}, self.limit)
-        return float(score.item())
+        scores = self.model.score_many(*tensors)[0]
+        finite_guard({"coverage": scores}, self.limit)
+        return scores.cpu().numpy().astype(np.float64)
+
+    def __call__(self, observation, action):
+        action = np.asarray(action, dtype=np.float32)
+        if action.shape != (14,):
+            raise ValueError("Coverage critic requires one 14D absolute joint action")
+        return float(self.score_actions(observation, action[None])[0])

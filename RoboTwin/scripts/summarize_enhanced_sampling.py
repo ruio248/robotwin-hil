@@ -41,6 +41,8 @@ def compare(vanilla, enhanced):
         for key in ("critic_sha256", "encoder_sha256", "policy_checkpoint", "task_config", "frequency", "instruction", "executor"):
             if left["head"][key] != right["head"][key]:
                 raise ValueError(f"Unmatched {key} at seed {seed}")
+        if left["head"].get("selection_score_basis") != right["head"].get("selection_score_basis"):
+            raise ValueError(f"Unmatched selection_score_basis at seed {seed}")
         lc, rc = dict(left["head"]["config"]), dict(right["head"]["config"])
         lc.pop("mode"); rc.pop("mode")
         if lc != rc:
@@ -55,6 +57,8 @@ def compare(vanilla, enhanced):
                 [d["selected_score"] for d in decisions if d.get("selected_score") is not None])
             row[mode]["mean_weighted_candidate_min"] = mean_or_none(
                 [d["weighted_candidate_min"] for d in decisions if d.get("weighted_candidate_min") is not None])
+            row[mode]["mean_weighted_candidate_score"] = mean_or_none(
+                [d["weighted_candidate_score"] for d in decisions if d.get("weighted_candidate_score") is not None])
             row[mode]["mean_selection_seconds"] = mean_or_none([d["selection_seconds"] for d in decisions])
             errors = [abs(a["prediction_error"]) for a in actual if a["prediction_error"] is not None]
             row[mode]["max_execution_prediction_error"] = max(errors) if errors else None

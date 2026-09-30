@@ -91,18 +91,17 @@ def validated_chunk(chunk, horizon):
 
 
 class DecisionSampler:
-    """Outside the fixed window: one ordinary policy draw, without lookahead.
+    """Draw policy chunks and blend them using same-observation action scores.
 
-    Inside: one batched policy draw produces N independent-noise chunks, then
-    N physical branch rollouts are evaluated before action averaging.
-    Vanilla also evaluates all N branches, but averages uniformly. The rollout
-    backend must restore the live scene even on errors.
+    The optional rollout backend remains for reproducing older diagnostics;
+    online callers provide score_candidates to score only each first action.
     """
     def __init__(self, config, rollout, episode_seed):
         self.config, self.rollout = config, rollout
         self.checked_replay = False
 
-    def select(self, decision, sample_chunk, *, sample_candidates, active_override=None):
+    def select(self, decision, sample_chunk, *, sample_candidates, score_candidates=None,
+               active_override=None):
         start = time.monotonic()
         cfg = self.config
         active = cfg.active(decision) if active_override is None else bool(active_override)
@@ -122,32 +121,47 @@ class DecisionSampler:
                   "policy_inference_requests": 1,
                   "sampling_seconds": sampling_seconds}
         if active:
-            branches, replay = self.rollout.evaluate(candidates, verify=not self.checked_replay,
-                                                     atol=cfg.replay_atol)
-            self.checked_replay = True
-            if len(branches) != count:
-                raise ValueError("Rollout returned the wrong candidate count")
-            scores = []
-            for branch in branches:
-                curve = np.asarray(branch["coverage"], dtype=np.float64)
-                if curve.ndim != 1 or not 1 <= len(curve) <= cfg.horizon or not np.isfinite(curve).all():
-                    raise ValueError("Every branch needs 1..H finite coverage scores")
-                scores.append(float(curve.min()))
+            if score_candidates is not None:
+                # C(o_t, a_t) already contains the TD-trained continuation
+                # estimate. No hypothetical physics transition is needed.
+                scores = np.asarray(score_candidates(candidates[:, 0, :].copy()), dtype=np.float64)
+                if scores.shape != (count,) or not np.isfinite(scores).all():
+                    raise ValueError(f"Expected {count} finite current-action coverage scores")
+                score_basis, branches, replay = "current_observation_first_action", [], None
+            else:
+                if self.rollout is None:
+                    raise ValueError("Active sampling requires a current-action scorer or legacy rollout backend")
+                branches, replay = self.rollout.evaluate(candidates, verify=not self.checked_replay,
+                                                         atol=cfg.replay_atol)
+                self.checked_replay = True
+                if len(branches) != count:
+                    raise ValueError("Rollout returned the wrong candidate count")
+                scores = []
+                for branch in branches:
+                    curve = np.asarray(branch["coverage"], dtype=np.float64)
+                    if curve.ndim != 1 or not 1 <= len(curve) <= cfg.horizon or not np.isfinite(curve).all():
+                        raise ValueError("Every branch needs 1..H finite coverage scores")
+                    scores.append(float(curve.min()))
+                score_basis = "legacy_branch_min"
+            scoring_seconds = time.monotonic() - start - sampling_seconds
             beta = cfg.beta if cfg.mode == "enhanced" else 0.0
             weights = coverage_weights(scores, beta)
-            # One weight per full chunk; blend matching time steps in physical
-            # absolute-joint space. The blend was not itself simulated, so a
-            # candidate branch curve must never be logged as its prediction.
+            # Keep one weight per whole chunk. Only the first action is scored;
+            # later chunk actions are carried along, not evaluated in advance.
             action_chunk = np.tensordot(weights, candidates.astype(np.float64),
                                         axes=(0, 0)).astype(np.float32)
-            record.update(branches=branches, scores=scores, weights=weights.tolist(),
+            record.update(score_basis=score_basis, score_action_index=0,
+                          scoring_seconds=scoring_seconds, branches=branches,
+                          scores=np.asarray(scores).tolist(), weights=weights.tolist(),
                           action_aggregation="weighted_mean", selected=None,
                           selected_score=None,
-                          weighted_candidate_min=float(np.dot(weights, scores)),
+                          weighted_candidate_score=float(np.dot(weights, scores)),
                           blended_chunk=action_chunk.tolist(),
                           uniform_expected_score=float(np.mean(scores)),
                           effective_sample_size=float(1.0 / np.square(weights).sum()),
                           replay_check=replay)
+            if score_basis == "legacy_branch_min":
+                record["weighted_candidate_min"] = record["weighted_candidate_score"]
         else:
             action_chunk = candidates[0].copy()
             record.update(action_aggregation="single", selected=0,
@@ -176,10 +190,10 @@ class EpisodeLog:
         self.write({"event": "decision", **record})
 
     def executed(self, decision, action_index, coverage, active, action, **extra):
-        if coverage is None and active:
-            raise ValueError("Active sampling decisions require a real coverage score")
+        if coverage is None and active and action_index == 0:
+            raise ValueError("Active sampling decisions require a real coverage score for the first action")
         coverage = float(coverage) if coverage is not None else None
-        if active:
+        if active and coverage is not None:
             self.active_scores.append(coverage)
         self.write({"event": "executed", "decision": decision, "action_index": action_index,
                     "coverage": coverage, "active": active, "action": np.asarray(action).tolist(), **extra})

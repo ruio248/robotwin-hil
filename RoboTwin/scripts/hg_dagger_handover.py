@@ -961,7 +961,6 @@ def main() -> int:
                 manual_window = None
                 if sampling_config is not None:
                     from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow
-                    from coverage_sampling.robotwin import RobotwinRollout
 
                     if cli.es_activation == "manual":
                         manual_window = ManualSamplingWindow(cli.es_manual_duration)
@@ -981,18 +980,13 @@ def main() -> int:
                         print(f"\n[ENHANCED] {status}; policy remains in control.", flush=True)
 
                     def poll_live_control() -> None:
-                        # Lookahead never displays hypothetical states. Process
-                        # pending keys only after restoring the real scene.
+                        # Keep the viewer and operator keys responsive around inference.
                         task_env._render_viewer_if_available()
                         pending = keyboard.poll()
                         if pending in {"intervene", "abort", "quit", "sampling_toggle"}:
                             raise OperatorInterrupt(pending)
 
-                    sampler = DecisionSampler(
-                        sampling_config,
-                        RobotwinRollout(task_env, scorer, on_restored=poll_live_control),
-                        seed,
-                    )
+                    sampler = DecisionSampler(sampling_config, None, seed)
                     log_dir = Path(cli.es_log_dir) if cli.es_log_dir else cli.output_dir / "sampling"
                     sampling_log = EpisodeLog(
                         log_dir / f"episode_{rollout_index:04d}_seed_{seed}.jsonl",
@@ -1000,6 +994,7 @@ def main() -> int:
                         {**scorer.metadata, "episode_seed": seed, "instruction": PROMPT,
                          "policy_checkpoint": cli.ckpt_name, "task_config": cli.task_config,
                          "frequency": int(cli.frequency), "evaluation_type": "human_gated",
+                         "selection_score_basis": "current_observation_first_action",
                          "sampling_activation": cli.es_activation,
                          "manual_duration": cli.es_manual_duration if manual_window is not None else None,
                          "executor": "Base_Task.take_action(qpos)",
@@ -1093,6 +1088,7 @@ def main() -> int:
                                 action_chunk, selection = sampler.select(
                                     decision_step, sample_chunk,
                                     sample_candidates=sample_candidates,
+                                    score_candidates=lambda actions: scorer.score_actions(observation, actions),
                                     active_override=manual_window.active(decision_step) if manual_window is not None else None,
                                 )
                             except OperatorInterrupt as interruption:
@@ -1135,9 +1131,7 @@ def main() -> int:
                                     bias_dims,
                                     cli.bias_magnitude,
                                 )
-                            should_score = scorer is not None and (
-                                manual_window is None or selection["active"]
-                            )
+                            should_score = scorer is not None and selection["active"] and action_idx == 0
                             actual_coverage = scorer(observation, flat_action) if should_score else None
                             pending = keyboard.poll() if scorer is not None else None
                             if pending in {"quit", "abort", "intervene", "sampling_toggle"}:
@@ -1189,17 +1183,14 @@ def main() -> int:
                                 break
 
                             # Pi0.5 consumes only the latest observation at the next
-                            # chunk boundary. Its sampler supplies complete absolute
-                            # joint targets, so no intermediate image is needed to
-                            # resolve an action. Active coverage scoring still needs
-                            # a fresh pre-action observation; recording has its own
-                            # unchanged _take_picture schedule above.
+                            # chunk boundary. The critic scores the first action at
+                            # that observation; later actions need no extra image.
                             chunk_observations = (
                                 cli.policy_name == "Pi_05_RobotTwin"
                                 and sampler is not None
                                 and os.environ.get("HIL_CHUNK_OBSERVATIONS", "0") == "1"
                             )
-                            if not chunk_observations or (should_score and action_idx + 1 < len(action_chunk)):
+                            if not chunk_observations:
                                 observation = task_env.get_obs()
                             if not chunk_observations:
                                 xpl_obs = robotwin_obs_to_xpolicylab(

@@ -1,4 +1,4 @@
-"""CPU tests for sampling, future-state scoring and transactional restoration."""
+"""CPU tests for current-action sampling and legacy branch restoration."""
 from __future__ import annotations
 
 import copy
@@ -94,6 +94,27 @@ def chunk(value, horizon=2):
 
 
 class SamplingTests(unittest.TestCase):
+    def test_online_scores_only_first_actions_without_simulator_steps(self):
+        cfg = SamplingConfig("enhanced", 0, 0, num_candidates=4, horizon=2, beta=2)
+        candidates = np.stack([chunk(i + 1) for i in range(4)])
+        candidates[:, 1, :] = np.array([100, 200, 300, 400])[:, None]
+        calls = []
+        def score_first(actions):
+            calls.append(actions.copy())
+            return actions[:, 0].astype(np.float64)
+        blend, record = DecisionSampler(cfg, None, 7).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+            score_candidates=score_first)
+        self.assertEqual(len(calls), 1)
+        np.testing.assert_array_equal(calls[0], candidates[:, 0, :])
+        weights = coverage_weights([1, 2, 3, 4], cfg.beta)
+        np.testing.assert_allclose(blend, np.tensordot(weights, candidates, axes=(0, 0)))
+        self.assertEqual(record["score_basis"], "current_observation_first_action")
+        self.assertEqual(record["branches"], [])
+        self.assertIsNone(record["replay_check"])
+        self.assertNotIn("weighted_candidate_min", record)
+        self.assertAlmostEqual(record["weighted_candidate_score"], np.dot(weights, [1, 2, 3, 4]))
+
     def test_gibbs_ratio_shift_and_limits(self):
         scores = np.array([40.1, 40.2, 40.4])
         weights = coverage_weights(scores, 3)
@@ -410,6 +431,7 @@ class RolloutTests(unittest.TestCase):
             log.executed(0, 0, None, False, np.zeros(14))
             with self.assertRaisesRegex(ValueError, "require a real coverage"):
                 log.executed(1, 0, None, True, np.zeros(14))
+            log.executed(1, 1, None, True, np.zeros(14))
             log.finish(False, None, 1)
             records = [json.loads(line) for line in path.read_text().splitlines()]
             self.assertIsNone(records[1]["coverage"])
@@ -459,6 +481,8 @@ class EvaluatorIntegrationTests(unittest.TestCase):
             metadata = {"critic_sha256": "test", "encoder_sha256": "test_encoder"}
             def __init__(self, *args, **kwargs): pass
             def __call__(self, observation, action): return score(observation, action)
+            def score_actions(self, observation, actions):
+                return np.array([score(observation, action) for action in actions])
         fake_critic = types.ModuleType("coverage_sampling.critic")
         fake_critic.OnlineCoverage = Scorer
         env, client = Env(), Client()
@@ -483,12 +507,14 @@ class EvaluatorIntegrationTests(unittest.TestCase):
             self.assertEqual(env.external_writes, 4)
             records = [json.loads(line) for line in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
             executed = [r for r in records if r["event"] == "executed"]
-            self.assertEqual([r["coverage"] for r in executed], [1, 2, 3, 4])
+            self.assertEqual([r["coverage"] for r in executed], [None, None, 3, None])
             self.assertEqual([r["prediction_error"] for r in executed], [None] * 4)
             self.assertTrue(records[-1]["window_reached"])
-            self.assertEqual(records[-1]["active_executed_scores"], 2)
+            self.assertEqual(records[-1]["active_executed_scores"], 1)
             decisions = [r for r in records if r["event"] == "decision"]
             self.assertEqual([r["candidate_generation"] for r in decisions], ["single", "batched"])
+            self.assertEqual(decisions[1]["score_basis"], "current_observation_first_action")
+            self.assertEqual(decisions[1]["branches"], [])
 
     def test_off_path_preserves_single_policy_call_per_decision(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -530,7 +556,12 @@ class EvaluatorIntegrationTests(unittest.TestCase):
             self.assertEqual(result["paired_window_reached"], 1)
             self.assertEqual(result["paired_enhanced_minus_vanilla_active_min"], 0)
             self.assertIsNone(result["per_seed"][0]["enhanced"]["max_execution_prediction_error"])
-            self.assertIsNotNone(result["per_seed"][0]["enhanced"]["mean_weighted_candidate_min"])
+            self.assertIsNotNone(result["per_seed"][0]["enhanced"]["mean_weighted_candidate_score"])
+            self.assertIsNone(result["per_seed"][0]["enhanced"]["mean_weighted_candidate_min"])
+            enhanced[7]["head"]["selection_score_basis"] = "legacy_branch_min"
+            with self.assertRaisesRegex(ValueError, "selection_score_basis"):
+                compare(vanilla, enhanced)
+            enhanced[7]["head"]["selection_score_basis"] = "current_observation_first_action"
             enhanced[7]["head"]["critic_sha256"] = "different"
             with self.assertRaisesRegex(ValueError, "critic_sha256"): compare(vanilla, enhanced)
 
