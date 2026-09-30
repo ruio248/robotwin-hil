@@ -45,6 +45,8 @@ else
   default_output="$repo_root/outputs/hg_dagger_collection_r1"
 fi
 output_dir="${MANUAL_OUTPUT_DIR:-$default_output}"
+resume_collection="${HIL_RESUME:-0}"
+case "$resume_collection" in 0|1) ;; *) echo "HIL_RESUME must be 0 or 1" >&2; exit 2 ;; esac
 
 sampling_args=(--es-mode "$sampling_mode" --es-activation "$activation" --es-manual-duration "$duration")
 if [[ "$activation" == manual ]]; then
@@ -95,6 +97,9 @@ run_args=(
   --output-dir "$output_dir"
   "${sampling_args[@]}"
 )
+if [[ "$resume_collection" == 1 ]]; then
+  run_args+=(--resume)
+fi
 if [[ "$takeover_eval" == 1 ]]; then
   run_args+=(--takeover-eval)
 fi

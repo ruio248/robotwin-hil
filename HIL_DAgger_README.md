@@ -190,6 +190,27 @@ bash local_serving/run_hg_dagger_smooth.sh
 `HIL_DIAG_VIEWER=1` 记录真实绘制耗时、帧率与间隔，再判断剩余瓶颈；
 纯自动化测试可用 `--render-freq 0`。
 
+### 3.4 中断后继续同一批采集
+
+退出采集后，指定**原来的**输出目录并显式打开恢复开关：
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+MANUAL_OUTPUT_DIR=/hdd/robotwin-hil-enhanced-sampling/outputs/hg_dagger_collection_smooth_20260930_163549 \
+HIL_RESUME=1 \
+HIL_VIEWER_RENDER_RESOLUTION=320x180 \
+HIL_VIEWER_WINDOW_RESOLUTION=1280x720 \
+bash local_serving/run_hg_dagger_smooth.sh
+```
+
+恢复时先核对 `session_*.json`、`episodes.jsonl`、`raw/episode_*/episode.json`
+和采样日志；从保存的 raw 数据计算有效 HIL 数和下一个 episode 编号，
+从采样日志接续 rollout 编号并跳过已使用的 seed。未完成 episode 的 `.cache`
+会移到 `interrupted_cache/` 留作检查，不计入有效数据。仿真从新的 rollout
+开始，不能恢复被打断时的物理状态。若元数据或配置不一致，程序会拒绝启动。
+
+不加 `HIL_RESUME=1` 时，脚本拒绝在已有采集数据的目录里重新开始，避免覆盖 raw episode。
+
 ## 4. 数据保存（raw-first）
 
 采集阶段只落**原始帧 + 元数据**，不做 HDF5 / MP4 / LeRobot 转换，避免编码拖慢

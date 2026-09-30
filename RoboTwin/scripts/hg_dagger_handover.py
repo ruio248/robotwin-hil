@@ -52,6 +52,7 @@ from eval_policy_xpolicylab import (  # noqa: E402
     xpolicylab_action_to_robotwin,
 )
 from coverage_sampling.options import add_arguments as add_sampling_arguments, config_from_args  # noqa: E402
+from hg_dagger_resume import collection_lock, inspect_collection, preserve_incomplete_cache  # noqa: E402
 from x11_fullscreen import request_fullscreen_for_current_process  # noqa: E402
 
 
@@ -285,16 +286,6 @@ def choose_recovery_stage(task_env, keyboard) -> tuple[Any, int | None]:
         print("\033[91m  无效输入，请输入 Y / 1-6 / q\033[0m")
 
 
-def next_episode_index(output_dir: Path) -> int:
-    indexes = []
-    for path in (output_dir / "data").glob("episode_*.hdf5"):
-        try:
-            indexes.append(int(path.stem.rsplit("_", 1)[1]))
-        except (IndexError, ValueError):
-            continue
-    return max(indexes, default=-1) + 1
-
-
 def read_json_object(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
@@ -386,6 +377,8 @@ def finalize_episode(
         raise RuntimeError("Episode produced fewer than two recorded frames; cannot save.")
 
     raw_dir = output_dir / "raw" / f"episode_{episode_index:07d}"
+    if raw_dir.exists():
+        raise FileExistsError(f"Refusing to overwrite saved raw episode: {raw_dir}")
     frames_dir = raw_dir / "frames"
     raw_dir.mkdir(parents=True, exist_ok=True)
     cache = getattr(task_env, "folder_path", {}).get("cache")
@@ -701,6 +694,10 @@ def parse_args() -> argparse.Namespace:
         / "handover_to_tray"
         / "aloha_agilex",
     )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume counters and saved raw episodes in --output-dir after a completed session.",
+    )
     parser.add_argument("--save-data", default="true")
     parser.add_argument(
         "--save-video",
@@ -800,6 +797,8 @@ def main() -> int:
             raise ValueError("Takeover comparison cannot use automatic intervention or abort hooks")
         if cli.es_window_start is None or cli.es_window_end is None:
             raise ValueError("Takeover comparison requires the same declared window in all three arms")
+    if cli.resume and cli.acceptance:
+        raise ValueError("Acceptance runs cannot resume a collection")
     if (cli.es_mode != "off" or cli.takeover_eval) and cli.bias_magnitude:
         raise ValueError("Action bias is incompatible with simulated candidate scoring")
     sampling_config = config_from_args({
@@ -824,6 +823,34 @@ def main() -> int:
     seed_iter = build_seed_stream(cli)
     cli.output_dir = cli.output_dir.expanduser().resolve()
     cli.output_dir.mkdir(parents=True, exist_ok=True)
+    lock_handle = collection_lock(cli.output_dir)
+    expected_resume = {
+        "sampling_mode": cli.es_mode,
+        "sampling_activation": cli.es_activation,
+        "sampling_config": asdict(sampling_config) if sampling_config is not None else None,
+        "target_mode": cli.target_mode,
+        "checkpoint_name": cli.ckpt_name,
+        "task_config": cli.task_config,
+        "instruction": PROMPT,
+        "frequency": int(cli.frequency),
+        "seed_mode": cli.seed_mode,
+        "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,
+    }
+    progress = inspect_collection(cli.output_dir, target_mode=cli.target_mode,
+                                  expected=expected_resume, resume=cli.resume)
+    if cli.resume:
+        previous_range = read_json_object(Path(progress.source_report)).get("seed_range")
+        expected_start = [int(cli.seed_min), int(cli.seed_max)] if cli.seed_mode == "random" else None
+        if expected_start is not None and previous_range != expected_start:
+            raise ValueError(f"Resume seed range mismatch: {previous_range} != {expected_start}")
+        if cli.seed_mode == "sequential" and previous_range[0] != int(cli.seed_start):
+            raise ValueError("Resume seed-start differs from the previous session")
+        preserved = preserve_incomplete_cache(cli.output_dir)
+        print(f"[RESUME] next rollout={progress.next_rollout_index + 1}/{cli.episodes}, "
+              f"next raw episode={progress.next_episode_index}, "
+              f"saved valid HIL={progress.saved_valid_hil}/{cli.target_saved}")
+        for path in preserved:
+            print(f"[RESUME] preserved unfinished frames: {path}")
 
     user_args, args = build_runtime_args(cli)
     task_env = class_decorator("handover_to_tray")
@@ -842,8 +869,9 @@ def main() -> int:
         int(user_args["left_arm_dim"]),
         int(user_args["right_arm_dim"]),
     )
-    data_episode_index = next_episode_index(cli.output_dir)
-    records: list[dict[str, Any]] = []
+    data_episode_index = progress.next_episode_index
+    records: list[dict[str, Any]] = list(progress.records)
+    used_seeds = set(progress.used_seeds)
     aborted = False
     sampling_log = None
 
@@ -859,15 +887,18 @@ def main() -> int:
     print("=" * 72 + "\n")
 
     try:
-        rollout_index = 0
-        saved_hil_count = 0
-        aborted_rollouts = 0
+        rollout_index = progress.next_rollout_index
+        saved_hil_count = progress.saved_valid_hil
+        aborted_rollouts = progress.aborted_rollouts
         session_started = time.time()
         while (
             rollout_index < int(cli.episodes)
             and (cli.takeover_eval or saved_hil_count < int(cli.target_saved))
         ):
             seed = next(seed_iter)
+            while seed in used_seeds:
+                seed = next(seed_iter)
+            used_seeds.add(seed)
             rollout_started = time.time()
             args["save_data"] = False
             args["need_plan"] = True
@@ -1315,20 +1346,20 @@ def main() -> int:
                     f"(frame_idx={int(task_env.FRAME_IDX)}, "
                     f"interventions={intervention_count}); discarded, next rollout.\033[0m"
                 )
+                aborted_record = {
+                    "rollout_index": rollout_index, "seed": int(seed),
+                    "sampling_mode": cli.es_mode, "rollout_status": "aborted",
+                    "policy_steps": int(policy_steps),
+                    "manual_takeover_requests": manual_takeover_requests,
+                    "takeover_request_events": takeover_request_events,
+                    "sampling_activation_events": sampling_activation_events,
+                    "intervention_count": intervention_count,
+                    "interventions": interventions,
+                    "autonomous_success": False, "save_decision": False,
+                    "rollout_seconds": round(time.time() - rollout_started, 2),
+                }
+                records.append(aborted_record)
                 if cli.takeover_eval:
-                    aborted_record = {
-                        "rollout_index": rollout_index, "seed": int(seed),
-                        "sampling_mode": cli.es_mode, "rollout_status": "aborted",
-                        "policy_steps": int(policy_steps),
-                        "manual_takeover_requests": manual_takeover_requests,
-                        "takeover_request_events": takeover_request_events,
-                        "sampling_activation_events": sampling_activation_events,
-                        "intervention_count": intervention_count,
-                        "interventions": interventions,
-                        "autonomous_success": False, "save_decision": False,
-                        "rollout_seconds": round(time.time() - rollout_started, 2),
-                    }
-                    records.append(aborted_record)
                     append_jsonl(cli.output_dir / "takeover_rollouts.jsonl", aborted_record)
                 safe_close_env(task_env)
                 rollout_index += 1
@@ -1473,6 +1504,7 @@ def main() -> int:
         return 3
     finally:
         close_policy_client(model_client)
+        lock_handle.close()
 
     session_report = {
         "aborted": aborted,
@@ -1501,6 +1533,10 @@ def main() -> int:
         "target_mode": cli.target_mode,
         "target_saved": int(cli.target_saved),
         "max_rollouts": int(cli.episodes),
+        "resumed_from": progress.source_report,
+        "next_rollout_index": int(rollout_index),
+        "next_episode_index": int(data_episode_index),
+        "saved_valid_hil_episodes": int(saved_hil_count),
         "rollouts": len(records),
         "total_rollouts": len(records),
         "aborted_rollouts": int(aborted_rollouts),
@@ -1517,12 +1553,13 @@ def main() -> int:
         "autonomous_successes": sum(
             1 for item in records if item.get("autonomous_success")
         ),
-        "total_seconds": round(time.time() - session_started, 2),
+        "total_seconds": round(progress.prior_seconds + time.time() - session_started, 2),
+        "this_session_seconds": round(time.time() - session_started, 2),
         "seconds_per_rollout": round(
-            (time.time() - session_started) / len(records), 2
+            (progress.prior_seconds + time.time() - session_started) / len(records), 2
         ) if records else None,
         "seconds_per_saved_episode": round(
-            (time.time() - session_started)
+            (progress.prior_seconds + time.time() - session_started)
             / max(1, sum(1 for item in records if item.get("save_decision"))),
             2,
         ),
@@ -1545,6 +1582,8 @@ def main() -> int:
     }
     session_report["seeds"] = [item.get("seed") for item in records]
     report_path = cli.output_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    if report_path.exists():
+        raise FileExistsError(f"Refusing to overwrite session report: {report_path}")
     write_json(report_path, session_report)
     print(f"session_report={report_path}")
     if cli.takeover_eval:
