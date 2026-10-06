@@ -1,5 +1,8 @@
 # Recorded-end terminal reward ablation
 
+For the diagnosis of why the earlier B score was near 40, see
+[Coverage B 分数约 40 的成因与验证](COVERAGE_SCORE_40_DEBUG_REPORT.md).
+
 This experiment asks what happens to the learned `B(o,a)` curve when a
 terminal boundary is introduced. It is an **assumption-based diagnostic**, not
 an assertion that LeRobot's final saved frame contains a verified success flag.
