@@ -27,6 +27,8 @@ def parse_args(argv=None):
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=.99)
+    parser.add_argument("--record-end-terminal-reward", type=float,
+                        help="Experimental: treat each demo's final real transition as terminal; replace its +1 reward with this value")
     parser.add_argument("--alpha", type=float, default=.01)
     parser.add_argument("--grad-clip", type=float, default=1.)
     parser.add_argument("--target-tau", type=float, default=.005)
@@ -40,7 +42,10 @@ def parse_args(argv=None):
 
 
 def objective_kwargs(config):
-    return {"gamma": config["gamma"], "alpha": config["alpha"], "score_limit": config["score_limit"]}
+    result = {"gamma": config["gamma"], "alpha": config["alpha"], "score_limit": config["score_limit"]}
+    if "record_end_terminal_reward" in config:
+        result["record_end_terminal_reward"] = config["record_end_terminal_reward"]
+    return result
 
 
 def score_summary(scores):
@@ -79,6 +84,8 @@ def run(args):
     for name in ("alpha", "weight_decay"):
         if not math.isfinite(getattr(args, name)) or not float(getattr(args, name)) >= 0:
             raise ValueError(f"{name} must be nonnegative")
+    if args.record_end_terminal_reward is not None and not math.isfinite(args.record_end_terminal_reward):
+        raise ValueError("record-end-terminal-reward must be finite")
     torch.set_num_threads(args.cpu_threads)
     seed_all(args.seed)
     device = torch.device(args.device)
@@ -87,9 +94,12 @@ def run(args):
         raise ValueError("Training is restricted to the original LeRobot train/val cache")
     fingerprint = cache_fingerprint(manifest)
     config = {key: value for key, value in vars(args).items()
-              if key not in ("cache_dir", "output_dir", "resume", "steps", "device", "eval_every", "log_every", "cpu_threads")}
+              if key not in ("cache_dir", "output_dir", "resume", "steps", "device", "eval_every", "log_every", "cpu_threads")
+              and not (key == "record_end_terminal_reward" and value is None)}
     config.update({"bootstrap": POLICY_BOOTSTRAP,
                    "candidate_use": "current_conservative_and_next_target_mean"})
+    if args.record_end_terminal_reward is not None:
+        config["terminal_semantics"] = "assumed_record_end_not_verified_success"
     train = TransitionTable(args.cache_dir, manifest, "train")
     val = TransitionTable(args.cache_dir, manifest, "val")
     generator = torch.Generator().manual_seed(args.seed)
@@ -116,8 +126,14 @@ def run(args):
         restore_rng(payload["rng"], generator)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     atomic_json(args.output_dir / "config.json", {**config, "steps": args.steps, "cache_fingerprint": fingerprint,
-                "train_transitions": len(train), "val_transitions": len(val), "compatibility": manifest["config"]["compatibility"],
-                "limitations": [manifest["config"]["transition_semantics"], "not a success probability or online recovery evaluation"]})
+                "train_transitions": len(train), "val_transitions": len(val),
+                "train_assumed_terminals": int(train.record_end.sum()),
+                "val_assumed_terminals": int(val.record_end.sum()),
+                "compatibility": manifest["config"]["compatibility"],
+                "limitations": [manifest["config"]["transition_semantics"],
+                                "record-end terminal is an ablation assumption, not a verified environment success flag"
+                                if args.record_end_terminal_reward is not None else manifest["config"].get("terminal_handling", "unspecified"),
+                                "not a success probability or online recovery evaluation"]})
     log_path = args.output_dir / "metrics.jsonl"
     def log(record):
         with log_path.open("a", encoding="utf-8") as stream:

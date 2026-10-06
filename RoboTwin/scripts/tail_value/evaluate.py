@@ -26,7 +26,7 @@ def correlation(x, y):
 
 @torch.no_grad()
 def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_limit,
-                  bootstrap=POLICY_BOOTSTRAP):
+                  bootstrap=POLICY_BOOTSTRAP, record_end_terminal_reward=None):
     # Old checkpoints remain readable, but their TD metric must retain its meaning.
     if bootstrap not in (POLICY_BOOTSTRAP, "expert_next_action"):
         raise ValueError(f"Unsupported checkpoint bootstrap: {bootstrap}")
@@ -65,6 +65,8 @@ def score_episode(model, target, arrays, kind, gamma, batch_size, device, score_
         td_target = np.full(n, np.nan)
         valid = np.flatnonzero(arrays["valid_transition"])
         td_target[valid] = 1 + gamma * q_target[valid + 1]
+        if record_end_terminal_reward is not None:
+            td_target[valid[-1]] = float(record_end_terminal_reward)
         result.update({"q_demo": q_demo, "distance": distance, "farthest_index": farthest,
                        "farthest_distance": distance[np.arange(n), farthest],
                        "q_farthest": q_pi[np.arange(n), farthest], "td_target": td_target,

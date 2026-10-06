@@ -50,15 +50,22 @@ class TransitionTable:
         if not entries or any(e["kind"] != "demo" for e in entries):
             raise ValueError(f"{split} requires demonstration episodes; never train on HIL")
         fields = {k: [] for k in ("features", "state", "a_demo", "a_pi")}
-        indices, offset = [], 0
+        indices, record_ends, offset = [], [], 0
         for entry in entries:
             arrays = load_episode(Path(root) / entry["file"], "demo", manifest["config"]["compatibility"]["num_candidates"])
-            indices.extend((np.flatnonzero(arrays["valid_transition"]) + offset).tolist())
+            valid = np.flatnonzero(arrays["valid_transition"])
+            indices.extend((valid + offset).tolist())
+            # The final *real* adjacent transition reaches the last saved
+            # observation. It is an experimental boundary, not a verified
+            # environment success/done flag.
+            record_ends.append(int(valid[-1] + offset))
             for key in fields:
                 fields[key].append(arrays[key].astype(np.float32))
             offset += len(arrays["state"])
         self.data = {key: torch.from_numpy(np.concatenate(parts)) for key, parts in fields.items()}
         self.indices = torch.tensor(indices, dtype=torch.long)
+        self.record_end = torch.zeros(offset, dtype=torch.bool)
+        self.record_end[record_ends] = True
         if not len(self.indices):
             raise ValueError("No valid transitions")
 
@@ -69,6 +76,7 @@ class TransitionTable:
         idx = self.indices[positions]
         result = {k: v[idx].to(device) for k, v in self.data.items()}
         result.update({"next_" + k: self.data[k][idx + 1].to(device) for k in ("features", "state", "a_pi")})
+        result["record_end"] = self.record_end[idx].to(device)
         return result
 
     def normalization(self):
@@ -129,10 +137,16 @@ def loss_from_scores(q_demo, q_pi, target, *, alpha):
     return td + weighted, {"td": td, "conservative": conservative, "weighted_conservative": weighted}
 
 
-def critic_loss(model, target_model, batch, *, gamma, alpha, score_limit=1e4):
+def critic_loss(model, target_model, batch, *, gamma, alpha, score_limit=1e4,
+                record_end_terminal_reward=None):
     with torch.no_grad():
         q_next_pi = target_model.score_many(batch["next_features"], batch["next_state"], batch["next_a_pi"])
         target = 1.0 + gamma * q_next_pi.mean(1)
+        if record_end_terminal_reward is not None:
+            # Terminal reward *replaces* the usual +1 on the last observed
+            # transition. No bootstrap is used for that transition.
+            target = torch.where(batch["record_end"],
+                                 torch.full_like(target, float(record_end_terminal_reward)), target)
     q_demo = model(batch["features"], batch["state"], batch["a_demo"])
     q_pi = model.score_many(batch["features"], batch["state"], batch["a_pi"])
     finite_guard({"q_demo": q_demo, "q_pi": q_pi, "q_next_pi": q_next_pi, "target": target}, score_limit)
