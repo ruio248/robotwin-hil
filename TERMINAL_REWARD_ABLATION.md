@@ -124,3 +124,40 @@ step 10,000 and their reward, seed, alpha, and cache fingerprint agree with
 the experiment. It writes `resume_to_30000_status.json`, three continuation
 logs, and new `report_val_step30000` and `report_train_step30000` directories
 without replacing the step-10,000 reports.
+
+## 2026-10-06 continuation result (30,000 steps per arm)
+
+All three jobs resumed from their own step-10,000 checkpoints and finished
+successfully at step 30,000. The 10,000-step checkpoints and reports remain
+available. On the same 45-episode critic-validation split (13,388 real
+adjacent transitions), the diagnostics changed as follows:
+
+| Terminal reward | First B, 10k -> 30k | Middle B, 10k -> 30k | Final B, 10k -> 30k | Recorded-path MC MAE, 10k -> 30k | TD MSE, 10k -> 30k |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 40.695 -> 78.721 | 40.764 -> 78.193 | 1.017 -> 1.135 | 31.021 -> 5.434 | 0.248 -> 0.177 |
+| 10 | 40.764 -> 79.009 | 40.755 -> 78.861 | 10.587 -> 10.086 | 32.706 -> 5.770 | 0.172 -> 0.144 |
+| 100 | 40.617 -> 78.893 | 40.549 -> 89.483 | 98.002 -> 100.047 | 53.346 -> 10.801 | 0.314 -> 0.051 |
+
+The training split shows the same shape: at 30k, first-step B is 78.723,
+79.005, and 78.889 for rewards 1, 10, and 100 respectively. The previous
+~40 plateau was therefore not a converged fixed point. The imposed terminal
+condition propagates farther backward by 30k, and the constructed-path MC
+MAE drops markedly. However, the early part of all three predictions remains
+near 79, whereas the R=100 MC reference is identically 100. The R=1/10
+predictions also flatten too early relative to their decreasing MC references.
+Do not call this Bellman or value convergence from the lower MAE alone:
+policy-next-action bootstrap and expert-path MC measure different quantities.
+
+The action-discrimination gap remains tiny at 30k: on validation,
+`mean[B(expert)-mean_k B(candidate_k)]` is -0.00147, -0.00140, and +0.00036
+for R=1, 10, and 100. This experiment shows learning of the imposed
+recorded-end boundary, not evidence that B meaningfully separates actions
+at the same observation or improves online takeover decisions. Recorded end
+is still an assumption rather than a verified success/done label.
+
+New artifacts under the same remote run root:
+
+- `terminal_{1,10,100}/step_0030000.pt` (and updated `last.pt`)
+- `report_val_step30000/` and `report_train_step30000/`, each with
+  `b_vs_progress.{png,pdf}`, `b_vs_absolute_step.{png,pdf}`, and `metrics.json`
+- `resume_to_30000_status.json` and the three continuation logs
