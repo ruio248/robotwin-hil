@@ -103,3 +103,24 @@ Run artifacts (not committed to Git):
 The 45 critic-validation episodes were not used to train B, but the underlying
 SFT policy had seen the original demonstration set. This is not an independent
 policy heldout or a success-rate evaluation.
+
+## Continue to 30,000 steps
+
+The following continuation uses each arm's existing `last.pt` at step 10,000;
+the immutable `step_0010000.pt` is retained for the before/after comparison.
+Only the reporting interval changes (validation and checkpoint every 2,000
+steps, to conserve disk); optimizer, target network, sampler RNG, and all
+training hyperparameters are restored from the checkpoint.
+
+```bash
+python RoboTwin/scripts/resume_tail_terminal_ablation.py \
+  --cache-dir /path/to/outputs/tail/cache/sft_450 \
+  --runs-root /path/to/outputs/tail/terminal_reward_ablation_20261006 \
+  --device cpu --cpu-threads 4
+```
+
+The script refuses to run unless all three source checkpoints are exactly at
+step 10,000 and their reward, seed, alpha, and cache fingerprint agree with
+the experiment. It writes `resume_to_30000_status.json`, three continuation
+logs, and new `report_val_step30000` and `report_train_step30000` directories
+without replacing the step-10,000 reports.
