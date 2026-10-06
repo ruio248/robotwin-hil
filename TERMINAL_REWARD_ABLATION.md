@@ -161,3 +161,53 @@ New artifacts under the same remote run root:
 - `report_val_step30000/` and `report_train_step30000/`, each with
   `b_vs_progress.{png,pdf}`, `b_vs_absolute_step.{png,pdf}`, and `metrics.json`
 - `resume_to_30000_status.json` and the three continuation logs
+
+## Continue to 60,000 steps
+
+After verifying all three step-30,000 checkpoints, resume each arm without
+changing the reward convention or training objective:
+
+```bash
+python RoboTwin/scripts/resume_tail_terminal_ablation.py \
+  --cache-dir /path/to/outputs/tail/cache/sft_450 \
+  --runs-root /path/to/outputs/tail/terminal_reward_ablation_20261006 \
+  --starting-step 30000 --target-steps 60000 \
+  --device cpu --cpu-threads 4
+```
+
+The runner checks that `last.pt` matches the immutable
+`step_0030000.pt` by SHA-256 before writing. It retains the earlier
+checkpoints and reports, writes `resume_to_60000_status.json`, and places the
+new curves in `report_val_step60000` and `report_train_step60000`.
+
+## 2026-10-06 continuation result (60,000 steps per arm)
+
+All three resumed jobs and both reports completed successfully. The 60k
+validation results use the same 45 episodes and 13,388 real adjacent
+transitions as the 10k/30k comparisons:
+
+| Terminal reward | First B, 30k -> 60k | Middle B, 30k -> 60k | Final B, 30k -> 60k | Recorded-path MC MAE, 30k -> 60k | TD MSE, 30k -> 60k |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 78.721 -> 95.260 | 78.193 -> 77.858 | 1.135 -> 1.336 | 5.434 -> 0.918 | 0.177 -> 0.123 |
+| 10 | 79.009 -> 95.651 | 78.861 -> 80.152 | 10.086 -> 10.425 | 5.770 -> 0.964 | 0.144 -> 0.114 |
+| 100 | 78.893 -> 99.954 | 89.483 -> 100.268 | 100.047 -> 100.026 | 10.801 -> 0.437 | 0.051 -> 0.002 |
+
+The training split exhibits essentially the same shape (60k first-step
+medians 95.251, 95.647, and 99.972). Thus the large ~40 plateau at 10k and
+the ~79 early plateau at 30k were primarily incomplete propagation of the
+imposed terminal target. By 60k, the predicted expert-path profile closely
+tracks the constructed MC profile, including the flat R=100 control. This is
+good evidence for convergence toward this **diagnostic** target, not proof
+that the policy-next-action Bellman equation has globally converged or that
+the critic is a calibrated coverage function.
+
+Indeed, the 60k validation mean same-observation expert-minus-candidate B
+gaps are -0.001882, -0.001691, and +0.000029 for R=1, 10, and 100. The
+large improvement in time/terminal calibration has not produced meaningful
+action separation. Also, the recorded end remains an assumed terminal rather
+than a verified task success/done event; no online policy or takeover
+evaluation was performed.
+
+The preserved remote artifacts are `terminal_{1,10,100}/step_0060000.pt`,
+`report_val_step60000/`, `report_train_step60000/`, and
+`resume_to_60000_status.json` under the original run root.
