@@ -15,24 +15,31 @@ class SamplingConfig:
     window_start: int
     window_end: int
     num_candidates: int = 4
+    policy_microbatch: int = 4
     horizon: int = 10
     beta: float = 10.0
     seed: int = 42
     replay_atol: float = 1e-4
     low_threshold: float | None = None
     action_aggregation: str = "weighted_mean"
+    score_representation: str = "first_action"
+    score_scale: float = 1.0
+    uniform_weights: bool = False
+    calibration_sha256: str | None = None
+    calibration_key: str | None = None
 
     def __post_init__(self):
         if self.mode not in {"vanilla", "enhanced"}:
             raise ValueError("mode must be vanilla or enhanced")
-        for name in ("window_start", "window_end", "num_candidates", "horizon", "seed"):
+        for name in ("window_start", "window_end", "num_candidates", "policy_microbatch", "horizon", "seed"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int):
                 raise ValueError(f"{name} must be an integer")
         if self.window_start < 0 or self.window_end < self.window_start:
             raise ValueError("Require 0 <= window_start <= window_end (inclusive, zero-based)")
-        if not 2 <= self.num_candidates <= 8 or self.horizon < 1 or self.seed < 0:
-            raise ValueError("Require 2 <= N <= 8, H >= 1 and seed >= 0")
+        if (not 2 <= self.num_candidates <= 32 or not 2 <= self.policy_microbatch <= 32
+                or self.horizon < 1 or self.seed < 0):
+            raise ValueError("Require 2 <= N <= 32, 2 <= policy_microbatch <= 32, H >= 1 and seed >= 0")
         if not np.isfinite(self.beta) or self.beta < 0:
             raise ValueError("beta must be finite and nonnegative")
         if not np.isfinite(self.replay_atol) or self.replay_atol <= 0:
@@ -41,9 +48,37 @@ class SamplingConfig:
             raise ValueError("low_threshold must be finite")
         if self.action_aggregation != "weighted_mean":
             raise ValueError("Only weighted_mean action aggregation is supported")
+        if self.score_representation not in {"first_action", "full_chunk"}:
+            raise ValueError("Unknown score representation")
+        if not np.isfinite(self.score_scale) or self.score_scale < 0 or (
+                self.score_scale == 0 and not self.uniform_weights):
+            raise ValueError("Require a positive score scale unless calibration is degenerate")
+        if self.score_representation == "full_chunk" and self.horizon != 10:
+            raise ValueError("The full-chunk discriminator requires horizon=10")
+
+    @property
+    def score_basis(self):
+        return ("current_observation_full_chunk" if self.score_representation == "full_chunk"
+                else "current_observation_first_action")
 
     def active(self, decision):
         return self.window_start <= decision <= self.window_end
+
+
+def config_record(config):
+    """Keep legacy default records identical, including resumable collections."""
+    record = asdict(config)
+    if (config.score_representation == "first_action" and config.score_scale == 1
+            and not config.uniform_weights and config.calibration_sha256 is None
+            and config.calibration_key is None):
+        for key in ("score_representation", "score_scale", "uniform_weights",
+                    "calibration_sha256", "calibration_key"):
+            record.pop(key)
+    # Old K<=4 collections used one request for the whole candidate batch; the
+    # default microbatch remains behavior-compatible and need not break resume.
+    if config.policy_microbatch == 4 and config.num_candidates <= 4:
+        record.pop("policy_microbatch")
+    return record
 
 
 class ManualSamplingWindow:
@@ -67,19 +102,21 @@ class ManualSamplingWindow:
         return True
 
 
-def coverage_weights(scores, beta):
+def coverage_weights(scores, beta, *, scale=1.0, uniform=False):
     """Self-normalized importance weights; the proposal is already the policy."""
     scores = np.asarray(scores, dtype=np.float64)
     if scores.ndim != 1 or not len(scores) or not np.isfinite(scores).all():
         raise ValueError("Require a nonempty finite score vector")
     if not np.isfinite(beta) or beta < 0:
         raise ValueError("beta must be finite and nonnegative")
-    if beta == 0:
+    if not np.isfinite(scale) or scale < 0 or (scale == 0 and not uniform):
+        raise ValueError("Invalid calibration scale")
+    if beta == 0 or uniform:
         return np.full(len(scores), 1.0 / len(scores))
     # Common shift cancels algebraically. Negative infinity is valid here:
     # an extremely large positive gap simply receives zero mass.
     with np.errstate(over="ignore", under="ignore"):
-        weights = np.exp(-beta * (scores - scores.min()))
+        weights = np.exp(-beta * (scores - scores.min()) / scale)
     return weights / weights.sum()
 
 
@@ -94,7 +131,8 @@ class DecisionSampler:
     """Draw policy chunks and blend them using same-observation action scores.
 
     The optional rollout backend remains for reproducing older diagnostics;
-    online callers provide score_candidates to score only each first action.
+    Online scoring uses either legacy first actions or complete chunks, explicitly
+    selected by config. No hypothetical simulator transitions are required.
     """
     def __init__(self, config, rollout, episode_seed):
         self.config, self.rollout = config, rollout
@@ -117,18 +155,21 @@ class DecisionSampler:
         sampling_seconds = time.monotonic() - start
         record = {"decision": int(decision), "active": active, "mode": cfg.mode,
                   "num_candidates": count, "candidates": candidates.tolist(),
-                  "candidate_generation": "batched" if active else "single",
-                  "policy_inference_requests": 1,
+                  "candidate_generation": ("microbatched" if active and count > cfg.policy_microbatch
+                                           else "batched" if active else "single"),
+                  "policy_inference_requests": ((count + cfg.policy_microbatch - 1) // cfg.policy_microbatch
+                                                if active else 1),
                   "sampling_seconds": sampling_seconds}
         if active:
             if score_candidates is not None:
-                # C(o_t, a_t) already contains the TD-trained continuation
-                # estimate. No hypothetical physics transition is needed.
-                scores = np.asarray(score_candidates(candidates[:, 0, :].copy()), dtype=np.float64)
+                inputs = candidates if cfg.score_representation == "full_chunk" else candidates[:, 0, :]
+                scores = np.asarray(score_candidates(inputs.copy()), dtype=np.float64)
                 if scores.shape != (count,) or not np.isfinite(scores).all():
-                    raise ValueError(f"Expected {count} finite current-action coverage scores")
-                score_basis, branches, replay = "current_observation_first_action", [], None
+                    raise ValueError(f"Expected {count} finite coverage scores")
+                score_basis, branches, replay = cfg.score_basis, [], None
             else:
+                if cfg.score_representation == "full_chunk":
+                    raise ValueError("Full-chunk scoring requires a direct scorer, not branch replay")
                 if self.rollout is None:
                     raise ValueError("Active sampling requires a current-action scorer or legacy rollout backend")
                 branches, replay = self.rollout.evaluate(candidates, verify=not self.checked_replay,
@@ -145,13 +186,30 @@ class DecisionSampler:
                 score_basis = "legacy_branch_min"
             scoring_seconds = time.monotonic() - start - sampling_seconds
             beta = cfg.beta if cfg.mode == "enhanced" else 0.0
-            weights = coverage_weights(scores, beta)
-            # Keep one weight per whole chunk. Only the first action is scored;
-            # later chunk actions are carried along, not evaluated in advance.
+            weights = coverage_weights(scores, beta, scale=cfg.score_scale, uniform=cfg.uniform_weights)
+            # One scalar weight per candidate, shared by every time step and joint.
             action_chunk = np.tensordot(weights, candidates.astype(np.float64),
                                         axes=(0, 0)).astype(np.float32)
-            record.update(score_basis=score_basis, score_action_index=0,
+            blended_score = None
+            if cfg.score_representation == "full_chunk":
+                # Evaluate the actual float32 output, not E_w[B(A)]. The bound
+                # scorer reuses the same observation features as the candidates.
+                blended = np.asarray(score_candidates(action_chunk[None].copy()), dtype=np.float64)
+                if blended.shape != (1,) or not np.isfinite(blended).all():
+                    raise ValueError("Expected one finite blended chunk score")
+                blended_score = float(blended[0])
+            output_scoring_seconds = time.monotonic() - start - sampling_seconds - scoring_seconds
+            shift = action_chunk.astype(np.float64) - candidates.astype(np.float64).mean(axis=0)
+            joint_indices = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+            positive_weights = weights[weights > 0]
+            record.update(score_basis=score_basis,
+                          score_action_index=None if cfg.score_representation == "full_chunk" else 0,
                           scoring_seconds=scoring_seconds, branches=branches,
+                          output_scoring_seconds=output_scoring_seconds,
+                          blended_chunk_score=blended_score,
+                          score_scale=cfg.score_scale, beta=beta,
+                          uniform_weights=cfg.uniform_weights,
+                          score_range=float(np.ptp(scores)), score_std=float(np.std(scores)),
                           scores=np.asarray(scores).tolist(), weights=weights.tolist(),
                           action_aggregation="weighted_mean", selected=None,
                           selected_score=None,
@@ -159,6 +217,11 @@ class DecisionSampler:
                           blended_chunk=action_chunk.tolist(),
                           uniform_expected_score=float(np.mean(scores)),
                           effective_sample_size=float(1.0 / np.square(weights).sum()),
+                          ess_fraction=float(1.0 / (count * np.square(weights).sum())),
+                          max_weight=float(weights.max()),
+                          candidate_weight_kl_to_uniform=float(np.sum(positive_weights * np.log(count * positive_weights))),
+                          joint_rms_shift_from_uniform=float(np.sqrt(np.mean(shift[:, joint_indices] ** 2))),
+                          gripper_rms_shift_from_uniform=float(np.sqrt(np.mean(shift[:, [6, 13]] ** 2))),
                           replay_check=replay)
             if score_basis == "legacy_branch_min":
                 record["weighted_candidate_min"] = record["weighted_candidate_score"]
@@ -179,7 +242,7 @@ class EpisodeLog:
         self.config = config
         self.active_decisions = 0
         self.active_scores = []
-        self.write({"event": "episode_start", "config": asdict(config), **metadata})
+        self.write({"event": "episode_start", "config": config_record(config), **metadata})
 
     def write(self, record):
         self.stream.write(json.dumps(record, allow_nan=False) + "\n")
@@ -191,7 +254,7 @@ class EpisodeLog:
 
     def executed(self, decision, action_index, coverage, active, action, **extra):
         if coverage is None and active and action_index == 0:
-            raise ValueError("Active sampling decisions require a real coverage score for the first action")
+            raise ValueError("Active sampling decisions require a real coverage score at execution start")
         coverage = float(coverage) if coverage is not None else None
         if active and coverage is not None:
             self.active_scores.append(coverage)

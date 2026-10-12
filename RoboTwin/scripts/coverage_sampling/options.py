@@ -7,8 +7,14 @@ def add_arguments(parser):
     parser.add_argument("--es-window-start", type=int, help="First active decision index, zero-based")
     parser.add_argument("--es-window-end", type=int, help="Last active decision index, inclusive")
     parser.add_argument("--es-num-candidates", type=int, default=4)
+    parser.add_argument("--es-policy-microbatch", type=int, default=4,
+                        help="Candidate chunks per request (2..32); current 4090 JAX 0.30 profile supports <=8")
     parser.add_argument("--es-horizon", type=int, default=10, help="Expected FULL policy chunk length")
-    parser.add_argument("--es-beta", type=float, default=10.0)
+    parser.add_argument("--es-beta", type=float, default=None,
+                        help="Legacy TD defaults to 10; discriminator uses frozen calibration unless overridden")
+    parser.add_argument("--es-scorer", choices=("td_first_action", "discriminator_chunk"), default="td_first_action")
+    parser.add_argument("--es-calibration", help="Completed benchmark fit/calibration.json (required for discriminator)")
+    parser.add_argument("--es-calibration-key", default="disc_s42")
     parser.add_argument("--es-seed", type=int, default=42)
     parser.add_argument("--es-replay-atol", type=float, default=1e-4)
     parser.add_argument("--es-low-threshold", type=float, default=None)
@@ -30,7 +36,26 @@ def config_from_args(args):
         raise ValueError("Both --es-critic and --es-encoder-weights are required")
     if args.get("es_window_start") is None or args.get("es_window_end") is None:
         raise ValueError("Specify the same --es-window-start/end in both experiment arms")
+    scorer = args.get("es_scorer", "td_first_action")
+    beta = args.get("es_beta")
+    extra = {}
+    if scorer == "discriminator_chunk":
+        from .calibration import load_discriminator_calibration
+        if not args.get("es_calibration"):
+            raise ValueError("Chunk discriminator requires --es-calibration")
+        key = args.get("es_calibration_key", "disc_s42")
+        calibration, digest = load_discriminator_calibration(args["es_calibration"], key, args["es_critic"])
+        beta = calibration["beta"] if beta is None else beta
+        extra = dict(score_representation="full_chunk", score_scale=calibration["scale"],
+                     uniform_weights=calibration["degenerate"], calibration_sha256=digest, calibration_key=key)
+    elif scorer != "td_first_action":
+        raise ValueError("Unknown --es-scorer")
+    elif args.get("es_calibration"):
+        raise ValueError("Do not apply discriminator calibration to a legacy TD scorer")
     return SamplingConfig(mode=mode, window_start=args["es_window_start"], window_end=args["es_window_end"],
-                          num_candidates=args.get("es_num_candidates", 4), horizon=args.get("es_horizon", 10),
-                          beta=args.get("es_beta", 10.0), seed=args.get("es_seed", 42),
-                          replay_atol=args.get("es_replay_atol", 1e-4), low_threshold=args.get("es_low_threshold"))
+                          num_candidates=args.get("es_num_candidates", 4),
+                          policy_microbatch=args.get("es_policy_microbatch", 4),
+                          horizon=args.get("es_horizon", 10),
+                          beta=10.0 if beta is None else beta, seed=args.get("es_seed", 42),
+                          replay_atol=args.get("es_replay_atol", 1e-4), low_threshold=args.get("es_low_threshold"),
+                          **extra)

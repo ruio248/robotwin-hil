@@ -225,7 +225,6 @@ class Pi0(_model.BaseModel):
         observation = _model.preprocess_observation(None, observation, train=False)
         # note that we use the convention more common in diffusion literature, where t=1 is noise and t=0 is the target
         # distribution. yes, this is the opposite of the pi0 paper, and I'm sorry.
-        dt = -1.0 / num_steps
         batch_size = observation.state.shape[0]
         if noise is None:
             noise = jax.random.normal(rng, (batch_size, self.action_horizon, self.action_dim))
@@ -235,6 +234,51 @@ class Pi0(_model.BaseModel):
         prefix_attn_mask = make_attn_mask(prefix_mask, prefix_ar_mask)
         positions = jnp.cumsum(prefix_mask, axis=1) - 1
         _, kv_cache = self.PaliGemma.llm([prefix_tokens, None], mask=prefix_attn_mask, positions=positions)
+
+        return self._denoise_from_prefix(observation, noise, prefix_mask, kv_cache, num_steps)
+
+    def sample_actions_shared_prefix(
+        self,
+        observation: _model.Observation,
+        noise: at.Float[at.Array, "k ah ad"],
+        *,
+        num_steps: int | at.Int[at.Array, ""] = 10,
+    ) -> _model.Actions:
+        """Sample K chunks from one observation without repeating its prefix pass.
+
+        The caller supplies independent noise rows. Only the action-expert suffix
+        is batched; the image/language encoder and PaliGemma prefill run at B=1.
+        This is intentionally an explicit same-observation API, not a replacement
+        for the ordinary multi-observation ``sample_actions`` path.
+        """
+        if observation.state.shape[0] != 1:
+            raise ValueError("shared-prefix sampling requires exactly one observation")
+        if noise.ndim != 3 or noise.shape[0] < 1 or noise.shape[1:] != (self.action_horizon, self.action_dim):
+            raise ValueError("noise must have shape [K, action_horizon, action_dim]")
+        observation = _model.preprocess_observation(None, observation, train=False)
+        prefix_tokens, prefix_mask, prefix_ar_mask = self.embed_prefix(observation)
+        prefix_attn_mask = make_attn_mask(prefix_mask, prefix_ar_mask)
+        positions = jnp.cumsum(prefix_mask, axis=1) - 1
+        _, kv_cache = self.PaliGemma.llm([prefix_tokens, None], mask=prefix_attn_mask, positions=positions)
+
+        count = noise.shape[0]
+        suffix_observation = jax.tree.map(
+            lambda value: jnp.broadcast_to(value, (count, *value.shape[1:])), observation
+        )
+        suffix_prefix_mask = jnp.broadcast_to(prefix_mask, (count, prefix_mask.shape[1]))
+        # The scanned Gemma cache has layout [layers, batch, tokens, heads, dim].
+        # Broadcasting here avoids *recomputing* the prefix. XLA may still
+        # materialize its K copies in the suffix attention kernel, so K=32 must
+        # be measured under the real GPU memory budget.
+        suffix_kv_cache = jax.tree.map(
+            lambda value: jnp.broadcast_to(value, (value.shape[0], count, *value.shape[2:])), kv_cache
+        )
+        return self._denoise_from_prefix(suffix_observation, noise, suffix_prefix_mask, suffix_kv_cache, num_steps)
+
+    def _denoise_from_prefix(self, observation, noise, prefix_mask, kv_cache, num_steps):
+        """The same flow-matching integration for ordinary and shared-prefix calls."""
+        dt = -1.0 / num_steps
+        batch_size = noise.shape[0]
 
         def step(carry):
             x_t, time = carry
@@ -253,7 +297,7 @@ class Pi0(_model.BaseModel):
             assert full_attn_mask.shape == (
                 batch_size,
                 suffix_tokens.shape[1],
-                prefix_tokens.shape[1] + suffix_tokens.shape[1],
+                prefix_mask.shape[1] + suffix_tokens.shape[1],
             )
             # `positions` is shape (b, suffix_len) indicating the positions of the suffix tokens
             positions = jnp.sum(prefix_mask, axis=-1)[:, None] + jnp.cumsum(suffix_mask, axis=-1) - 1

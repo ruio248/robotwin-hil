@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import ast
 import dataclasses
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
 from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 import einops
@@ -29,7 +31,7 @@ def load_model_class():
             "stack_obs", "slice_stacked_obs", "encode_obs", "ensure_chw_uint8"
         }
     ]
-    namespace = {"Any": Any, "np": np, "ModelTemplate": object}
+    namespace = {"Any": Any, "np": np, "os": os, "ModelTemplate": object}
     exec(compile(tree, str(MODEL_SOURCE), "exec"), namespace)
     return namespace["Model"]
 
@@ -75,6 +77,15 @@ class FakePolicy:
         ])}
 
 
+class FakeSharedPrefixPolicy(FakePolicy):
+    def infer_candidates(self, obs, num_candidates):
+        self.calls.append((obs, num_candidates))
+        return {"actions": np.stack([
+            np.full((10, 14), index + 1, dtype=np.float32)
+            for index in range(num_candidates)
+        ])}
+
+
 class Pi05CandidateBatchTests(unittest.TestCase):
     def make_model(self, policy=None):
         model_class = load_model_class()
@@ -102,7 +113,7 @@ class Pi05CandidateBatchTests(unittest.TestCase):
 
     def test_invalid_request_or_policy_output_fails_closed(self):
         model = self.make_model()
-        for count in (True, 1, 9, 4.0, "4"):
+        for count in (True, 1, 33, 4.0, "4"):
             with self.assertRaises(ValueError):
                 model.get_action_candidates(count)
         with self.assertRaises(AssertionError):
@@ -143,6 +154,45 @@ class Pi05CandidateBatchTests(unittest.TestCase):
         output = outputs_class()({"actions": np.zeros((4, 10, 32))})["actions"]
         self.assertEqual(output.shape, (4, 10, 14))
         self.assertEqual(outputs_class()({"actions": np.zeros((10, 32))})["actions"].shape, (10, 14))
+
+    def test_k32_is_one_model_call_with_a_real_batch_axis(self):
+        with patch.dict(os.environ, {"XLA_PYTHON_CLIENT_MEM_FRACTION": "0.50"}):
+            model = self.make_model()
+            model.update_obs_batch([observation(0.25)])
+            result = np.asarray(model.get_action_candidates(32))
+            self.assertEqual(model.candidate_sampling_info()["max_batch_size"], 32)
+            self.assertEqual(len(model.policy.calls), 1)
+            self.assertEqual(result.shape, (32, 10, 14))
+            self.assertEqual(model.policy.calls[0]["state"].shape, (32, 14))
+            self.assertEqual(model.policy.calls[0]["images"]["cam_high"].shape, (32, 3, 4, 4))
+            np.testing.assert_array_equal(result[:, 0, 0], np.arange(1, 33))
+            self.assertEqual(model.observation_window["state"].shape, (1, 14))
+
+    def test_hil_memory_budget_caps_recommended_batch_at_eight(self):
+        model = self.make_model()
+        model.update_obs_batch([observation(0.25)])
+        with patch.dict(os.environ, {"XLA_PYTHON_CLIENT_MEM_FRACTION": "0.30"}):
+            self.assertEqual(model.candidate_sampling_info()["max_batch_size"], 8)
+            with self.assertRaisesRegex(ValueError, "safe same-observation batch size"):
+                model.get_action_candidates(16)
+        self.assertEqual(model.policy.calls, [])
+
+    def test_shared_prefix_path_keeps_one_observation(self):
+        with patch.dict(os.environ, {
+            "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.30",
+            "OPENPI_SHARED_PREFIX_CANDIDATES": "1",
+        }):
+            model = self.make_model(FakeSharedPrefixPolicy())
+            model.update_obs_batch([observation(0.25)])
+            result = np.asarray(model.get_action_candidates(32))
+            self.assertEqual(result.shape, (32, 10, 14))
+            self.assertEqual(len(model.policy.calls), 1)
+            single_obs, count = model.policy.calls[0]
+            self.assertEqual(count, 32)
+            self.assertEqual(single_obs["state"].shape, (14,))
+            self.assertEqual(single_obs["images"]["cam_high"].shape, (3, 4, 4))
+            self.assertEqual(model.observation_window["state"].shape, (1, 14))
+            self.assertTrue(model.candidate_sampling_info()["shared_prefix_enabled"])
 
 
 if __name__ == "__main__":

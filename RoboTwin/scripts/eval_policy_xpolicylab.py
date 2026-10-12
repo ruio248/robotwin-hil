@@ -804,9 +804,8 @@ def eval_remote_policy(
     scorer = None
     if sampling_config is not None:
         from coverage_sampling.core import DecisionSampler, EpisodeLog
-        from coverage_sampling.critic import OnlineCoverage
-        scorer = OnlineCoverage(usr_args["es_critic"], usr_args["es_encoder_weights"],
-                                device=usr_args.get("es_device", "cpu"))
+        from coverage_sampling.critic import create_online_scorer
+        scorer = create_online_scorer(usr_args, sampling_config)
 
     task_env.suc = 0
     task_env.test_num = 0
@@ -928,7 +927,7 @@ def eval_remote_policy(
                     sampling_config, {**scorer.metadata, "episode_seed": now_seed,
                                       "instruction": instruction, "policy_checkpoint": args["ckpt_setting"],
                                       "task_config": args["task_config"], "frequency": frequency,
-                                      "selection_score_basis": "current_observation_first_action",
+                                      "selection_score_basis": sampling_config.score_basis,
                                       "executor": "Base_Task.take_action(qpos)",
                                       "window_units": "zero-based policy decision calls; inclusive"})
             while not is_episode_end(task_env):
@@ -946,10 +945,12 @@ def eval_remote_policy(
                     def sample_absolute_chunk():
                         return sample_absolute_joint_chunk(model_client, observation, action_type)
                     def sample_candidates(count):
-                        return sample_absolute_joint_candidates(model_client, observation, action_type, count)
+                        return sample_absolute_joint_candidates(
+                            model_client, observation, action_type, count, sampling_config.policy_microbatch
+                        )
                     action_chunk, selection = sampler.select(
                         decision_step, sample_absolute_chunk, sample_candidates=sample_candidates,
-                        score_candidates=lambda actions: scorer.score_actions(observation, actions),
+                        score_candidates=scorer.bind_observation(observation),
                     )
                     sampling_log.decision(selection)
                 else:
@@ -963,8 +964,11 @@ def eval_remote_policy(
                         action_type=action_type,
                         current_observation=observation,
                     )
-                    actual_coverage = (scorer(observation, flat_action)
-                                       if scorer is not None and selection["active"] and action_idx == 0 else None)
+                    actual_coverage = None
+                    if scorer is not None and selection["active"] and action_idx == 0:
+                        actual_coverage = (selection["blended_chunk_score"]
+                                           if sampling_config.score_representation == "full_chunk"
+                                           else scorer(observation, flat_action))
                     task_env.take_action(flat_action, action_type=robotwin_action_type)
                     rollout_steps += 1
                     if sampling_log is not None:
@@ -975,6 +979,8 @@ def eval_remote_policy(
                                 predicted = curve[action_idx]
                         sampling_log.executed(decision_step, action_idx, actual_coverage,
                                               selection["active"], flat_action,
+                                              coverage_basis=sampling_config.score_basis,
+                                              coverage_time="pre_execution_decision_observation",
                                               predicted_coverage=predicted,
                                               prediction_error=actual_coverage - predicted if predicted is not None else None,
                                               success=bool(task_env.eval_success), rollout_step=rollout_steps)
@@ -1227,16 +1233,29 @@ def absolute_joint_chunk_from_response(raw, observation: Mapping[str, Any], acti
 
 
 def sample_absolute_joint_candidates(
-    model_client, observation: Mapping[str, Any], action_type: str, num_candidates: int
+    model_client, observation: Mapping[str, Any], action_type: str, num_candidates: int,
+    microbatch_size: int = 4,
 ) -> np.ndarray:
-    """Fetch K same-observation chunks in one RPC / one Pi0.5 batched inference."""
+    """Fetch K same-observation chunks in policy-supported microbatches."""
     if (isinstance(num_candidates, bool) or not isinstance(num_candidates, int)
-            or not 2 <= num_candidates <= 8):
-        raise ValueError("num_candidates must be an integer between 2 and 8")
-    raw = model_client.call(func_name="get_action_candidates", obs=num_candidates)
-    if not isinstance(raw, (list, tuple, np.ndarray)) or len(raw) != num_candidates:
-        raise ValueError("policy must return exactly K candidate chunks")
-    chunks = [absolute_joint_chunk_from_response(candidate, observation, action_type) for candidate in raw]
+            or not 2 <= num_candidates <= 32):
+        raise ValueError("num_candidates must be an integer between 2 and 32")
+    if (isinstance(microbatch_size, bool) or not isinstance(microbatch_size, int)
+            or not 2 <= microbatch_size <= 32):
+        raise ValueError("microbatch_size must be an integer between 2 and 32")
+    chunks = []
+    remaining = num_candidates
+    while remaining:
+        batch_size = min(microbatch_size, remaining)
+        if batch_size == 1:
+            raw_batch = [model_client.call(func_name="get_action")]
+        else:
+            raw_batch = model_client.call(func_name="get_action_candidates", obs=batch_size)
+        if not isinstance(raw_batch, (list, tuple, np.ndarray)) or len(raw_batch) != batch_size:
+            raise ValueError(f"policy must return exactly {batch_size} candidate chunks")
+        chunks.extend(absolute_joint_chunk_from_response(candidate, observation, action_type)
+                      for candidate in raw_batch)
+        remaining -= batch_size
     if len({chunk.shape for chunk in chunks}) != 1:
         raise ValueError("candidate chunks must have the same shape")
     return np.stack(chunks)

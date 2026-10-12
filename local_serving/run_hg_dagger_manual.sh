@@ -7,8 +7,6 @@ cd "$repo_root"
 export ROBOTWIN_HIL_ROOT="$repo_root"
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY no_proxy NO_PROXY
 
-export DISPLAY="${DISPLAY:-:1}"
-export XAUTHORITY="${XAUTHORITY:-/home/ruio/.Xauthority}"
 export HIL_VIEWER_BACKEND="${HIL_VIEWER_BACKEND:-preview}"
 export HIL_VIEWER_RENDER_RESOLUTION="${HIL_VIEWER_RENDER_RESOLUTION:-320x180}"
 export HIL_VIEWER_WINDOW_RESOLUTION="${HIL_VIEWER_WINDOW_RESOLUTION:-1600x900}"
@@ -65,15 +63,24 @@ if [[ "$sampling_mode" != off ]]; then
     sampling_args+=(--es-window-start "$HIL_ES_WINDOW_START" --es-window-end "$HIL_ES_WINDOW_END")
   fi
   sampling_args+=(
+    --es-scorer "${HIL_ES_SCORER:-td_first_action}"
     --es-critic "$HIL_ES_CRITIC"
     --es-encoder-weights "$HIL_ES_ENCODER_WEIGHTS"
     --es-device "${HIL_ES_DEVICE:-cuda}"
     --es-num-candidates "${HIL_ES_NUM_CANDIDATES:-4}"
+    --es-policy-microbatch "${HIL_ES_POLICY_MICROBATCH:-4}"
     --es-horizon "${HIL_ES_HORIZON:-10}"
-    --es-beta "${HIL_ES_BETA:-10}"
     --es-seed "${HIL_ES_SEED:-42}"
     --es-log-dir "${HIL_ES_LOG_DIR:-$output_dir/sampling}"
   )
+  # Omission loads the discriminator's frozen calibration beta (legacy TD: 10).
+  if [[ -n "${HIL_ES_BETA:-}" ]]; then
+    sampling_args+=(--es-beta "$HIL_ES_BETA")
+  fi
+  if [[ -n "${HIL_ES_CALIBRATION:-}" ]]; then
+    sampling_args+=(--es-calibration "$HIL_ES_CALIBRATION"
+                    --es-calibration-key "${HIL_ES_CALIBRATION_KEY:-disc_s42}")
+  fi
 fi
 
 run_args=(
@@ -108,6 +115,44 @@ if [[ "${HIL_DRY_RUN:-0}" == 1 ]]; then
   printf 'bash ./enter_robotwin_hil.sh'
   printf ' %q' "${run_args[@]}"
   printf '\n'
+  exit 0
+fi
+
+# Remote desktop reconnects can move the X11 session (for example :1 -> :10).
+# Prefer a working inherited display, then discover the active graphical session.
+display_auth="${XAUTHORITY:-$HOME/.Xauthority}"
+display_works() {
+  DISPLAY="$1" XAUTHORITY="$2" xwininfo -root >/dev/null 2>&1
+}
+if ! command -v xwininfo >/dev/null 2>&1; then
+  echo "Missing xwininfo; install x11-utils to check the desktop display." >&2
+  exit 1
+fi
+if [[ -z "${DISPLAY:-}" ]] || ! display_works "$DISPLAY" "$display_auth"; then
+  found_display=""
+  if command -v loginctl >/dev/null 2>&1; then
+    while read -r session_id session_uid session_user _; do
+      [[ "$session_user" == "$(id -un)" ]] || continue
+      [[ "$(loginctl show-session "$session_id" -p Type --value 2>/dev/null)" == "x11" ]] || continue
+      [[ "$(loginctl show-session "$session_id" -p Active --value 2>/dev/null)" == "yes" ]] || continue
+      candidate="$(loginctl show-session "$session_id" -p Display --value 2>/dev/null)"
+      if [[ -n "$candidate" ]] && display_works "$candidate" "$display_auth"; then
+        found_display="$candidate"
+        break
+      fi
+    done < <(loginctl list-sessions --no-legend 2>/dev/null)
+  fi
+  if [[ -z "$found_display" ]]; then
+    echo "No accessible X11 desktop. DISPLAY=${DISPLAY:-<unset>} XAUTHORITY=$display_auth" >&2
+    echo "Open a terminal inside the active Ubuntu remote desktop, or reconnect it, then retry." >&2
+    exit 1
+  fi
+  echo "[HIL-VIEWER] using active desktop DISPLAY=$found_display (previous: ${DISPLAY:-<unset>})"
+  export DISPLAY="$found_display"
+fi
+export XAUTHORITY="$display_auth"
+if [[ "${HIL_DISPLAY_CHECK_ONLY:-0}" == 1 ]]; then
+  echo "[HIL-VIEWER] desktop connection ready: DISPLAY=$DISPLAY"
   exit 0
 fi
 

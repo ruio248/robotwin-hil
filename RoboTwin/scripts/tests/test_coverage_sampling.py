@@ -22,6 +22,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow, SamplingConfig, coverage_weights
 from coverage_sampling.options import config_from_args
+from coverage_sampling import calibration as sampling_calibration
 from coverage_sampling.robotwin import RobotwinRollout, SceneSnapshot
 
 
@@ -444,7 +445,8 @@ class EvaluatorIntegrationTests(unittest.TestCase):
     Extracting functions avoids importing SAPIEN's GPU renderer in CPU tests;
     the evaluator loop and action adapters are compiled unchanged from source.
     """
-    def _run(self, mode, directory, bad_chunk=False, distinct_candidates=False):
+    def _run(self, mode, directory, bad_chunk=False, distinct_candidates=False, full_chunk=False,
+             num_candidates=3, policy_microbatch=4):
         from coverage_sampling.core import SamplingConfig
         source = Path(__file__).resolve().parents[1] / "eval_policy_xpolicylab.py"
         tree = ast.parse(source.read_text())
@@ -462,7 +464,7 @@ class EvaluatorIntegrationTests(unittest.TestCase):
 
         class Env(FakeEnv):
             def setup_demo(self, **kwargs):
-                self.eval_video_path, self.render_freq, self.step_lim = None, 0, 4
+                self.eval_video_path, self.render_freq, self.step_lim = None, 0, 20 if full_chunk else 4
             def set_instruction(self, instruction): self.instruction = instruction
             def get_instruction(self): return self.instruction
             def close_env(self, **kwargs): pass
@@ -472,29 +474,86 @@ class EvaluatorIntegrationTests(unittest.TestCase):
                 self.calls.append(func_name)
                 if func_name == "update_obs":
                     self.observations.append(kwargs["obs"]["joint_action"]["vector"][0])
-                if func_name == "get_action": return chunk(1, 1 if bad_chunk else 2)
+                if func_name == "get_action": return chunk(1, 1 if bad_chunk else (10 if full_chunk else 2))
                 if func_name == "get_action_candidates":
                     return np.stack([chunk(1 + (i if distinct_candidates else 0),
-                                           1 if bad_chunk else 2)
+                                           1 if bad_chunk else (10 if full_chunk else 2))
                                      for i in range(kwargs["obs"])])
         class Scorer:
             metadata = {"critic_sha256": "test", "encoder_sha256": "test_encoder"}
             def __init__(self, *args, **kwargs): pass
-            def __call__(self, observation, action): return score(observation, action)
+            def __call__(self, observation, action):
+                if full_chunk: raise AssertionError("Chunk scorer must never be called on a flat action")
+                return score(observation, action)
             def score_actions(self, observation, actions):
                 return np.array([score(observation, action) for action in actions])
+            def bind_observation(self, observation):
+                if full_chunk:
+                    return lambda chunks: chunks[:, -1, 0].astype(np.float64) ** 2 + observation["joint_action"]["vector"][0]
+                return lambda actions: self.score_actions(observation, actions)
         fake_critic = types.ModuleType("coverage_sampling.critic")
-        fake_critic.OnlineCoverage = Scorer
+        fake_critic.create_online_scorer = lambda args, config: Scorer()
         env, client = Env(), Client()
         args = {"task_name": "handover_to_tray", "policy_name": "Pi_05_RobotTwin", "clear_cache_freq": 10,
                 "render_freq": 0, "ckpt_setting": "test", "task_config": "test"}
         usr_args = {"task_name": "handover_to_tray", "expert_check": False, "es_mode": mode,
                     "es_critic": "test", "es_encoder_weights": "test", "es_window_start": 1,
-                    "es_window_end": 1, "es_num_candidates": 3, "es_horizon": 2, "es_log_dir": directory}
-        with patch.dict(sys.modules, {"coverage_sampling.critic": fake_critic}), contextlib.redirect_stdout(io.StringIO()):
+                    "es_window_end": 1, "es_num_candidates": num_candidates,
+                    "es_policy_microbatch": policy_microbatch, "es_horizon": 10 if full_chunk else 2,
+                    "es_beta": 1., "es_log_dir": directory}
+        if full_chunk:
+            usr_args.update(es_scorer="discriminator_chunk", es_calibration="fixture.json")
+        with patch.dict(sys.modules, {"coverage_sampling.critic": fake_critic}), contextlib.redirect_stdout(io.StringIO()), \
+             patch.object(sampling_calibration, "load_discriminator_calibration",
+                   return_value=({"beta": 1., "scale": 2., "degenerate": False}, "fixture")):
             ns["eval_remote_policy"]("handover_to_tray", env, args, client, 7,
                                      usr_args=usr_args, test_num=1, seed_list=[7])
         return env, client
+
+    def test_full_chunk_evaluator_executes_mean_and_logs_actual_chunk_score(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True, full_chunk=True)
+            rows = [json.loads(x) for x in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            decision = next(x for x in rows if x["event"] == "decision" and x["active"])
+            actual = [x for x in rows if x["event"] == "executed" and x["active"]]
+            self.assertEqual(env.take_action_cnt, 20)
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
+            self.assertEqual(len(actual), 10)
+            np.testing.assert_allclose([x["action"] for x in actual], decision["blended_chunk"])
+            self.assertEqual(actual[0]["coverage"], decision["blended_chunk_score"])
+            self.assertNotAlmostEqual(actual[0]["coverage"], decision["weighted_candidate_score"])
+            self.assertTrue(all(x["coverage"] is None for x in actual[1:]))
+            self.assertEqual(actual[0]["coverage_basis"], "current_observation_full_chunk")
+
+    def test_32_candidates_use_eight_same_observation_microbatches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True, full_chunk=True,
+                                    num_candidates=32, policy_microbatch=4)
+            rows = [json.loads(x) for x in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            decision = next(x for x in rows if x["event"] == "decision" and x["active"])
+            self.assertEqual(client.calls.count("get_action_candidates"), 8)
+            self.assertEqual(len(client.observations), 20)
+            self.assertEqual(decision["num_candidates"], 32)
+            self.assertEqual(decision["candidate_generation"], "microbatched")
+            self.assertEqual(decision["policy_inference_requests"], 8)
+            self.assertEqual(np.asarray(decision["candidates"]).shape, (32, 10, 14))
+            self.assertEqual(env.take_action_cnt, 20)
+
+    def test_k32_single_batch_executes_one_weighted_chunk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True, full_chunk=True,
+                                    num_candidates=32, policy_microbatch=32)
+            rows = [json.loads(x) for x in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            decision = next(x for x in rows if x["event"] == "decision" and x["active"])
+            actual = [x for x in rows if x["event"] == "executed" and x["active"]]
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
+            self.assertEqual(decision["policy_inference_requests"], 1)
+            self.assertEqual(decision["candidate_generation"], "batched")
+            candidates = np.asarray(decision["candidates"])
+            self.assertEqual(candidates.shape, (32, 10, 14))
+            expected = np.einsum("k,khj->hj", decision["weights"], candidates)
+            np.testing.assert_allclose([x["action"] for x in actual], expected, atol=1e-6)
+            self.assertEqual(env.take_action_cnt, 20)
 
     def test_opt_in_loop_no_policy_calls_in_branches_and_real_step_logging(self):
         with tempfile.TemporaryDirectory() as directory:

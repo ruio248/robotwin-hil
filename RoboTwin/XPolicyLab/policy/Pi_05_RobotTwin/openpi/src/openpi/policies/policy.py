@@ -62,6 +62,10 @@ class Policy(BasePolicy):
         else:
             # JAX model setup
             self._sample_actions = nnx_utils.module_jit(model.sample_actions)
+            self._sample_actions_shared_prefix = (
+                nnx_utils.module_jit(model.sample_actions_shared_prefix)
+                if hasattr(model, "sample_actions_shared_prefix") else None
+            )
             self._rng = rng or jax.random.key(0)
 
     @override
@@ -124,6 +128,48 @@ class Policy(BasePolicy):
         outputs["policy_timing"] = {
             "infer_ms": model_time * 1000,
         }
+        return outputs
+
+    def infer_candidates(self, obs: dict, num_candidates: int, *, noise: np.ndarray | None = None) -> dict:
+        """Infer independent candidate chunks with one observation prefix pass.
+
+        Input transforms and prefix prefill run once. The output transforms see
+        K copies of the state, so joint-delta denormalization is unchanged.
+        This opt-in API does not alter ordinary ``infer`` or PyTorch policies.
+        """
+        if self._is_pytorch_model or self._sample_actions_shared_prefix is None:
+            raise NotImplementedError("shared-prefix candidates require the JAX Pi0 model")
+        if isinstance(num_candidates, bool) or not isinstance(num_candidates, int) or not 1 <= num_candidates <= 32:
+            raise ValueError("num_candidates must be an integer in [1, 32]")
+
+        inputs = self._input_transform(jax.tree.map(lambda value: value, obs))
+        if np.asarray(inputs["state"]).ndim != 1:
+            raise ValueError("infer_candidates requires one unbatched observation")
+        inputs = jax.tree.map(lambda value: jnp.asarray(value)[None, ...], inputs)
+        observation = _model.Observation.from_dict(inputs)
+
+        if noise is None:
+            self._rng, sample_rng = jax.random.split(self._rng)
+            noise_array = jax.random.normal(
+                sample_rng, (num_candidates, self._model.action_horizon, self._model.action_dim)
+            )
+        else:
+            noise_array = jnp.asarray(noise)
+            expected = (num_candidates, self._model.action_horizon, self._model.action_dim)
+            if noise_array.shape != expected:
+                raise ValueError(f"noise must have shape {expected}, got {noise_array.shape}")
+
+        start_time = time.monotonic()
+        actions = self._sample_actions_shared_prefix(
+            observation, noise_array, num_steps=self._sample_kwargs.get("num_steps", 10)
+        )
+        outputs = {
+            "state": np.broadcast_to(np.asarray(inputs["state"]), (num_candidates, inputs["state"].shape[-1])),
+            "actions": np.asarray(actions),
+        }
+        model_time = time.monotonic() - start_time
+        outputs = self._output_transform(outputs)
+        outputs["policy_timing"] = {"infer_ms": model_time * 1000, "shared_prefix": True}
         return outputs
 
     @property

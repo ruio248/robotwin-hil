@@ -22,7 +22,6 @@ import time
 import traceback
 import tty
 from datetime import datetime
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -801,14 +800,18 @@ def main() -> int:
         raise ValueError("Acceptance runs cannot resume a collection")
     if (cli.es_mode != "off" or cli.takeover_eval) and cli.bias_magnitude:
         raise ValueError("Action bias is incompatible with simulated candidate scoring")
+    from coverage_sampling.core import config_record
     sampling_config = config_from_args({
         **vars(cli), "task_name": "handover_to_tray", "action_type": "joint", "eval_batch": False,
     })
     scorer = None
     if sampling_config is not None:
-        from coverage_sampling.critic import OnlineCoverage
+        from coverage_sampling.critic import create_online_scorer
 
-        scorer = OnlineCoverage(cli.es_critic, cli.es_encoder_weights, device=cli.es_device)
+        scorer = create_online_scorer(vars(cli), sampling_config)
+        print(f"[SAMPLING] {sampling_config.score_basis}; beta={sampling_config.beta:g}; "
+              f"scale={sampling_config.score_scale:g}; K={sampling_config.num_candidates}; "
+              f"policy_batch={sampling_config.policy_microbatch}; full-chunk weighted mean", flush=True)
     if cli.acceptance:
         cli.episodes = 1
         cli.save_data = "false"
@@ -827,7 +830,7 @@ def main() -> int:
     expected_resume = {
         "sampling_mode": cli.es_mode,
         "sampling_activation": cli.es_activation,
-        "sampling_config": asdict(sampling_config) if sampling_config is not None else None,
+        "sampling_config": config_record(sampling_config) if sampling_config is not None else None,
         "target_mode": cli.target_mode,
         "checkpoint_name": cli.ckpt_name,
         "task_config": cli.task_config,
@@ -887,6 +890,20 @@ def main() -> int:
     print("=" * 72 + "\n")
 
     try:
+        if sampling_config is not None and min(
+            sampling_config.num_candidates, sampling_config.policy_microbatch
+        ) > 8:
+            requested_batch = min(sampling_config.num_candidates, sampling_config.policy_microbatch)
+            try:
+                capability = model_client.call(func_name="candidate_sampling_info")
+                if not isinstance(capability, dict) or capability.get("max_batch_size", 0) < requested_batch:
+                    raise ValueError(f"Server capability: {capability!r}")
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Policy batch={requested_batch} requires the updated Pi0.5 service. "
+                    "Restart the policy server with the updated adapter before collecting; "
+                    "an already running process does not reload source changes."
+                ) from exc
         rollout_index = progress.next_rollout_index
         saved_hil_count = progress.saved_valid_hil
         aborted_rollouts = progress.aborted_rollouts
@@ -1011,10 +1028,11 @@ def main() -> int:
                         print(f"\n[ENHANCED] {status}; policy remains in control.", flush=True)
 
                     def poll_live_control() -> None:
-                        # Keep the viewer and operator keys responsive around inference.
+                        # Draw and poll on the main thread; never step physics here.
                         task_env._render_viewer_if_available()
                         pending = keyboard.poll()
                         if pending in {"intervene", "abort", "quit", "sampling_toggle"}:
+                            print(f"\n[CONTROL] {pending} requested; waiting for policy RPC to drain.", flush=True)
                             raise OperatorInterrupt(pending)
 
                     sampler = DecisionSampler(sampling_config, None, seed)
@@ -1025,7 +1043,7 @@ def main() -> int:
                         {**scorer.metadata, "episode_seed": seed, "instruction": PROMPT,
                          "policy_checkpoint": cli.ckpt_name, "task_config": cli.task_config,
                          "frequency": int(cli.frequency), "evaluation_type": "human_gated",
-                         "selection_score_basis": "current_observation_first_action",
+                         "selection_score_basis": sampling_config.score_basis,
                          "sampling_activation": cli.es_activation,
                          "manual_duration": cli.es_manual_duration if manual_window is not None else None,
                          "executor": "Base_Task.take_action(qpos)",
@@ -1105,13 +1123,20 @@ def main() -> int:
                         if sampler is not None:
                             def sample_chunk():
                                 poll_live_control()
-                                chunk = sample_absolute_joint_chunk(model_client, observation, "joint")
+                                responsive_wait = getattr(model_client, "responsive_wait", None)
+                                with (responsive_wait(poll_live_control) if responsive_wait else nullcontext()):
+                                    chunk = sample_absolute_joint_chunk(model_client, observation, "joint")
                                 poll_live_control()
                                 return chunk
 
                             def sample_candidates(count):
                                 poll_live_control()
-                                chunks = sample_absolute_joint_candidates(model_client, observation, "joint", count)
+                                responsive_wait = getattr(model_client, "responsive_wait", None)
+                                with (responsive_wait(poll_live_control) if responsive_wait else nullcontext()):
+                                    chunks = sample_absolute_joint_candidates(
+                                        model_client, observation, "joint", count,
+                                        sampling_config.policy_microbatch,
+                                    )
                                 poll_live_control()
                                 return chunks
 
@@ -1119,7 +1144,7 @@ def main() -> int:
                                 action_chunk, selection = sampler.select(
                                     decision_step, sample_chunk,
                                     sample_candidates=sample_candidates,
-                                    score_candidates=lambda actions: scorer.score_actions(observation, actions),
+                                    score_candidates=scorer.bind_observation(observation),
                                     active_override=manual_window.active(decision_step) if manual_window is not None else None,
                                 )
                             except OperatorInterrupt as interruption:
@@ -1163,7 +1188,11 @@ def main() -> int:
                                     cli.bias_magnitude,
                                 )
                             should_score = scorer is not None and selection["active"] and action_idx == 0
-                            actual_coverage = scorer(observation, flat_action) if should_score else None
+                            actual_coverage = None
+                            if should_score:
+                                actual_coverage = (selection["blended_chunk_score"]
+                                                   if sampling_config.score_representation == "full_chunk"
+                                                   else scorer(observation, flat_action))
                             pending = keyboard.poll() if scorer is not None else None
                             if pending in {"quit", "abort", "intervene", "sampling_toggle"}:
                                 event = pending
@@ -1186,6 +1215,8 @@ def main() -> int:
                                 sampling_log.executed(
                                     decision_step - 1, action_idx, actual_coverage,
                                     selection["active"], flat_action,
+                                    coverage_basis=sampling_config.score_basis,
+                                    coverage_time="pre_execution_decision_observation",
                                     predicted_coverage=predicted,
                                     prediction_error=actual_coverage - predicted if predicted is not None else None,
                                     success=bool(task_env.eval_success), rollout_step=policy_steps,
@@ -1511,7 +1542,7 @@ def main() -> int:
         "sampling_mode": cli.es_mode,
         "sampling_activation": cli.es_activation,
         "sampling_manual_duration": cli.es_manual_duration if cli.es_activation == "manual" else None,
-        "sampling_config": asdict(sampling_config) if sampling_config is not None else None,
+        "sampling_config": config_record(sampling_config) if sampling_config is not None else None,
         "sampling_window": [cli.es_window_start, cli.es_window_end],
         "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,
         "takeover_eval": bool(cli.takeover_eval),
