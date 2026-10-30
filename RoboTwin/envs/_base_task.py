@@ -1283,13 +1283,36 @@ class Base_Task(gym.Env):
                     Action(arm_tag, "close", target_gripper_pos=gripper_pos),
                 ]
 
-        pre_grasp_pose, grasp_pose = self.choose_grasp_pose(
+        grasp_poses = self.choose_grasp_pose(
             actor,
             arm_tag=arm_tag,
             pre_dis=pre_grasp_dis,
             target_dis=grasp_dis,
             contact_point_id=contact_point_id,
         )
+        if (
+            grasp_poses is None
+            or len(grasp_poses) != 2
+            or grasp_poses[0] is None
+            or grasp_poses[1] is None
+        ):
+            # Some randomized scenes have no feasible receiver grasp pose for
+            # the requested contact points. Treat this as a failed expert
+            # stage so the current rollout can be excluded and collection can
+            # continue; do not let Action(None) abort the entire HIL session.
+            self.plan_success = False
+            self.episode_metadata["expert_stage_error"] = {
+                "error": "no_feasible_grasp_pose",
+                "arm_tag": str(arm_tag),
+                "contact_point_id": contact_point_id,
+            }
+            print(
+                f"\033[91m[EXPERT] no feasible grasp pose for arm={arm_tag}; "
+                "marking this stage failed.\033[0m",
+                flush=True,
+            )
+            return None, []
+        pre_grasp_pose, grasp_pose = grasp_poses
         if pre_grasp_pose == grasp_pose:
             return arm_tag, [
                 Action(arm_tag, "move", target_pose=pre_grasp_pose),

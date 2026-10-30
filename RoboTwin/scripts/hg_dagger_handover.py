@@ -11,6 +11,7 @@ dataset.  Policy actions are never written as expert labels.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -52,6 +53,11 @@ from eval_policy_xpolicylab import (  # noqa: E402
 )
 from coverage_sampling.options import add_arguments as add_sampling_arguments, config_from_args  # noqa: E402
 from hg_dagger_resume import collection_lock, inspect_collection, preserve_incomplete_cache  # noqa: E402
+from one_stage_dagger import (  # noqa: E402
+    baseline_handoffs, baseline_seeds, handoff_pair_differences,
+    handoff_pair_ready, handoff_record, is_valid_hil,
+)
+from policy_rollout_archive import archive_policy_rollout  # noqa: E402
 from x11_fullscreen import request_fullscreen_for_current_process  # noqa: E402
 
 
@@ -628,6 +634,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--task-config", default="handover_to_tray_v2_promptfix")
     parser.add_argument("--seed-start", type=int, default=40000)
     parser.add_argument(
+        "--one-stage", action="store_true",
+        help="Scripted stages 1-5, then policy-only stage 6; auto-select recovery branch.",
+    )
+    parser.add_argument(
+        "--paired-baseline-report", type=Path,
+        help="Enhanced arm: replay every seed in a completed one-stage baseline report.",
+    )
+    parser.add_argument(
         "--seed-mode",
         choices=["sequential", "random"],
         default="random",
@@ -699,6 +713,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-data", default="true")
     parser.add_argument(
+        "--save-policy-rollouts", action="store_true",
+        help="Also archive completed policy-controlled segments separately under policy_rollouts/; never use them as HIL labels.",
+    )
+    parser.add_argument(
         "--save-video",
         default="false",
         help=(
@@ -748,7 +766,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--auto-save",
-        choices=["true", "false", "none"],
+        choices=["true", "false", "none", "valid_hil"],
         default="none",
         help="Test-only hook: skip the manual save/discard prompt.",
     )
@@ -782,11 +800,34 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     cli = parse_args()
+    if cli.one_stage:
+        if cli.target_mode != "expert" or cli.seed_mode != "sequential":
+            raise ValueError("One-stage collection requires --target-mode expert and sequential seeds")
+        if cli.es_activation != "fixed" or cli.takeover_eval or cli.auto_handback_step >= 0:
+            raise ValueError("One-stage collection requires fixed sampling and full expert recovery")
+        if cli.bias_magnitude or cli.label_mode != "auto":
+            raise ValueError("One-stage comparison disallows action bias and manual outcome labels")
+        if cli.paired_baseline_report and cli.es_mode not in {"enhanced", "gaussian"}:
+            raise ValueError("Paired baseline report is only for enhanced or gaussian arms")
+    elif cli.paired_baseline_report or cli.auto_save == "valid_hil":
+        raise ValueError("Paired baseline report and valid_hil autosave require --one-stage")
+    paired_report_sha = None
+    paired_seeds = None
+    paired_handoffs = None
+    if cli.paired_baseline_report:
+        source = cli.paired_baseline_report.expanduser().resolve()
+        paired_seeds = baseline_seeds(
+            source, checkpoint=cli.ckpt_name, task_config=cli.task_config,
+            frequency=int(cli.frequency),
+        )
+        paired_report_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+        paired_handoffs = baseline_handoffs(source)
+        cli.episodes = len(paired_seeds)
     if cli.render_freq <= 0 and os.environ.get("HIL_DIAG_ALLOW_NO_VIEWER") != "1":
         raise ValueError("--render-freq must be positive for human supervision")
     if cli.es_activation == "manual":
         if cli.es_mode == "off" or cli.es_manual_duration < 1:
-            raise ValueError("Manual sampling requires vanilla/enhanced mode and a positive duration")
+            raise ValueError("Manual sampling requires vanilla/enhanced/gaussian mode and a positive duration")
         cli.es_window_start = 0
         cli.es_window_end = cli.es_manual_duration - 1
     if cli.takeover_eval:
@@ -805,13 +846,20 @@ def main() -> int:
         **vars(cli), "task_name": "handover_to_tray", "action_type": "joint", "eval_batch": False,
     })
     scorer = None
-    if sampling_config is not None:
+    if sampling_config is not None and sampling_config.requires_scores:
         from coverage_sampling.critic import create_online_scorer
 
         scorer = create_online_scorer(vars(cli), sampling_config)
         print(f"[SAMPLING] {sampling_config.score_basis}; beta={sampling_config.beta:g}; "
               f"scale={sampling_config.score_scale:g}; K={sampling_config.num_candidates}; "
               f"policy_batch={sampling_config.policy_microbatch}; full-chunk weighted mean", flush=True)
+    elif sampling_config is not None:
+        print(
+            f"[SAMPLING] output-space isotropic Gaussian; sigma={sampling_config.gaussian_sigma:g} rad; "
+            f"K={sampling_config.num_candidates}; policy_batch={sampling_config.policy_microbatch}; "
+            "base=uniform candidate mean; arm joints only; grippers unchanged",
+            flush=True,
+        )
     if cli.acceptance:
         cli.episodes = 1
         cli.save_data = "false"
@@ -823,7 +871,7 @@ def main() -> int:
             f"[SEEDS] random mode, run rng-seed={cli.rng_seed} "
             "(pass --rng-seed to reproduce this order)"
         )
-    seed_iter = build_seed_stream(cli)
+    seed_iter = iter(paired_seeds) if paired_seeds is not None else build_seed_stream(cli)
     cli.output_dir = cli.output_dir.expanduser().resolve()
     cli.output_dir.mkdir(parents=True, exist_ok=True)
     lock_handle = collection_lock(cli.output_dir)
@@ -839,6 +887,10 @@ def main() -> int:
         "seed_mode": cli.seed_mode,
         "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,
     }
+    if cli.save_policy_rollouts:
+        expected_resume["save_policy_rollouts"] = True
+    if cli.one_stage:
+        expected_resume.update(one_stage=True, paired_baseline_sha256=paired_report_sha)
     progress = inspect_collection(cli.output_dir, target_mode=cli.target_mode,
                                   expected=expected_resume, resume=cli.resume)
     if cli.resume:
@@ -859,6 +911,8 @@ def main() -> int:
     task_env = class_decorator("handover_to_tray")
     model_client = build_policy_client(user_args)
     save_data = parse_bool(cli.save_data)
+    if cli.save_policy_rollouts and not save_data:
+        raise ValueError("--save-policy-rollouts requires --save-data true")
     if parse_bool(cli.save_video):
         print(
             "[HG-DAGGER] --save-video is deprecated in collection; "
@@ -866,7 +920,9 @@ def main() -> int:
             flush=True,
         )
     auto_label = None if cli.auto_label == "none" else cli.auto_label
-    auto_save = (False if cli.takeover_eval else None) if cli.auto_save == "none" else parse_bool(cli.auto_save)
+    auto_save = (False if cli.takeover_eval else None) if cli.auto_save == "none" else (
+        "valid_hil" if cli.auto_save == "valid_hil" else parse_bool(cli.auto_save)
+    )
     bias_dims = joint_bias_dims(
         cli.bias_dims,
         int(user_args["left_arm_dim"]),
@@ -880,9 +936,13 @@ def main() -> int:
 
     print("\n" + "=" * 72)
     print("RoboTwin handover_to_tray human-gated DAgger")
-    print("Keys: i=takeover, r=hand back to policy, x=abort episode, q=quit.")
+    if cli.one_stage:
+        print("One-stage: scripted expert stages 1-5; policy controls stage 6 only.")
+        print("Keys: i=takeover (automatic expert recovery), x=abort episode, q=quit.")
+    else:
+        print("Keys: i=takeover, r=hand back to policy, x=abort episode, q=quit.")
     if cli.es_activation == "manual":
-        print(f"Press e during policy control to toggle {cli.es_manual_duration} enhanced decisions.")
+        print(f"Press e during policy control to toggle {cli.es_manual_duration} sampled decisions.")
     print("After each episode: s/f=success/failure, y/n=save/discard.")
     print(f"Prompt: {PROMPT}")
     print(f"Sampling: {cli.es_mode}; takeover evaluation: {cli.takeover_eval}")
@@ -910,7 +970,7 @@ def main() -> int:
         session_started = time.time()
         while (
             rollout_index < int(cli.episodes)
-            and (cli.takeover_eval or saved_hil_count < int(cli.target_saved))
+            and (cli.takeover_eval or paired_seeds is not None or saved_hil_count < int(cli.target_saved))
         ):
             seed = next(seed_iter)
             while seed in used_seeds:
@@ -933,6 +993,43 @@ def main() -> int:
             if rollout_index == 0:
                 setup_viewer_diagnostics(task_env)
             install_viewer_frame_limit(task_env)
+            stage6_handoff = None
+            if cli.one_stage:
+                task_env.current_control_source = "expert_prefix"
+                prefix_ok = task_env.play_prefix_until_placement()
+                stage6_handoff = handoff_record(task_env)
+                stage6_handoff["prefix_plan_success"] = bool(prefix_ok)
+                paired_prefix_error = None
+                if paired_handoffs is not None:
+                    baseline_handoff = paired_handoffs[int(seed)]
+                    if not baseline_handoff.get("ready"):
+                        paired_prefix_error = "baseline_prefix_not_ready"
+                    elif stage6_handoff["ready"]:
+                        differences = handoff_pair_differences(
+                            baseline_handoff, stage6_handoff,
+                        )
+                        stage6_handoff["paired_differences"] = differences
+                        if not handoff_pair_ready(differences):
+                            paired_prefix_error = "handoff_state_mismatch"
+                if not stage6_handoff["ready"] or paired_prefix_error:
+                    status = "paired_prefix_excluded" if paired_prefix_error else "prefix_failed"
+                    stage6_handoff["paired_prefix_error"] = paired_prefix_error
+                    print(f"\n[ONE-STAGE] seed={seed} stage-6 handoff excluded: "
+                          f"{stage6_handoff['state']}; pairing={paired_prefix_error}", flush=True)
+                    records.append({
+                        "rollout_index": rollout_index, "seed": int(seed),
+                        "one_stage": True, "rollout_status": status,
+                        "stage6_handoff": stage6_handoff, "policy_steps": 0,
+                        "manual_takeover_requests": 0, "intervention_count": 0,
+                        "autonomous_success": False, "save_decision": False,
+                        "rollout_seconds": round(time.time() - rollout_started, 2),
+                    })
+                    notify_trial_end(model_client, "handover_to_tray", seed, False)
+                    safe_close_env(task_env)
+                    rollout_index += 1
+                    continue
+                print(f"\n[ONE-STAGE] seed={seed} expert stages 1-5 complete; "
+                      "policy starts at stage 6.", flush=True)
             prepare_policy_case(model_client, "handover_to_tray", seed, PROMPT, "joint")
             reset_policy(model_client)
 
@@ -1000,10 +1097,15 @@ def main() -> int:
                 f"saved valid HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
                 f"seed={seed}; "
                 f"{'e=sampling, ' if cli.es_activation == 'manual' else ''}"
-                "i=takeover, r=handback, x=abort episode, q=quit.\033[0m"
+                +
+                ("i=takeover, x=abort episode, q=quit.\033[0m"
+                 if cli.one_stage else
+                 "i=takeover, r=handback, x=abort episode, q=quit.\033[0m")
             )
 
             key_map = {**DEFAULT_KEYS, **({"e": "sampling_toggle"} if cli.es_activation == "manual" else {})}
+            if cli.one_stage:
+                key_map.pop("r", None)
             with HumanInterventionInput(task_env, key_map=key_map) as keyboard:
                 sampler = None
                 manual_window = None
@@ -1025,7 +1127,7 @@ def main() -> int:
                         sampling_log.write(record)
                         status = (f"ON for decisions {decision_step}–{decision_step + cli.es_manual_duration - 1}"
                                   if enabled else "OFF")
-                        print(f"\n[ENHANCED] {status}; policy remains in control.", flush=True)
+                        print(f"\n[SAMPLING] {status}; policy remains in control.", flush=True)
 
                     def poll_live_control() -> None:
                         # Draw and poll on the main thread; never step physics here.
@@ -1040,7 +1142,12 @@ def main() -> int:
                     sampling_log = EpisodeLog(
                         log_dir / f"episode_{rollout_index:04d}_seed_{seed}.jsonl",
                         sampling_config,
-                        {**scorer.metadata, "episode_seed": seed, "instruction": PROMPT,
+                        {**(scorer.metadata if scorer is not None else {
+                            "scorer_kind": None,
+                            "score_semantics": None,
+                            "gaussian_noise_space": "absolute_joint_chunk_output",
+                            "gaussian_noise_grippers": False,
+                        }), "episode_seed": seed, "instruction": PROMPT,
                          "policy_checkpoint": cli.ckpt_name, "task_config": cli.task_config,
                          "frequency": int(cli.frequency), "evaluation_type": "human_gated",
                          "selection_score_basis": sampling_config.score_basis,
@@ -1078,9 +1185,13 @@ def main() -> int:
                             if sampling_log is not None:
                                 sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
                                                     "decision": decision_step, "source": "human"})
-                            recovery_iter, chosen_stage = choose_recovery_stage(
-                                task_env, keyboard
-                            )
+                            if cli.one_stage:
+                                recovery_iter = task_env.recovery_stage_iterator()
+                                chosen_stage = None
+                            else:
+                                recovery_iter, chosen_stage = choose_recovery_stage(
+                                    task_env, keyboard
+                                )
                             if recovery_iter is None:
                                 print(
                                     "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
@@ -1103,9 +1214,9 @@ def main() -> int:
                             print(
                                 "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
                             )
-                            print(
-                                "\033[93m[HG-DAGGER] Expert takeover; press r to hand back.\033[0m"
-                            )
+                            print("\033[93m[HG-DAGGER] Expert takeover; "
+                                  + ("automatic recovery to completion." if cli.one_stage
+                                     else "press r to hand back.") + "\033[0m")
                             continue
 
                         observation = task_env.get_obs()
@@ -1144,7 +1255,8 @@ def main() -> int:
                                 action_chunk, selection = sampler.select(
                                     decision_step, sample_chunk,
                                     sample_candidates=sample_candidates,
-                                    score_candidates=scorer.bind_observation(observation),
+                                    score_candidates=(scorer.bind_observation(observation)
+                                                      if scorer is not None else None),
                                     active_override=manual_window.active(decision_step) if manual_window is not None else None,
                                 )
                             except OperatorInterrupt as interruption:
@@ -1287,9 +1399,13 @@ def main() -> int:
                                 if sampling_log is not None:
                                     sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
                                                         "decision": decision_step, "source": "human"})
-                            recovery_iter, chosen_stage = choose_recovery_stage(
-                                task_env, keyboard
-                            )
+                            if cli.one_stage:
+                                recovery_iter = task_env.recovery_stage_iterator()
+                                chosen_stage = None
+                            else:
+                                recovery_iter, chosen_stage = choose_recovery_stage(
+                                    task_env, keyboard
+                                )
                             if recovery_iter is None:
                                 print(
                                     "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
@@ -1313,17 +1429,17 @@ def main() -> int:
                             print(
                                 "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
                             )
-                            print(
-                                "\033[93m[HG-DAGGER] Expert takeover; press r to hand back.\033[0m"
-                            )
+                            print("\033[93m[HG-DAGGER] Expert takeover; "
+                                  + ("automatic recovery to completion." if cli.one_stage
+                                     else "press r to hand back.") + "\033[0m")
                             continue
                     else:
                         # Expert mode. The supervisor can hand back at any
                         # stage boundary. Each ``next()`` executes one stage.
-                        if event == "handback" or (
+                        if not cli.one_stage and (event == "handback" or (
                             cli.auto_handback_step >= 0
                             and expert_stage_count >= cli.auto_handback_step
-                        ):
+                        )):
                             if interventions:
                                 interventions[-1]["handback_step"] = int(task_env.FRAME_IDX)
                                 interventions[-1]["expert_progress"] = last_expert_progress
@@ -1379,6 +1495,8 @@ def main() -> int:
                 )
                 aborted_record = {
                     "rollout_index": rollout_index, "seed": int(seed),
+                    "one_stage": bool(cli.one_stage),
+                    "stage6_handoff": stage6_handoff,
                     "sampling_mode": cli.es_mode, "rollout_status": "aborted",
                     "policy_steps": int(policy_steps),
                     "manual_takeover_requests": manual_takeover_requests,
@@ -1402,6 +1520,11 @@ def main() -> int:
             hil_frames = sum(
                 1 for item in task_env.control_mask if str(item).lower() == "hil"
             )
+            valid_hil = is_valid_hil(
+                interventions=intervention_count, hil_frames=hil_frames,
+                expert_result=last_expert_result, final_success=bool(final_check_success),
+                joints_legal=bool(joints_legal),
+            ) if cli.one_stage else False
 
             if auto_label is not None:
                 supervisor_label = auto_label
@@ -1420,7 +1543,10 @@ def main() -> int:
                     "[TRAJECTORY] Mark trajectory: [s]uccess / [f]ailure",
                 )
 
-            if auto_save is None:
+            if auto_save == "valid_hil":
+                do_save = valid_hil
+                print(f"[ONE-STAGE] valid HIL={valid_hil}; auto-save={do_save}", flush=True)
+            elif auto_save is None:
                 do_save = (
                     prompt_choice(
                         task_env,
@@ -1435,6 +1561,9 @@ def main() -> int:
             episode_record = {
                 "rollout_index": rollout_index,
                 "rollout_status": "completed",
+                "one_stage": bool(cli.one_stage),
+                "stage6_handoff": stage6_handoff,
+                "valid_hil": bool(valid_hil),
                 "sampling_mode": cli.es_mode,
                 "episode_index": int(data_episode_index),
                 "seed": int(seed),
@@ -1448,7 +1577,10 @@ def main() -> int:
                 "interventions": interventions,
                 "segments": segments,
                 "control_mask": list(task_env.control_mask),
-                "autonomous_success": bool(task_env.eval_success),
+                "autonomous_success": bool(
+                    (final_check_success and intervention_count == 0)
+                    if cli.one_stage else task_env.eval_success
+                ),
                 "final_check_success": bool(final_check_success),
                 "final_success_metrics": final_success_metrics,
                 "expert_result": last_expert_result,
@@ -1461,6 +1593,22 @@ def main() -> int:
                 "rollout_seconds": round(time.time() - rollout_started, 2),
                 "timestamp": datetime.now().isoformat(timespec="seconds"),
             }
+
+            if cli.save_policy_rollouts:
+                policy_cache = getattr(task_env, "folder_path", {}).get("cache")
+                policy_archive = archive_policy_rollout(
+                    Path(policy_cache) if policy_cache else None,
+                    cli.output_dir,
+                    rollout_index=rollout_index,
+                    seed=int(seed),
+                    control_mask=list(task_env.control_mask),
+                    save_freq=int(cli.save_freq),
+                    sampling_mode=cli.es_mode,
+                    autonomous_success=bool(episode_record["autonomous_success"]),
+                )
+                episode_record["policy_rollout_dir"] = (
+                    str(policy_archive) if policy_archive else None
+                )
 
             raw_dir = finalize_episode(
                 task_env,
@@ -1478,7 +1626,8 @@ def main() -> int:
                 data_episode_index += 1
                 expert_success = bool((last_expert_result or {}).get("success"))
                 if hil_frames > 0 and (
-                    cli.target_mode != "expert" or expert_success
+                    (valid_hil if cli.one_stage else
+                     (cli.target_mode != "expert" or expert_success))
                 ):
                     saved_hil_count += 1
             records.append(episode_record)
@@ -1539,7 +1688,11 @@ def main() -> int:
 
     session_report = {
         "aborted": aborted,
+        "one_stage": bool(cli.one_stage),
+        "paired_baseline_report": str(cli.paired_baseline_report.expanduser().resolve()) if cli.paired_baseline_report else None,
+        "paired_baseline_sha256": paired_report_sha,
         "sampling_mode": cli.es_mode,
+        "save_policy_rollouts": bool(cli.save_policy_rollouts),
         "sampling_activation": cli.es_activation,
         "sampling_manual_duration": cli.es_manual_duration if cli.es_activation == "manual" else None,
         "sampling_config": config_record(sampling_config) if sampling_config is not None else None,
@@ -1568,6 +1721,22 @@ def main() -> int:
         "next_rollout_index": int(rollout_index),
         "next_episode_index": int(data_episode_index),
         "saved_valid_hil_episodes": int(saved_hil_count),
+        "eligible_stage6_rollouts": sum(
+            item.get("one_stage") and item.get("rollout_status") == "completed"
+            for item in records
+        ) if cli.one_stage else None,
+        "prefix_failures": sum(
+            item.get("rollout_status") == "prefix_failed" for item in records
+        ) if cli.one_stage else None,
+        "paired_prefix_exclusions": sum(
+            item.get("rollout_status") == "paired_prefix_excluded" for item in records
+        ) if cli.one_stage else None,
+        "valid_hil_events": sum(bool(item.get("valid_hil")) for item in records) if cli.one_stage else None,
+        "recovery_failures": sum(
+            item.get("one_stage") and item.get("intervention_count", 0) > 0
+            and not item.get("valid_hil") and item.get("rollout_status") == "completed"
+            for item in records
+        ) if cli.one_stage else None,
         "rollouts": len(records),
         "total_rollouts": len(records),
         "aborted_rollouts": int(aborted_rollouts),

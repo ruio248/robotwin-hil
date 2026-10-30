@@ -9,6 +9,10 @@ import time
 import numpy as np
 
 
+ARM_JOINT_INDICES = np.array([0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12], dtype=np.int64)
+GRIPPER_INDICES = np.array([6, 13], dtype=np.int64)
+
+
 @dataclass(frozen=True)
 class SamplingConfig:
     mode: str
@@ -27,19 +31,24 @@ class SamplingConfig:
     uniform_weights: bool = False
     calibration_sha256: str | None = None
     calibration_key: str | None = None
+    gaussian_sigma: float | None = None
 
     def __post_init__(self):
-        if self.mode not in {"vanilla", "enhanced"}:
-            raise ValueError("mode must be vanilla or enhanced")
+        if self.mode not in {"vanilla", "enhanced", "gaussian"}:
+            raise ValueError("mode must be vanilla, enhanced or gaussian")
         for name in ("window_start", "window_end", "num_candidates", "policy_microbatch", "horizon", "seed"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int):
                 raise ValueError(f"{name} must be an integer")
         if self.window_start < 0 or self.window_end < self.window_start:
             raise ValueError("Require 0 <= window_start <= window_end (inclusive, zero-based)")
-        if (not 2 <= self.num_candidates <= 32 or not 2 <= self.policy_microbatch <= 32
+        min_candidates = 1 if self.mode == "gaussian" else 2
+        if (not min_candidates <= self.num_candidates <= 32 or not 2 <= self.policy_microbatch <= 32
                 or self.horizon < 1 or self.seed < 0):
-            raise ValueError("Require 2 <= N <= 32, 2 <= policy_microbatch <= 32, H >= 1 and seed >= 0")
+            raise ValueError(
+                f"Require {min_candidates} <= N <= 32, 2 <= policy_microbatch <= 32, "
+                "H >= 1 and seed >= 0"
+            )
         if not np.isfinite(self.beta) or self.beta < 0:
             raise ValueError("beta must be finite and nonnegative")
         if not np.isfinite(self.replay_atol) or self.replay_atol <= 0:
@@ -55,11 +64,23 @@ class SamplingConfig:
             raise ValueError("Require a positive score scale unless calibration is degenerate")
         if self.score_representation == "full_chunk" and self.horizon != 10:
             raise ValueError("The full-chunk discriminator requires horizon=10")
+        if self.mode == "gaussian":
+            if (self.gaussian_sigma is None or not np.isfinite(self.gaussian_sigma)
+                    or self.gaussian_sigma < 0):
+                raise ValueError("Gaussian mode requires a finite --es-gaussian-sigma >= 0")
+        elif self.gaussian_sigma is not None:
+            raise ValueError("gaussian_sigma is only valid in gaussian mode")
 
     @property
     def score_basis(self):
+        if self.mode == "gaussian":
+            return "none_output_action_isotropic_gaussian"
         return ("current_observation_full_chunk" if self.score_representation == "full_chunk"
                 else "current_observation_first_action")
+
+    @property
+    def requires_scores(self):
+        return self.mode in {"vanilla", "enhanced"}
 
     def active(self, decision):
         return self.window_start <= decision <= self.window_end
@@ -68,6 +89,14 @@ class SamplingConfig:
 def config_record(config):
     """Keep legacy default records identical, including resumable collections."""
     record = asdict(config)
+    if config.mode == "gaussian":
+        record["action_aggregation"] = (
+            "single_candidate_plus_isotropic_gaussian" if config.num_candidates == 1
+            else "uniform_mean_plus_isotropic_gaussian"
+        )
+        record["gaussian_noise_space"] = "absolute_joint_chunk_output"
+        record["gaussian_noise_grippers"] = False
+        record["gaussian_covariance"] = "sigma^2 * I over H*12 arm-joint entries"
     if (config.score_representation == "first_action" and config.score_scale == 1
             and not config.uniform_weights and config.calibration_sha256 is None
             and config.calibration_key is None):
@@ -78,6 +107,8 @@ def config_record(config):
     # default microbatch remains behavior-compatible and need not break resume.
     if config.policy_microbatch == 4 and config.num_candidates <= 4:
         record.pop("policy_microbatch")
+    if config.gaussian_sigma is None:
+        record.pop("gaussian_sigma")
     return record
 
 
@@ -136,7 +167,26 @@ class DecisionSampler:
     """
     def __init__(self, config, rollout, episode_seed):
         self.config, self.rollout = config, rollout
+        if isinstance(episode_seed, bool) or not isinstance(episode_seed, (int, np.integer)):
+            raise ValueError("episode_seed must be an integer")
+        self.episode_seed = int(episode_seed)
         self.checked_replay = False
+
+    def _isotropic_gaussian_noise(self, decision):
+        """Deterministic per-(experiment, episode, decision) output-space noise.
+
+        The 120 arm-joint entries of a H=10 chunk are iid N(0, sigma^2).
+        Grippers are deliberately unchanged so their different units and binary-like
+        semantics do not contaminate the joint-space ablation.
+        """
+        cfg = self.config
+        seed = np.random.SeedSequence([cfg.seed, self.episode_seed, int(decision)])
+        rng = np.random.default_rng(seed)
+        noise = np.zeros((cfg.horizon, 14), dtype=np.float32)
+        noise[:, ARM_JOINT_INDICES] = rng.normal(
+            0.0, cfg.gaussian_sigma, size=(cfg.horizon, len(ARM_JOINT_INDICES))
+        ).astype(np.float32)
+        return noise
 
     def select(self, decision, sample_chunk, *, sample_candidates, score_candidates=None,
                active_override=None):
@@ -161,6 +211,55 @@ class DecisionSampler:
                                                 if active else 1),
                   "sampling_seconds": sampling_seconds}
         if active:
+            if cfg.mode == "gaussian":
+                # Keep the same K-candidate policy proposal and inference budget as
+                # enhanced sampling.  Only the direction-selection mechanism changes:
+                # uniform candidate mean plus iid action-space Gaussian noise.
+                weights = np.full(count, 1.0 / count, dtype=np.float64)
+                uniform_chunk = np.tensordot(
+                    weights, candidates.astype(np.float64), axes=(0, 0)
+                ).astype(np.float32)
+                noise = self._isotropic_gaussian_noise(decision)
+                action_chunk = uniform_chunk + noise
+                arm_noise = noise[:, ARM_JOINT_INDICES].astype(np.float64)
+                positive_weights = weights[weights > 0]
+                record.update(
+                    score_basis=cfg.score_basis,
+                    score_action_index=None,
+                    scoring_seconds=0.0,
+                    branches=[], replay_check=None,
+                    output_scoring_seconds=0.0,
+                    blended_chunk_score=None,
+                    score_scale=None, beta=0.0, uniform_weights=True,
+                    score_range=None, score_std=None, scores=[], weights=weights.tolist(),
+                    action_aggregation=(
+                        "single_candidate_plus_isotropic_gaussian" if count == 1
+                        else "uniform_mean_plus_isotropic_gaussian"
+                    ),
+                    selected=None, selected_score=None,
+                    weighted_candidate_score=None,
+                    blended_chunk=action_chunk.tolist(),
+                    uniform_expected_score=None,
+                    effective_sample_size=float(1.0 / np.square(weights).sum()),
+                    ess_fraction=float(1.0 / (count * np.square(weights).sum())),
+                    max_weight=float(weights.max()),
+                    candidate_weight_kl_to_uniform=float(
+                        np.sum(positive_weights * np.log(count * positive_weights))
+                    ),
+                    joint_rms_shift_from_uniform=float(np.sqrt(np.mean(np.square(arm_noise)))),
+                    gripper_rms_shift_from_uniform=0.0,
+                    gaussian_sigma=float(cfg.gaussian_sigma),
+                    gaussian_noise_arm_mean=float(np.mean(arm_noise)),
+                    gaussian_noise_arm_std=float(np.std(arm_noise)),
+                    gaussian_noise_arm_rms=float(np.sqrt(np.mean(np.square(arm_noise)))),
+                    gaussian_noise_arm_max_abs=float(np.max(np.abs(arm_noise))),
+                    gaussian_noise_grippers=False,
+                    gaussian_noise_space="absolute_joint_chunk_output",
+                    gaussian_covariance="sigma^2 * I over H*12 arm-joint entries",
+                    gaussian_rng_key=[int(cfg.seed), int(self.episode_seed), int(decision)],
+                )
+                record["selection_seconds"] = time.monotonic() - start
+                return action_chunk, record
             if score_candidates is not None:
                 inputs = candidates if cfg.score_representation == "full_chunk" else candidates[:, 0, :]
                 scores = np.asarray(score_candidates(inputs.copy()), dtype=np.float64)
@@ -200,7 +299,6 @@ class DecisionSampler:
                 blended_score = float(blended[0])
             output_scoring_seconds = time.monotonic() - start - sampling_seconds - scoring_seconds
             shift = action_chunk.astype(np.float64) - candidates.astype(np.float64).mean(axis=0)
-            joint_indices = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
             positive_weights = weights[weights > 0]
             record.update(score_basis=score_basis,
                           score_action_index=None if cfg.score_representation == "full_chunk" else 0,
@@ -220,8 +318,8 @@ class DecisionSampler:
                           ess_fraction=float(1.0 / (count * np.square(weights).sum())),
                           max_weight=float(weights.max()),
                           candidate_weight_kl_to_uniform=float(np.sum(positive_weights * np.log(count * positive_weights))),
-                          joint_rms_shift_from_uniform=float(np.sqrt(np.mean(shift[:, joint_indices] ** 2))),
-                          gripper_rms_shift_from_uniform=float(np.sqrt(np.mean(shift[:, [6, 13]] ** 2))),
+                          joint_rms_shift_from_uniform=float(np.sqrt(np.mean(shift[:, ARM_JOINT_INDICES] ** 2))),
+                          gripper_rms_shift_from_uniform=float(np.sqrt(np.mean(shift[:, GRIPPER_INDICES] ** 2))),
                           replay_check=replay)
             if score_basis == "legacy_branch_min":
                 record["weighted_candidate_min"] = record["weighted_candidate_score"]
@@ -253,7 +351,7 @@ class EpisodeLog:
         self.write({"event": "decision", **record})
 
     def executed(self, decision, action_index, coverage, active, action, **extra):
-        if coverage is None and active and action_index == 0:
+        if coverage is None and active and action_index == 0 and self.config.requires_scores:
             raise ValueError("Active sampling decisions require a real coverage score at execution start")
         coverage = float(coverage) if coverage is not None else None
         if active and coverage is not None:

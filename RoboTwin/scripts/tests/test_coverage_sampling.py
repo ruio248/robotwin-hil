@@ -8,6 +8,7 @@ import io
 import json
 from pathlib import Path
 import random
+import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -20,7 +21,10 @@ from collections.abc import Mapping, Sequence
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow, SamplingConfig, coverage_weights
+from coverage_sampling.core import (
+    DecisionSampler, EpisodeLog, ManualSamplingWindow, SamplingConfig,
+    config_record, coverage_weights,
+)
 from coverage_sampling.options import config_from_args
 from coverage_sampling import calibration as sampling_calibration
 from coverage_sampling.robotwin import RobotwinRollout, SceneSnapshot
@@ -297,6 +301,59 @@ class SamplingTests(unittest.TestCase):
         self.assertEqual(record["weights"], [.25]*4)
         self.assertEqual(env.take_action_cnt, 0)
 
+    def test_gaussian_perturbs_uniform_chunk_mean_in_output_space(self):
+        candidates = np.stack([chunk(i + 1) for i in range(4)])
+        config = SamplingConfig(
+            "gaussian", 0, 0, num_candidates=4, horizon=2,
+            seed=42, gaussian_sigma=0.02,
+        )
+        forbidden = lambda *args: self.fail("Gaussian baseline must not call a coverage scorer")
+        first, record = DecisionSampler(config, None, 100000).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+            score_candidates=forbidden,
+        )
+        second, _ = DecisionSampler(config, None, 100000).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+        )
+        different_episode, _ = DecisionSampler(config, None, 100001).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+        )
+        uniform = candidates.mean(axis=0)
+        noise = first - uniform
+        np.testing.assert_array_equal(first, second)
+        self.assertFalse(np.array_equal(first, different_episode))
+        np.testing.assert_array_equal(first[:, [6, 13]], uniform[:, [6, 13]])
+        self.assertGreater(np.max(np.abs(noise[:, [0, 1, 7, 8]])), 0)
+        self.assertEqual(record["score_basis"], "none_output_action_isotropic_gaussian")
+        self.assertEqual(record["action_aggregation"], "uniform_mean_plus_isotropic_gaussian")
+        self.assertEqual(record["scores"], [])
+        self.assertEqual(record["weights"], [.25] * 4)
+        self.assertEqual(record["ess_fraction"], 1)
+        self.assertEqual(record["candidate_weight_kl_to_uniform"], 0)
+        self.assertEqual(record["gaussian_rng_key"], [42, 100000, 0])
+        self.assertAlmostEqual(record["gaussian_sigma"], .02)
+        self.assertAlmostEqual(record["joint_rms_shift_from_uniform"],
+                               record["gaussian_noise_arm_rms"])
+        self.assertEqual(record["gripper_rms_shift_from_uniform"], 0)
+
+    def test_gaussian_single_candidate_uses_same_chunk_without_averaging(self):
+        candidate = chunk(1)
+        config = SamplingConfig(
+            "gaussian", 0, 0, num_candidates=1, horizon=2,
+            seed=42, gaussian_sigma=0.0,
+        )
+        selected, record = DecisionSampler(config, None, 120000).select(
+            0, lambda: chunk(0),
+            sample_candidates=lambda count: np.stack([candidate]) if count == 1 else None,
+            score_candidates=lambda _: self.fail("K=1 Gaussian must not score"),
+        )
+        np.testing.assert_array_equal(selected, candidate)
+        self.assertEqual(record["num_candidates"], 1)
+        self.assertEqual(record["policy_inference_requests"], 1)
+        self.assertEqual(record["weights"], [1.0])
+        self.assertEqual(record["action_aggregation"], "single_candidate_plus_isotropic_gaussian")
+        self.assertEqual(record["gaussian_noise_arm_rms"], 0)
+
     def test_wrong_horizon_nonfinite_actions_and_no_silent_truncation(self):
         cfg = SamplingConfig("enhanced", 1, 2, horizon=2)
         sampler = DecisionSampler(cfg, None, 7)
@@ -318,6 +375,44 @@ class SamplingTests(unittest.TestCase):
         for changes in ({"eval_batch": "true"}, {"action_type": "ee"}, {"es_critic": None},
                         {"es_window_end": None}, {"task_name": "other_task"}):
             with self.assertRaises(ValueError): config_from_args({**valid, **changes})
+        gaussian = {
+            "es_mode": "gaussian", "task_name": "handover_to_tray",
+            "es_window_start": 1, "es_window_end": 2, "es_num_candidates": 32,
+            "es_policy_microbatch": 32, "es_gaussian_sigma": .0115,
+        }
+        cfg = config_from_args(gaussian)
+        self.assertEqual((cfg.mode, cfg.beta, cfg.gaussian_sigma), ("gaussian", 0, .0115))
+        self.assertTrue(cfg.uniform_weights)
+        self.assertFalse(cfg.requires_scores)
+        recorded = config_record(cfg)
+        self.assertEqual(recorded["action_aggregation"], "uniform_mean_plus_isotropic_gaussian")
+        self.assertEqual(recorded["gaussian_noise_space"], "absolute_joint_chunk_output")
+        self.assertFalse(recorded["gaussian_noise_grippers"])
+        zero = config_from_args({**gaussian, "es_gaussian_sigma": 0})
+        self.assertEqual(zero.gaussian_sigma, 0)
+        for changes in ({"es_gaussian_sigma": None}, {"es_gaussian_sigma": -1}, {"es_beta": 1},
+                        {"es_calibration": "calibration.json"}):
+            with self.assertRaises(ValueError): config_from_args({**gaussian, **changes})
+
+    def test_gaussian_launcher_needs_no_critic_and_preserves_protocol(self):
+        repo = Path(__file__).resolve().parents[3]
+        env = {k: v for k, v in __import__("os").environ.items()
+               if not k.startswith(("HIL_", "MANUAL_", "ONE_STAGE_"))}
+        env.update({
+            "HIL_DRY_RUN": "1", "ONE_STAGE_ARM": "gaussian",
+            "HIL_ONE_STAGE_PAIRED_REPORT": "/tmp/baseline-session.json",
+            "HIL_ES_GAUSSIAN_SIGMA": "0.0115",
+        })
+        command = subprocess.check_output(
+            ["bash", str(repo / "local_serving/run_one_stage_dagger.sh")],
+            env=env, text=True,
+        )
+        for part in ("--es-mode gaussian", "--es-num-candidates 32",
+                     "--es-policy-microbatch 32", "--es-horizon 10",
+                     "--es-gaussian-sigma 0.0115", "--frequency 30"):
+            self.assertIn(part, command)
+        self.assertNotIn("--es-critic", command)
+        self.assertNotIn("--es-encoder-weights", command)
 
 
 class RolloutTests(unittest.TestCase):
@@ -433,6 +528,17 @@ class RolloutTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "require a real coverage"):
                 log.executed(1, 0, None, True, np.zeros(14))
             log.executed(1, 1, None, True, np.zeros(14))
+            log.finish(False, None, 1)
+            records = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertIsNone(records[1]["coverage"])
+            self.assertEqual(records[-1]["active_executed_scores"], 0)
+
+    def test_gaussian_active_steps_do_not_require_coverage_scores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "gaussian.jsonl"
+            config = SamplingConfig("gaussian", 0, 1, gaussian_sigma=.01)
+            log = EpisodeLog(path, config, {})
+            log.executed(0, 0, None, True, np.zeros(14))
             log.finish(False, None, 1)
             records = [json.loads(line) for line in path.read_text().splitlines()]
             self.assertIsNone(records[1]["coverage"])

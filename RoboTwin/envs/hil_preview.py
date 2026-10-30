@@ -62,6 +62,9 @@ class LowResolutionViewer:
         pygame.key.set_repeat()  # held e must not repeatedly toggle sampling
         self._native_window = Window.from_display_module()
         if not fullscreen:
+            # GNOME may restore the SDL window in a maximized state. Clear that
+            # state before setting the independent presentation size.
+            self._native_window.restore()
             self._native_window.size = tuple(window_size)
 
     @property

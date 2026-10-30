@@ -45,6 +45,20 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def is_diagnostic_episode(episode_dir: Path, meta: dict[str, Any]) -> bool:
+    """Keep headless smoke and frozen test seeds out of training exports."""
+    if (episode_dir / "DIAGNOSTIC_ONLY.json").exists():
+        return True
+    nested = meta.get("episode_metadata") or {}
+    record = meta.get("record") or {}
+    for source in (meta, nested, record):
+        if parse_bool(source.get("diagnostic_only", False)):
+            return True
+        if "accepted_for_training" in source and not parse_bool(source["accepted_for_training"]):
+            return True
+    return False
+
+
 def stage_frames(frames_dir: Path, control_mask: list[Any], mode: str, staging_dir: Path) -> Path:
     """Return the frame directory to merge (a renumbered copy for HIL-only)."""
     if mode == "full":
@@ -85,6 +99,9 @@ def main() -> int:
         if not meta_path.is_file():
             continue
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if is_diagnostic_episode(episode_dir, meta):
+            print(f"[EXPORT] {episode_dir.name} skipped (diagnostic-only)", flush=True)
+            continue
         frames_dir = episode_dir / "frames"
         if not frames_dir.is_dir():
             continue

@@ -18,16 +18,18 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
 
 sampling_mode="${HIL_ES_MODE:-off}"
-case "$sampling_mode" in off|vanilla|enhanced) ;; *) echo "Invalid HIL_ES_MODE=$sampling_mode" >&2; exit 2 ;; esac
+case "$sampling_mode" in off|vanilla|enhanced|gaussian) ;; *) echo "Invalid HIL_ES_MODE=$sampling_mode" >&2; exit 2 ;; esac
 activation="${HIL_ES_ACTIVATION:-fixed}"
 case "$activation" in fixed|manual) ;; *) echo "Invalid HIL_ES_ACTIVATION=$activation" >&2; exit 2 ;; esac
 duration="${HIL_ES_MANUAL_DURATION:-10}"
 if [[ "$activation" == manual ]]; then
-  [[ "$sampling_mode" != off ]] || { echo "Manual activation requires vanilla or enhanced sampling" >&2; exit 2; }
+  [[ "$sampling_mode" != off ]] || { echo "Manual activation requires vanilla, enhanced or gaussian sampling" >&2; exit 2; }
   [[ "$duration" =~ ^[1-9][0-9]*$ ]] || { echo "HIL_ES_MANUAL_DURATION must be a positive integer" >&2; exit 2; }
 fi
 takeover_eval="${HIL_TAKEOVER_EVAL:-0}"
 case "$takeover_eval" in 0|1) ;; *) echo "HIL_TAKEOVER_EVAL must be 0 or 1" >&2; exit 2 ;; esac
+one_stage="${HIL_ONE_STAGE:-0}"
+case "$one_stage" in 0|1) ;; *) echo "HIL_ONE_STAGE must be 0 or 1" >&2; exit 2 ;; esac
 
 if [[ "$takeover_eval" == 1 ]]; then
   seed_mode="${MANUAL_SEED_MODE:-sequential}"
@@ -55,31 +57,38 @@ elif [[ "$takeover_eval" == 1 ]]; then
   sampling_args+=(--es-window-start "$HIL_ES_WINDOW_START" --es-window-end "$HIL_ES_WINDOW_END")
 fi
 if [[ "$sampling_mode" != off ]]; then
-  : "${HIL_ES_CRITIC:?Set the frozen coverage critic checkpoint}"
-  : "${HIL_ES_ENCODER_WEIGHTS:?Set the local ResNet18 weights}"
   if [[ "$takeover_eval" != 1 && "$activation" == fixed ]]; then
     : "${HIL_ES_WINDOW_START:?Set the active decision window}"
     : "${HIL_ES_WINDOW_END:?Set the active decision window}"
     sampling_args+=(--es-window-start "$HIL_ES_WINDOW_START" --es-window-end "$HIL_ES_WINDOW_END")
   fi
   sampling_args+=(
-    --es-scorer "${HIL_ES_SCORER:-td_first_action}"
-    --es-critic "$HIL_ES_CRITIC"
-    --es-encoder-weights "$HIL_ES_ENCODER_WEIGHTS"
-    --es-device "${HIL_ES_DEVICE:-cuda}"
     --es-num-candidates "${HIL_ES_NUM_CANDIDATES:-4}"
     --es-policy-microbatch "${HIL_ES_POLICY_MICROBATCH:-4}"
     --es-horizon "${HIL_ES_HORIZON:-10}"
     --es-seed "${HIL_ES_SEED:-42}"
     --es-log-dir "${HIL_ES_LOG_DIR:-$output_dir/sampling}"
   )
-  # Omission loads the discriminator's frozen calibration beta (legacy TD: 10).
-  if [[ -n "${HIL_ES_BETA:-}" ]]; then
-    sampling_args+=(--es-beta "$HIL_ES_BETA")
-  fi
-  if [[ -n "${HIL_ES_CALIBRATION:-}" ]]; then
-    sampling_args+=(--es-calibration "$HIL_ES_CALIBRATION"
-                    --es-calibration-key "${HIL_ES_CALIBRATION_KEY:-disc_s42}")
+  if [[ "$sampling_mode" == gaussian ]]; then
+    : "${HIL_ES_GAUSSIAN_SIGMA:?Set the calibrated output-space sigma in radians}"
+    sampling_args+=(--es-gaussian-sigma "$HIL_ES_GAUSSIAN_SIGMA")
+  else
+    : "${HIL_ES_CRITIC:?Set the frozen coverage critic checkpoint}"
+    : "${HIL_ES_ENCODER_WEIGHTS:?Set the local ResNet18 weights}"
+    sampling_args+=(
+      --es-scorer "${HIL_ES_SCORER:-td_first_action}"
+      --es-critic "$HIL_ES_CRITIC"
+      --es-encoder-weights "$HIL_ES_ENCODER_WEIGHTS"
+      --es-device "${HIL_ES_DEVICE:-cuda}"
+    )
+    # Omission loads the discriminator's frozen calibration beta (legacy TD: 10).
+    if [[ -n "${HIL_ES_BETA:-}" ]]; then
+      sampling_args+=(--es-beta "$HIL_ES_BETA")
+    fi
+    if [[ -n "${HIL_ES_CALIBRATION:-}" ]]; then
+      sampling_args+=(--es-calibration "$HIL_ES_CALIBRATION"
+                      --es-calibration-key "${HIL_ES_CALIBRATION_KEY:-disc_s42}")
+    fi
   fi
 fi
 
@@ -104,6 +113,20 @@ run_args=(
   --output-dir "$output_dir"
   "${sampling_args[@]}"
 )
+case "${MANUAL_SAVE_POLICY_ROLLOUTS:-0}" in
+  0) ;;
+  1) run_args+=(--save-policy-rollouts) ;;
+  *) echo "MANUAL_SAVE_POLICY_ROLLOUTS must be 0 or 1" >&2; exit 2 ;;
+esac
+if [[ "$one_stage" == 1 ]]; then
+  [[ "$seed_mode" == sequential && "$activation" == fixed && "$takeover_eval" == 0 ]] || {
+    echo "One-stage requires sequential seeds, fixed sampling and no takeover-eval mode" >&2; exit 2;
+  }
+  run_args+=(--one-stage)
+  if [[ -n "${HIL_ONE_STAGE_PAIRED_REPORT:-}" ]]; then
+    run_args+=(--paired-baseline-report "$HIL_ONE_STAGE_PAIRED_REPORT")
+  fi
+fi
 if [[ "$resume_collection" == 1 ]]; then
   run_args+=(--resume)
 fi

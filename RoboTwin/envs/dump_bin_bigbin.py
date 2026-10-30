@@ -43,6 +43,7 @@ class dump_bin_bigbin(Base_Task):
         )
         self.garbage_num = 5
         self.sphere_lst = []
+        self._garbage_settling_damping = []
         for i in range(self.garbage_num):
             sphere_pose = sapien.Pose(
                 [
@@ -60,7 +61,16 @@ class dump_bin_bigbin(Base_Task):
                 name="garbage",
             )
             self.sphere_lst.append(sphere)
-            self.sphere_lst[-1].find_component_by_type(sapien.physx.PhysxRigidDynamicComponent).mass = 0.0001
+            rigid = sphere.find_component_by_type(sapien.physx.PhysxRigidDynamicComponent)
+            rigid.mass = 0.0001
+            self._garbage_settling_damping.append(
+                (rigid, rigid.get_linear_damping(), rigid.get_angular_damping())
+            )
+            # The small balls can keep spinning after their initially overlapping
+            # spawn. Dampen only the scene-settling phase; restore the original
+            # physics parameters before any policy or expert action is executed.
+            rigid.set_linear_damping(2.0)
+            rigid.set_angular_damping(10.0)
 
         self.add_prohibit_area(self.deskbin, padding=0.04)
         self.prohibited_area.append([-0.2, -0.2, 0.2, 0.2])
@@ -88,6 +98,23 @@ class dump_bin_bigbin(Base_Task):
             ),
         ]
         self.pour_actions = (ArmTag('left'), action_lst)
+
+    def check_stable(self):
+        try:
+            stable, unstable = super().check_stable()
+            if not stable:
+                # A ball may still be settling after the standard window.
+                # Give this task one more identical physics/stability window;
+                # never relax the threshold or silently accept instability.
+                stable, unstable = super().check_stable()
+            return stable, unstable
+        finally:
+            for rigid, linear_damping, angular_damping in getattr(
+                self, "_garbage_settling_damping", ()
+            ):
+                rigid.set_linear_damping(linear_damping)
+                rigid.set_angular_damping(angular_damping)
+            self._garbage_settling_damping = []
 
     def play_once(self):
         # Get deskbin's current position

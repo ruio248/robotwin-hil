@@ -120,6 +120,8 @@ class OnlineChunkDiscriminator:
 
 
 def create_online_scorer(args, config):
+    if not config.requires_scores:
+        raise ValueError(f"Sampling mode {config.mode!r} does not use an online scorer")
     if config.score_representation == "first_action":
         return OnlineCoverage(args["es_critic"], args["es_encoder_weights"], device=args.get("es_device", "cpu"))
     from .calibration import load_discriminator_calibration

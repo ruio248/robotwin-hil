@@ -20,7 +20,9 @@ import numpy as np
 import yaml
 
 
-ROBOTWIN_ROOT = Path(__file__).resolve().parents[1]
+ROBOTWIN_ROOT = Path(
+    os.environ.get("ROBOTWIN_ROOT", Path(__file__).resolve().parents[1])
+).resolve()
 DEFAULT_XPOLICYLAB_ROOT = ROBOTWIN_ROOT / "XPolicyLab"
 TASK_CONFIG_ROOT = ROBOTWIN_ROOT / "env_cfg" / "task_config"
 
@@ -804,8 +806,9 @@ def eval_remote_policy(
     scorer = None
     if sampling_config is not None:
         from coverage_sampling.core import DecisionSampler, EpisodeLog
-        from coverage_sampling.critic import create_online_scorer
-        scorer = create_online_scorer(usr_args, sampling_config)
+        if sampling_config.requires_scores:
+            from coverage_sampling.critic import create_online_scorer
+            scorer = create_online_scorer(usr_args, sampling_config)
 
     task_env.suc = 0
     task_env.test_num = 0
@@ -924,7 +927,12 @@ def eval_remote_policy(
                 sampler = DecisionSampler(sampling_config, None, now_seed)
                 sampling_log = EpisodeLog(
                     Path(usr_args["es_log_dir"]) / f"episode_{task_env.test_num:04d}_seed_{now_seed}.jsonl",
-                    sampling_config, {**scorer.metadata, "episode_seed": now_seed,
+                    sampling_config, {**(scorer.metadata if scorer is not None else {
+                                          "scorer_kind": None,
+                                          "score_semantics": None,
+                                          "gaussian_noise_space": "absolute_joint_chunk_output",
+                                          "gaussian_noise_grippers": False,
+                                      }), "episode_seed": now_seed,
                                       "instruction": instruction, "policy_checkpoint": args["ckpt_setting"],
                                       "task_config": args["task_config"], "frequency": frequency,
                                       "selection_score_basis": sampling_config.score_basis,
@@ -950,7 +958,8 @@ def eval_remote_policy(
                         )
                     action_chunk, selection = sampler.select(
                         decision_step, sample_absolute_chunk, sample_candidates=sample_candidates,
-                        score_candidates=scorer.bind_observation(observation),
+                        score_candidates=(scorer.bind_observation(observation)
+                                          if scorer is not None else None),
                     )
                     sampling_log.decision(selection)
                 else:
@@ -1238,8 +1247,8 @@ def sample_absolute_joint_candidates(
 ) -> np.ndarray:
     """Fetch K same-observation chunks in policy-supported microbatches."""
     if (isinstance(num_candidates, bool) or not isinstance(num_candidates, int)
-            or not 2 <= num_candidates <= 32):
-        raise ValueError("num_candidates must be an integer between 2 and 32")
+            or not 1 <= num_candidates <= 32):
+        raise ValueError("num_candidates must be an integer between 1 and 32")
     if (isinstance(microbatch_size, bool) or not isinstance(microbatch_size, int)
             or not 2 <= microbatch_size <= 32):
         raise ValueError("microbatch_size must be an integer between 2 and 32")
