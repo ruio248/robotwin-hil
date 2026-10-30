@@ -48,6 +48,8 @@ def run(args):
         model, target = models_from_checkpoint(payload, args.device)
         bootstrap = payload["config"]["bootstrap"]
         label = f"{ckpt_index:02d}_{bootstrap}_alpha{payload['config']['alpha']:g}_step{payload['step']}"
+        if "record_end_terminal_reward" in payload["config"]:
+            label += f"_recordEndR{payload['config']['record_end_terminal_reward']:g}"
         checkpoint_metrics = {"path": str(path.resolve()), "sha256": sha256(path), "config": payload["config"], "suites": {}}
         for suite in sorted(suites):
             output = args.output_dir / label / suite
@@ -67,7 +69,8 @@ def run(args):
                     identities.add(identity)
                     arrays = load_episode(root / entry["file"], entry["kind"], payload["compatibility"]["num_candidates"])
                     result = score_episode(model, target, arrays, entry["kind"], payload["config"]["gamma"],
-                                           args.batch_size, args.device, payload["config"]["score_limit"], bootstrap)
+                                           args.batch_size, args.device, payload["config"]["score_limit"], bootstrap,
+                                           payload["config"].get("record_end_terminal_reward"))
                     all_rows.extend(report_rows(result, entry, suite, label))
                     if len(results) < args.max_plots:
                         plot_episode(result, entry, output / f"{entry['id']}.png")

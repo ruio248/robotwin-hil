@@ -26,6 +26,8 @@ from tail_value.sources import (CAMERAS, EpisodeSource, JOINT_FIELDS, control_ma
 import eval_tail_value
 import tail_data
 import train_tail
+import plot_tail_terminal_ablation
+from plot_tail_terminal_ablation import recorded_return
 
 
 def arrays(n=5, k=4, hil=False, offset=0.):
@@ -133,6 +135,68 @@ class CacheTests(unittest.TestCase):
             expected = np.concatenate([arrays(offset=offset)["a_pi"][1:] for offset in (0., 100.)])
             np.testing.assert_array_equal(batch["next_a_pi"].numpy(), expected)
             self.assertNotIn("next_a_demo", batch)
+            self.assertEqual(batch["record_end"].tolist(), [False, False, False, True] * 2)
+
+    def test_recorded_end_return_and_terminal_td_target(self):
+        np.testing.assert_allclose(recorded_return(4, .99, 1), [2.9701, 1.99, 1.])
+        np.testing.assert_allclose(recorded_return(4, .99, 100), [100., 100., 100.])
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = cache(root)
+            batch = TransitionTable(root, manifest, "train").batch(torch.arange(4), "cpu")
+            norm = TransitionTable(root, manifest, "train").normalization()
+            model = CoverageCritic(norm, width=8)
+            target_model = make_target(model)
+            _, _, old = critic_loss(model, target_model, batch, gamma=.99, alpha=1.)
+            for reward in (1., 10., 100.):
+                _, _, new = critic_loss(model, target_model, batch, gamma=.99, alpha=1.,
+                                        record_end_terminal_reward=reward)
+                torch.testing.assert_close(new["target"][:-1], old["target"][:-1])
+                self.assertEqual(new["target"][-1].item(), reward)
+            episode = load_episode(root / manifest["episodes"][0]["file"], "demo", 4)
+            scored = score_episode(model, target_model, episode, "demo", .99, 5, "cpu", 1e4,
+                                   record_end_terminal_reward=10.)
+            self.assertEqual(scored["td_target"][-2], 10.)
+            self.assertTrue(np.isnan(scored["td_target"][-1]))
+
+    def test_terminal_ablation_train_and_evaluate_smoke(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data_dir, run_dir, report_dir = root / "cache", root / "run", root / "report"
+            cache(data_dir)
+            args = train_tail.parse_args(["--cache-dir", str(data_dir), "--output-dir", str(run_dir),
+                                          "--device", "cpu", "--steps", "2", "--eval-every", "2",
+                                          "--log-every", "2", "--batch-size", "4", "--width", "8",
+                                          "--record-end-terminal-reward", "10"])
+            train_tail.run(args)
+            payload = load_checkpoint(run_dir / "last.pt")
+            self.assertEqual(payload["config"]["record_end_terminal_reward"], 10.)
+            self.assertEqual(payload["config"]["terminal_semantics"], "assumed_record_end_not_verified_success")
+            report = eval_tail_value.run(eval_tail_value.parse_args([
+                "--cache-dir", str(data_dir), "--checkpoint", str(run_dir / "last.pt"),
+                "--output-dir", str(report_dir), "--suite", "val", "--device", "cpu", "--max-plots", "0"]))
+            self.assertEqual(len(report), 1)
+            self.assertTrue((report_dir / "metrics.json").is_file())
+
+    def test_three_way_terminal_plot_smoke(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data_dir, runs_dir = root / "cache", root / "runs"
+            cache(data_dir)
+            for reward in (1, 10, 100):
+                train_tail.run(train_tail.parse_args([
+                    "--cache-dir", str(data_dir), "--output-dir", str(runs_dir / f"terminal_{reward}"),
+                    "--device", "cpu", "--steps", "2", "--eval-every", "2", "--log-every", "2",
+                    "--batch-size", "4", "--width", "8", "--record-end-terminal-reward", str(reward)]))
+            report_dir = root / "comparison"
+            plot_tail_terminal_ablation.main(plot_tail_terminal_ablation.parse_args([
+                "--cache-dir", str(data_dir), "--runs-root", str(runs_dir),
+                "--output-dir", str(report_dir), "--split", "val", "--expected-steps", "2",
+                "--device", "cpu"]))
+            self.assertTrue((report_dir / "b_vs_absolute_step.png").is_file())
+            self.assertTrue((report_dir / "b_vs_progress.pdf").is_file())
+            report = json.loads((report_dir / "metrics.json").read_text())
+            self.assertEqual(set(report["rewards"]), {"1", "10", "100"})
 
     def test_incomplete_and_nonfinite_caches_are_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
