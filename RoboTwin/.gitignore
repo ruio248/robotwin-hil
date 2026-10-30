@@ -11,7 +11,8 @@ viewer_show.*
 eval_video/
 **/.DS_Store
 *.bac
-doc/
+doc/*
+!doc/HANDOVER_TO_TRAY_FULL_PIPELINE.md
 
 # eval result
 eval_result/
