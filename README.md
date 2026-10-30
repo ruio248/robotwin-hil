@@ -1,12 +1,33 @@
 # robotwin-hil
 
-Clean private snapshot of the RoboTwin human-in-the-loop and HG-DAgger work
-from the JG 5090 machine.
+Public source snapshot of the RoboTwin human-in-the-loop and HG-DAgger work.
 
 This repository keeps source code, task definitions, robot assets, policy
 adapters, and reproducible scripts. It intentionally excludes the machine
 local conda environment, Python toolchain, caches, logs, checkpoints, videos,
 generated datasets, evaluation outputs, backups, and nested Git metadata.
+
+The repository is public, but the experiment outputs and model weights are not
+published here. Before adding files, check `.gitignore` and inspect staged
+changes for credentials, private data, and large generated artifacts.
+
+## Branches
+
+`main` is the baseline HIL snapshot. Experiment branches remain separate so
+their training and evaluation protocols are not silently combined:
+
+| Branch | Focus |
+| --- | --- |
+| `codex/coverage-enhanced-sampling` | Coverage-guided HIL action sampling |
+| `codex/coverage-terminal-reward-ablation` | Coverage critic terminal-reward ablations |
+| `codex/dagger-aligned-fourway-eval` | DAgger-aligned four-way evaluation |
+| `codex/hil-iwr-balanced-5050` | Balanced HIL/IWR training |
+| `codex/pi05-shared-prefix-inference` | Shared-prefix Pi0.5 inference and subsequent HIL/D-support experiments |
+| `codex/tail-coverage-value` | Offline tail-coverage value experiments |
+| `tail-coverage-value-v2` | Revised policy-candidate TD targets and alpha ablation |
+
+Code in an experiment branch is not automatically merged into `main`. Choose
+the branch matching the protocol you want to reproduce.
 
 ## Layout
 
@@ -94,5 +115,5 @@ checkpoint path before trying the conventional
 - XPolicyLab: https://github.com/XPolicyLab/XPolicyLab
 - OpenPI: https://github.com/Physical-Intelligence/openpi
 
-This is a private working snapshot. Check the upstream licenses under
-RoboTwin/ and the vendored policy directories before redistributing it.
+Upstream source licenses remain in `RoboTwin/` and the vendored policy
+directories. Preserve their copyright and license notices when reusing code.
