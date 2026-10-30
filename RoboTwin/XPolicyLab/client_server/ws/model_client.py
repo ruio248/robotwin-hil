@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import threading
 from collections.abc import Coroutine
+from concurrent.futures import TimeoutError as FutureTimeoutError
+from contextlib import contextmanager
 from typing import Any
 
 from client_server.ws.protocol.client import PolicyEvalClient, PolicyEvalClientConfig
@@ -23,7 +26,7 @@ class WsModelClient:
     calls would interleave requests and the reconnect logic on one client).
 
     The `step` sent on each frame counts INFERENCE calls (get_action /
-    get_action_batch), not environment control steps — one inference call
+    get_action_batch / get_action_candidates), not environment control steps — one inference call
     yields a whole action chunk. The server currently only echoes it back.
     """
 
@@ -50,6 +53,8 @@ class WsModelClient:
         self.trial_id = trial_id
         self.repeat_index = repeat_index
         self._step = 0
+        self._wait_callback = None
+        self._wait_interval = 1.0 / 30.0
         # None means "keep the PolicyEvalClientConfig default", so the defaults
         # stay defined in exactly one place.
         tuning = {
@@ -91,7 +96,49 @@ class WsModelClient:
             # will ever complete (thread died or close() already ran).
             coro.close()
             raise RuntimeError("websocket client event loop is not running")
-        return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        if self._wait_callback is None:
+            return future.result()
+        pending_interrupt = None
+        while not future.done():
+            try:
+                future.result(timeout=self._wait_interval)
+            except FutureTimeoutError:
+                # A completed RPC can itself raise TimeoutError; do not mistake
+                # that for another polling tick and retry it forever.
+                if future.done():
+                    break
+            except Exception:
+                break
+            try:
+                self._wait_callback()
+            except Exception as exc:
+                if pending_interrupt is None:
+                    pending_interrupt = exc
+                # Drain the outstanding response before handing control back.
+                # No new RPC/reset may race with this request. Continue pumping
+                # the UI meanwhile; the first operator event wins.
+        result = future.result()
+        if pending_interrupt is not None:
+            raise pending_interrupt
+        return result
+
+    @contextmanager
+    def responsive_wait(self, on_wait, *, interval_s=1.0 / 30.0):
+        """Pump a main-thread UI callback while a synchronous RPC is pending.
+
+        A callback exception (e.g. operator takeover) discards the response and
+        propagates after the request drains. Rendering may continue; callbacks
+        must not issue RPCs or advance the simulation. No inference overlaps.
+        """
+        if not callable(on_wait) or not math.isfinite(interval_s) or interval_s <= 0:
+            raise ValueError("Require a callback and a finite positive polling interval")
+        previous = self._wait_callback, self._wait_interval
+        self._wait_callback, self._wait_interval = on_wait, interval_s
+        try:
+            yield
+        finally:
+            self._wait_callback, self._wait_interval = previous
 
     def _shutdown_loop(self) -> None:
         if self._loop.is_closed():
@@ -179,6 +226,9 @@ class WsModelClient:
         # (obs / obs list), get_action (no obs), get_action_batch
         # (obs=env_idx_list), and custom public methods some policies expose
         # (e.g. Mem_0's begin_episode/step).
+        request_step = self._step
+        if func_name in {"get_action", "get_action_batch", "get_action_candidates"}:
+            self._step += 1
         response = self._run(
             self._client.call(
                 func_name,
@@ -186,11 +236,9 @@ class WsModelClient:
                 trial_id=self.trial_id,
                 action_case_id=self.action_case_id,
                 repeat_index=self.repeat_index,
-                step=self._step,
+                step=request_step,
             )
         )
-        if func_name in {"get_action", "get_action_batch"}:
-            self._step += 1
         return response.payload.get("result")
 
     @staticmethod

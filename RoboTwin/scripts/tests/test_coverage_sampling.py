@@ -1,0 +1,742 @@
+"""CPU tests for current-action sampling and legacy branch restoration."""
+from __future__ import annotations
+
+import copy
+import ast
+import contextlib
+import io
+import json
+from pathlib import Path
+import random
+import subprocess
+import sys
+import tempfile
+from types import SimpleNamespace
+import types
+import traceback
+import unittest
+from unittest.mock import patch
+from collections.abc import Mapping, Sequence
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from coverage_sampling.core import (
+    DecisionSampler, EpisodeLog, ManualSamplingWindow, SamplingConfig,
+    config_record, coverage_weights,
+)
+from coverage_sampling.options import config_from_args
+from coverage_sampling import calibration as sampling_calibration
+from coverage_sampling.robotwin import RobotwinRollout, SceneSnapshot
+
+
+class FakeJoint:
+    def __init__(self):
+        self.position, self.velocity = np.array([3.0]), np.array([4.0])
+    def get_drive_target(self): return self.position.copy()
+    def get_drive_velocity_target(self): return self.velocity.copy()
+    def set_drive_target(self, value): self.position = np.array(value, copy=True)
+    def set_drive_velocity_target(self, value): self.velocity = np.array(value, copy=True)
+
+
+class FakeArticulation:
+    def __init__(self):
+        self.joint = FakeJoint()
+        self.qf, self.qacc = np.array([5.0]), np.array([6.0])
+    def get_active_joints(self): return [self.joint]
+    def get_qf(self): return self.qf.copy()
+    def set_qf(self, value): self.qf = np.array(value, copy=True)
+    def get_qacc(self): return self.qacc.copy()
+    def set_qacc(self, value): self.qacc = np.array(value, copy=True)
+    def get_root_pose(self): return SimpleNamespace(p=np.zeros(3), q=np.array([1, 0, 0, 0]))
+    def get_qpos(self): return self.joint.position
+    def get_qvel(self): return self.joint.velocity
+
+
+class FakeEnv:
+    def __init__(self):
+        self.x = 0.0
+        self.articulation = FakeArticulation()
+        self.scene = SimpleNamespace(
+            physx_system=SimpleNamespace(pack=lambda: self.x, unpack=self._unpack),
+            get_all_articulations=lambda: [self.articulation],
+            get_all_actors=lambda: [SimpleNamespace(get_pose=lambda: SimpleNamespace(
+                p=np.array([self.x, 0, 0]), q=np.array([1, 0, 0, 0])))])
+        self.robot = SimpleNamespace(left_gripper_val=.2, right_gripper_val=.3)
+        self.take_action_cnt, self.step_lim = 0, 20
+        self.eval_success, self.save_data, self.render_freq = False, True, 1
+        self.eval_video_path = "real_episode_video"
+        self.now_obs = {"nested": [7]}
+        self.external_writes = 0
+        self.stop_at = float("inf")
+    def _unpack(self, x): self.x = x
+    def _update_render(self): pass
+    def get_obs(self):
+        self.now_obs = {"joint_action": {"vector": np.full(14, self.x, dtype=np.float32)}}
+        return copy.deepcopy(self.now_obs)
+    def take_action(self, action, action_type):
+        if self.eval_video_path or self.save_data or self.render_freq:
+            self.external_writes += 1
+        self.x += float(action[0])
+        self.take_action_cnt += 1
+        self.articulation.joint.position[:] = self.x
+        self.articulation.joint.velocity[:] = 99
+        self.articulation.qf[:] = 98
+        self.articulation.qacc[:] = 97
+        self.robot.left_gripper_val = .9
+        self.now_obs = {"mutated": True}
+        self.eval_success = self.x >= self.stop_at
+        random.random()
+        np.random.random()
+
+
+def score(observation, action):
+    return float(observation["joint_action"]["vector"][0] + action[0])
+
+
+def chunk(value, horizon=2):
+    return np.full((horizon, 14), value, dtype=np.float32)
+
+
+class SamplingTests(unittest.TestCase):
+    def test_online_scores_only_first_actions_without_simulator_steps(self):
+        cfg = SamplingConfig("enhanced", 0, 0, num_candidates=4, horizon=2, beta=2)
+        candidates = np.stack([chunk(i + 1) for i in range(4)])
+        candidates[:, 1, :] = np.array([100, 200, 300, 400])[:, None]
+        calls = []
+        def score_first(actions):
+            calls.append(actions.copy())
+            return actions[:, 0].astype(np.float64)
+        blend, record = DecisionSampler(cfg, None, 7).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+            score_candidates=score_first)
+        self.assertEqual(len(calls), 1)
+        np.testing.assert_array_equal(calls[0], candidates[:, 0, :])
+        weights = coverage_weights([1, 2, 3, 4], cfg.beta)
+        np.testing.assert_allclose(blend, np.tensordot(weights, candidates, axes=(0, 0)))
+        self.assertEqual(record["score_basis"], "current_observation_first_action")
+        self.assertEqual(record["branches"], [])
+        self.assertIsNone(record["replay_check"])
+        self.assertNotIn("weighted_candidate_min", record)
+        self.assertAlmostEqual(record["weighted_candidate_score"], np.dot(weights, [1, 2, 3, 4]))
+
+    def test_gibbs_ratio_shift_and_limits(self):
+        scores = np.array([40.1, 40.2, 40.4])
+        weights = coverage_weights(scores, 3)
+        self.assertAlmostEqual(weights[0] / weights[1], np.exp(.3))
+        np.testing.assert_allclose(weights, coverage_weights(scores + 1000, 3))
+        np.testing.assert_allclose(coverage_weights(scores, 0), [1/3]*3)
+        np.testing.assert_allclose(coverage_weights([2, 2, 2], 10), [1/3]*3)
+        np.testing.assert_array_equal(coverage_weights([-1e300, 1e300], 1e300), [1, 0])
+
+    def test_bad_scores_and_config(self):
+        for values in ([], [[1, 2]], [np.nan], [np.inf]):
+            with self.assertRaises(ValueError): coverage_weights(values, 1)
+        for beta in (-1, np.nan, np.inf):
+            with self.assertRaises(ValueError): coverage_weights([1, 2], beta)
+        for kwargs in ({"window_start": -1}, {"window_end": 0}, {"num_candidates": 1},
+                       {"horizon": 0}, {"seed": -1}, {"replay_atol": np.nan}):
+            params = dict(mode="enhanced", window_start=1, window_end=2)
+            params.update(kwargs)
+            with self.assertRaises(ValueError): SamplingConfig(**params)
+
+    def test_inclusive_window_and_same_candidate_generation(self):
+        calls, batch_calls, verifies = [], [], []
+        class Backend:
+            def evaluate(self, candidates, verify, atol):
+                verifies.append(verify)
+                return [{"coverage": [float(c[0, 0]), 99]} for c in candidates], None
+        config = SamplingConfig("enhanced", 1, 2, num_candidates=3, horizon=2)
+        sampler = DecisionSampler(config, Backend(), 7)
+        def sample():
+            calls.append(len(calls))
+            return chunk(len(calls))
+        def sample_batch(count):
+            batch_calls.append(count)
+            return np.stack([chunk(index + 1) for index in range(count)])
+        for decision, expected in enumerate([1, 0, 0, 1]):
+            before = len(calls)
+            selected, record = sampler.select(decision, sample, sample_candidates=sample_batch)
+            self.assertEqual(len(calls)-before, expected)
+            self.assertEqual(selected.shape, (2, 14))
+            self.assertEqual(record["num_candidates"], 3 if decision in (1, 2) else 1)
+            self.assertEqual(record["policy_inference_requests"], 1)
+        self.assertEqual(batch_calls, [3, 3])
+        self.assertEqual(verifies, [True, False])
+
+    def test_manual_key_arms_current_decision_then_expires_or_cancels(self):
+        calls, batch_calls = [], []
+        class Backend:
+            def evaluate(self, candidates, **kwargs):
+                return [{"coverage": [float(candidate[0, 0])]} for candidate in candidates], None
+        window = ManualSamplingWindow(2)
+        sampler = DecisionSampler(SamplingConfig("enhanced", 0, 1, num_candidates=4, horizon=2), Backend(), 7)
+        def sample():
+            calls.append(1)
+            return chunk(1)
+        def sample_batch(count):
+            batch_calls.append(count)
+            return np.stack([chunk(index + 1) for index in range(count)])
+        for decision, expected_active, expected_calls in (
+            (4, False, 1), (4, True, 0), (5, True, 0),
+            (6, False, 1), (6, True, 0), (7, False, 1),
+        ):
+            if decision == 4 and expected_active:
+                self.assertTrue(window.toggle(decision))
+            if decision == 6 and expected_active:
+                self.assertTrue(window.toggle(decision))
+            if decision == 7:
+                self.assertFalse(window.toggle(decision))
+            before = len(calls)
+            _, record = sampler.select(decision, sample, sample_candidates=sample_batch,
+                                       active_override=window.active(decision))
+            self.assertEqual(record["active"], expected_active)
+            self.assertEqual(record["decision"], decision)
+            self.assertEqual(len(calls) - before, expected_calls)
+        self.assertEqual(batch_calls, [4, 4, 4])
+        with self.assertRaises(ValueError):
+            ManualSamplingWindow(0)
+
+    def test_viewer_sampling_key_is_edge_triggered(self):
+        source = Path(__file__).resolve().parents[1] / "hg_dagger_handover.py"
+        tree = ast.parse(source.read_text())
+        tree.body = [node for node in tree.body if isinstance(node, ast.ClassDef)
+                     and node.name == "HumanInterventionInput"]
+        namespace = {"DEFAULT_KEYS": {"i": "intervene"}, "os": __import__("os"),
+                     "select": __import__("select"), "sys": sys,
+                     "termios": __import__("termios"), "tty": __import__("tty")}
+        exec(compile(tree, str(source), "exec"), namespace)
+        class Window:
+            down = False
+            def key_press(self, key): return False
+            def key_down(self, key): return self.down if key == "e" else False
+        window = Window()
+        env = SimpleNamespace(viewer=SimpleNamespace(window=window))
+        keyboard = namespace["HumanInterventionInput"](
+            env, key_map={"i": "intervene", "e": "sampling_toggle"})
+        window.down = True
+        self.assertEqual(keyboard.poll(), "sampling_toggle")
+        self.assertIsNone(keyboard.poll())
+        window.down = False
+        self.assertIsNone(keyboard.poll())
+        window.down = True
+        self.assertEqual(keyboard.poll(), "sampling_toggle")
+
+    def test_weighted_mean_blends_matching_steps_and_all_14_dimensions(self):
+        class Backend:
+            def evaluate(self, candidates, **kwargs):
+                return [{"coverage": [x + 10, x]} for x in (1., 1.2, 1.4, 1.6)], None
+        cfg = SamplingConfig("enhanced", 0, 0, horizon=2, beta=2)
+        sampler = DecisionSampler(cfg, Backend(), 123)
+        candidates = np.stack([chunk(i + 1) for i in range(4)])
+        candidates[:, 1, :] += 10
+        candidates[:, :, 6] = np.array([0, .25, .5, 1.])[:, None]
+        candidates[:, :, 13] = np.array([1., .5, .25, 0.])[:, None]
+        blended, record = sampler.select(0, lambda: chunk(0),
+                                         sample_candidates=lambda count: candidates)
+        weights = coverage_weights([1, 1.2, 1.4, 1.6], 2)
+        expected = np.tensordot(weights, candidates, axes=(0, 0))
+        np.testing.assert_allclose(blended, expected, rtol=1e-6)
+        np.testing.assert_allclose(record["blended_chunk"], expected, rtol=1e-6)
+        np.testing.assert_allclose(record["weights"], weights)
+        self.assertIsNone(record["selected"])
+        self.assertIsNone(record["selected_score"])
+        self.assertAlmostEqual(record["weighted_candidate_min"], np.dot(weights, [1, 1.2, 1.4, 1.6]))
+        self.assertFalse(any(np.array_equal(blended, candidate) for candidate in candidates))
+
+        vanilla = DecisionSampler(SamplingConfig("vanilla", 0, 0, horizon=2), Backend(), 123)
+        uniform, vanilla_record = vanilla.select(0, lambda: chunk(0),
+                                                 sample_candidates=lambda count: candidates)
+        np.testing.assert_allclose(uniform, candidates.mean(axis=0))
+        self.assertEqual(vanilla_record["weights"], [.25] * 4)
+
+    def test_live_substeps_draw_but_lookahead_never_reaches_viewer(self):
+        source = Path(__file__).resolve().parents[1] / "hg_dagger_handover.py"
+        tree = ast.parse(source.read_text())
+        tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                     and node.name == "install_viewer_frame_limit"]
+        clock = [10.0]
+        draws, updates = [], []
+        namespace = {"os": SimpleNamespace(environ={"HIL_VIEWER_MAX_FPS": "30"}),
+                     "time": SimpleNamespace(perf_counter=lambda: clock[0])}
+        exec(compile(tree, str(source), "exec"), namespace)
+        env = SimpleNamespace(render_freq=10,
+                              viewer=SimpleNamespace(render=lambda: draws.append(clock[0])),
+                              _update_render=lambda: updates.append(clock[0]))
+        env._render_viewer_if_available = lambda: env.viewer.render()
+        namespace["install_viewer_frame_limit"](env)
+        for step in range(100):
+            clock[0] = 10.0 + step * .01
+            env._update_render()
+        self.assertEqual(len(updates), 100)
+        self.assertGreaterEqual(len(draws), 24)
+        self.assertLessEqual(len(draws), 30)
+        before = len(draws)
+        env.render_freq = 0
+        for step in range(100):
+            clock[0] = 11.0 + step * .01
+            env._update_render()
+        self.assertEqual(len(draws), before)
+        self.assertEqual(len(updates), 200)
+        env.render_freq = 10
+        clock[0] = 12.0
+        env._update_render()
+        self.assertEqual(len(draws), before + 1)
+        next_draws = []
+        env.viewer = SimpleNamespace(render=lambda: next_draws.append(clock[0]))
+        namespace["install_viewer_frame_limit"](env)
+        clock[0] = 13.0
+        env._update_render()
+        self.assertEqual(len(next_draws), 1)
+        self.assertEqual(len(draws), before + 1)
+        self.assertEqual(len(updates), 202)
+
+    def test_vanilla_uses_same_rollouts_and_uniform_mean(self):
+        config = SamplingConfig("vanilla", 0, 0, horizon=2)
+        env = FakeEnv()
+        sampler = DecisionSampler(config, RobotwinRollout(env, score), 7)
+        _, record = sampler.select(0, lambda: chunk(1),
+                                   sample_candidates=lambda count: np.stack([chunk(1)] * count))
+        self.assertEqual(len(record["branches"]), 4)
+        self.assertEqual(record["weights"], [.25]*4)
+        self.assertEqual(env.take_action_cnt, 0)
+
+    def test_gaussian_perturbs_uniform_chunk_mean_in_output_space(self):
+        candidates = np.stack([chunk(i + 1) for i in range(4)])
+        config = SamplingConfig(
+            "gaussian", 0, 0, num_candidates=4, horizon=2,
+            seed=42, gaussian_sigma=0.02,
+        )
+        forbidden = lambda *args: self.fail("Gaussian baseline must not call a coverage scorer")
+        first, record = DecisionSampler(config, None, 100000).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+            score_candidates=forbidden,
+        )
+        second, _ = DecisionSampler(config, None, 100000).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+        )
+        different_episode, _ = DecisionSampler(config, None, 100001).select(
+            0, lambda: chunk(0), sample_candidates=lambda count: candidates,
+        )
+        uniform = candidates.mean(axis=0)
+        noise = first - uniform
+        np.testing.assert_array_equal(first, second)
+        self.assertFalse(np.array_equal(first, different_episode))
+        np.testing.assert_array_equal(first[:, [6, 13]], uniform[:, [6, 13]])
+        self.assertGreater(np.max(np.abs(noise[:, [0, 1, 7, 8]])), 0)
+        self.assertEqual(record["score_basis"], "none_output_action_isotropic_gaussian")
+        self.assertEqual(record["action_aggregation"], "uniform_mean_plus_isotropic_gaussian")
+        self.assertEqual(record["scores"], [])
+        self.assertEqual(record["weights"], [.25] * 4)
+        self.assertEqual(record["ess_fraction"], 1)
+        self.assertEqual(record["candidate_weight_kl_to_uniform"], 0)
+        self.assertEqual(record["gaussian_rng_key"], [42, 100000, 0])
+        self.assertAlmostEqual(record["gaussian_sigma"], .02)
+        self.assertAlmostEqual(record["joint_rms_shift_from_uniform"],
+                               record["gaussian_noise_arm_rms"])
+        self.assertEqual(record["gripper_rms_shift_from_uniform"], 0)
+
+    def test_gaussian_single_candidate_uses_same_chunk_without_averaging(self):
+        candidate = chunk(1)
+        config = SamplingConfig(
+            "gaussian", 0, 0, num_candidates=1, horizon=2,
+            seed=42, gaussian_sigma=0.0,
+        )
+        selected, record = DecisionSampler(config, None, 120000).select(
+            0, lambda: chunk(0),
+            sample_candidates=lambda count: np.stack([candidate]) if count == 1 else None,
+            score_candidates=lambda _: self.fail("K=1 Gaussian must not score"),
+        )
+        np.testing.assert_array_equal(selected, candidate)
+        self.assertEqual(record["num_candidates"], 1)
+        self.assertEqual(record["policy_inference_requests"], 1)
+        self.assertEqual(record["weights"], [1.0])
+        self.assertEqual(record["action_aggregation"], "single_candidate_plus_isotropic_gaussian")
+        self.assertEqual(record["gaussian_noise_arm_rms"], 0)
+
+    def test_wrong_horizon_nonfinite_actions_and_no_silent_truncation(self):
+        cfg = SamplingConfig("enhanced", 1, 2, horizon=2)
+        sampler = DecisionSampler(cfg, None, 7)
+        for candidate in (chunk(0, 10), np.zeros((2, 13)), chunk(np.nan)):
+            with self.assertRaises(ValueError):
+                sampler.select(0, lambda: candidate,
+                               sample_candidates=lambda count: np.stack([chunk(1)] * count))
+        for candidate_batch in (np.zeros((3, 2, 14)), np.zeros((4, 3, 14)),
+                                np.full((4, 2, 14), np.nan)):
+            with self.assertRaises(ValueError):
+                sampler.select(1, lambda: chunk(1),
+                               sample_candidates=lambda count: candidate_batch)
+
+    def test_cli_rejects_unsupported_or_missing_inputs(self):
+        self.assertIsNone(config_from_args({"es_mode": "off"}))
+        valid = {"es_mode": "enhanced", "task_name": "handover_to_tray", "es_critic": "critic.pt",
+                 "es_encoder_weights": "encoder.pt", "es_window_start": 1, "es_window_end": 2}
+        self.assertEqual(config_from_args(valid).horizon, 10)
+        for changes in ({"eval_batch": "true"}, {"action_type": "ee"}, {"es_critic": None},
+                        {"es_window_end": None}, {"task_name": "other_task"}):
+            with self.assertRaises(ValueError): config_from_args({**valid, **changes})
+        gaussian = {
+            "es_mode": "gaussian", "task_name": "handover_to_tray",
+            "es_window_start": 1, "es_window_end": 2, "es_num_candidates": 32,
+            "es_policy_microbatch": 32, "es_gaussian_sigma": .0115,
+        }
+        cfg = config_from_args(gaussian)
+        self.assertEqual((cfg.mode, cfg.beta, cfg.gaussian_sigma), ("gaussian", 0, .0115))
+        self.assertTrue(cfg.uniform_weights)
+        self.assertFalse(cfg.requires_scores)
+        recorded = config_record(cfg)
+        self.assertEqual(recorded["action_aggregation"], "uniform_mean_plus_isotropic_gaussian")
+        self.assertEqual(recorded["gaussian_noise_space"], "absolute_joint_chunk_output")
+        self.assertFalse(recorded["gaussian_noise_grippers"])
+        zero = config_from_args({**gaussian, "es_gaussian_sigma": 0})
+        self.assertEqual(zero.gaussian_sigma, 0)
+        for changes in ({"es_gaussian_sigma": None}, {"es_gaussian_sigma": -1}, {"es_beta": 1},
+                        {"es_calibration": "calibration.json"}):
+            with self.assertRaises(ValueError): config_from_args({**gaussian, **changes})
+
+    def test_gaussian_launcher_needs_no_critic_and_preserves_protocol(self):
+        repo = Path(__file__).resolve().parents[3]
+        env = {k: v for k, v in __import__("os").environ.items()
+               if not k.startswith(("HIL_", "MANUAL_", "ONE_STAGE_"))}
+        env.update({
+            "HIL_DRY_RUN": "1", "ONE_STAGE_ARM": "gaussian",
+            "HIL_ONE_STAGE_PAIRED_REPORT": "/tmp/baseline-session.json",
+            "HIL_ES_GAUSSIAN_SIGMA": "0.0115",
+        })
+        command = subprocess.check_output(
+            ["bash", str(repo / "local_serving/run_one_stage_dagger.sh")],
+            env=env, text=True,
+        )
+        for part in ("--es-mode gaussian", "--es-num-candidates 32",
+                     "--es-policy-microbatch 32", "--es-horizon 10",
+                     "--es-gaussian-sigma 0.0115", "--frequency 30"):
+            self.assertIn(part, command)
+        self.assertNotIn("--es-critic", command)
+        self.assertNotIn("--es-encoder-weights", command)
+
+
+class RolloutTests(unittest.TestCase):
+    def test_live_key_poll_runs_on_restored_scene_and_interrupt_preserves_hil_state(self):
+        class RecordingEnv(FakeEnv):
+            def __init__(self):
+                super().__init__()
+                self.FRAME_IDX = 5
+                self.control_mask = ["policy"]
+                self.current_control_source = "policy"
+            def take_action(self, action, action_type):
+                super().take_action(action, action_type)
+                self.FRAME_IDX += 1
+                self.control_mask.append("hypothetical")
+                self.current_control_source = "hypothetical"
+
+        env = RecordingEnv()
+        polls = []
+        def poll():
+            polls.append((env.x, env.FRAME_IDX, list(env.control_mask)))
+            if len(polls) == 2:
+                raise RuntimeError("operator pressed i")
+
+        rollout = RobotwinRollout(env, score, on_restored=poll)
+        with self.assertRaisesRegex(RuntimeError, "operator pressed i"):
+            rollout.evaluate(np.stack([chunk(1), chunk(2)]), verify=False, atol=1e-4)
+        self.assertEqual(polls, [(0.0, 5, ["policy"]), (0.0, 5, ["policy"])])
+        self.assertEqual(env.x, 0)
+        self.assertEqual(env.FRAME_IDX, 5)
+        self.assertEqual(env.control_mask, ["policy"])
+        self.assertEqual(env.current_control_source, "policy")
+        self.assertEqual(env.external_writes, 0)
+
+    def test_real_future_states_pre_action_and_restoration(self):
+        env = FakeEnv()
+        snapshot = SceneSnapshot(env)
+        branches, replay = RobotwinRollout(env, score).evaluate(
+            np.stack([chunk(1), chunk(2)]), verify=True, atol=1e-6)
+        self.assertEqual(branches[0]["coverage"], [1, 2])
+        self.assertEqual(branches[1]["coverage"], [2, 4])
+        self.assertEqual(replay["state_max_abs_error"], 0)
+        self.assertEqual(env.x, 0)
+        self.assertEqual(env.take_action_cnt, 0)
+        self.assertFalse(env.eval_success)
+        self.assertEqual(env.now_obs, snapshot.env_state["now_obs"])
+        self.assertEqual(env.robot.left_gripper_val, .2)
+        np.testing.assert_array_equal(env.articulation.joint.position, [3])
+        np.testing.assert_array_equal(env.articulation.joint.velocity, [4])
+        np.testing.assert_array_equal(env.articulation.qf, [5])
+        np.testing.assert_array_equal(env.articulation.qacc, [6])
+        self.assertEqual(random.getstate(), snapshot.python_rng)
+        np.testing.assert_array_equal(np.random.get_state()[1], snapshot.numpy_rng[1])
+        self.assertEqual(env.external_writes, 0)
+        self.assertEqual(env.eval_video_path, "real_episode_video")
+        self.assertTrue(env.save_data)
+
+    def test_exception_restores_scene_and_recording(self):
+        env = FakeEnv()
+        def broken(obs, action):
+            if env.take_action_cnt == 1:
+                raise RuntimeError("scorer failed")
+            return score(obs, action)
+        with self.assertRaisesRegex(RuntimeError, "scorer failed"):
+            RobotwinRollout(env, broken).evaluate([chunk(1)], verify=False, atol=1e-6)
+        self.assertEqual((env.x, env.take_action_cnt, env.robot.left_gripper_val), (0, 0, .2))
+        self.assertTrue(env.save_data)
+
+    def test_early_terminal_and_remaining_step_budget(self):
+        env = FakeEnv()
+        env.stop_at = 1
+        branches, _ = RobotwinRollout(env, score).evaluate([chunk(1)], verify=True, atol=1e-6)
+        self.assertEqual(branches[0]["coverage"], [1])
+        self.assertTrue(branches[0]["success"])
+        self.assertFalse(env.eval_success)
+        env.stop_at, env.step_lim = 100, 1
+        branches, _ = RobotwinRollout(env, score).evaluate([chunk(1)], verify=False, atol=1e-6)
+        self.assertTrue(branches[0]["step_limit"])
+        self.assertEqual(branches[0]["scored_steps"], 1)
+
+    def test_replay_check_detects_hidden_state_leak(self):
+        env = FakeEnv()
+        counter = [0]
+        def leaking(obs, action):
+            counter[0] += 1
+            return float(counter[0])
+        with self.assertRaisesRegex(RuntimeError, "replay mismatch"):
+            RobotwinRollout(env, leaking).evaluate([chunk(1), chunk(2)], verify=True, atol=1e-6)
+        self.assertEqual(env.x, 0)
+
+    def test_branch_order_independence(self):
+        env = FakeEnv()
+        backend = RobotwinRollout(env, score)
+        forward, _ = backend.evaluate([chunk(1), chunk(2)], verify=True, atol=1e-6)
+        reverse, _ = backend.evaluate([chunk(2), chunk(1)], verify=True, atol=1e-6)
+        self.assertEqual(forward, reverse[::-1])
+
+    def test_log_reports_unreached_window_and_refuses_overwrite(self):
+        config = SamplingConfig("enhanced", 3, 4)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/"episode.jsonl"
+            log = EpisodeLog(path, config, {"episode_seed": 123})
+            log.finish(False, None, 0)
+            result = json.loads(path.read_text().splitlines()[-1])
+            self.assertFalse(result["window_reached"])
+            self.assertIsNone(result["active_min"])
+            with self.assertRaises(FileExistsError): EpisodeLog(path, config, {})
+
+    def test_manual_inactive_steps_do_not_require_critic_scores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manual.jsonl"
+            log = EpisodeLog(path, SamplingConfig("enhanced", 0, 1), {})
+            log.executed(0, 0, None, False, np.zeros(14))
+            with self.assertRaisesRegex(ValueError, "require a real coverage"):
+                log.executed(1, 0, None, True, np.zeros(14))
+            log.executed(1, 1, None, True, np.zeros(14))
+            log.finish(False, None, 1)
+            records = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertIsNone(records[1]["coverage"])
+            self.assertEqual(records[-1]["active_executed_scores"], 0)
+
+    def test_gaussian_active_steps_do_not_require_coverage_scores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "gaussian.jsonl"
+            config = SamplingConfig("gaussian", 0, 1, gaussian_sigma=.01)
+            log = EpisodeLog(path, config, {})
+            log.executed(0, 0, None, True, np.zeros(14))
+            log.finish(False, None, 1)
+            records = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertIsNone(records[1]["coverage"])
+            self.assertEqual(records[-1]["active_executed_scores"], 0)
+
+
+class EvaluatorIntegrationTests(unittest.TestCase):
+    """Run the actual evaluator function, with the simulator/server injected.
+
+    Extracting functions avoids importing SAPIEN's GPU renderer in CPU tests;
+    the evaluator loop and action adapters are compiled unchanged from source.
+    """
+    def _run(self, mode, directory, bad_chunk=False, distinct_candidates=False, full_chunk=False,
+             num_candidates=3, policy_microbatch=4):
+        from coverage_sampling.core import SamplingConfig
+        source = Path(__file__).resolve().parents[1] / "eval_policy_xpolicylab.py"
+        tree = ast.parse(source.read_text())
+        names = {"eval_remote_policy", "normalize_action_chunk", "sample_absolute_joint_chunk",
+                 "sample_absolute_joint_candidates", "absolute_joint_chunk_from_response",
+                 "xpolicylab_action_to_robotwin",
+                 "normalize_robotwin_action_type", "is_episode_end"}
+        tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
+        ns = {"np": np, "Path": Path, "Mapping": Mapping, "Sequence": Sequence, "Any": object,
+              "traceback": traceback, "parse_bool": bool, "build_instruction": lambda *a, **kw: "instruction",
+              "prepare_policy_case": lambda *a: None, "reset_policy": lambda client: client.call("reset"),
+              "notify_trial_end": lambda *a: None, "safe_close_env": lambda *a, **kw: None,
+              "robotwin_obs_to_xpolicylab": lambda observation, **kw: observation}
+        exec(compile(tree, str(source), "exec"), ns)
+
+        class Env(FakeEnv):
+            def setup_demo(self, **kwargs):
+                self.eval_video_path, self.render_freq, self.step_lim = None, 0, 20 if full_chunk else 4
+            def set_instruction(self, instruction): self.instruction = instruction
+            def get_instruction(self): return self.instruction
+            def close_env(self, **kwargs): pass
+        class Client:
+            def __init__(self): self.calls, self.observations = [], []
+            def call(self, func_name, **kwargs):
+                self.calls.append(func_name)
+                if func_name == "update_obs":
+                    self.observations.append(kwargs["obs"]["joint_action"]["vector"][0])
+                if func_name == "get_action": return chunk(1, 1 if bad_chunk else (10 if full_chunk else 2))
+                if func_name == "get_action_candidates":
+                    return np.stack([chunk(1 + (i if distinct_candidates else 0),
+                                           1 if bad_chunk else (10 if full_chunk else 2))
+                                     for i in range(kwargs["obs"])])
+        class Scorer:
+            metadata = {"critic_sha256": "test", "encoder_sha256": "test_encoder"}
+            def __init__(self, *args, **kwargs): pass
+            def __call__(self, observation, action):
+                if full_chunk: raise AssertionError("Chunk scorer must never be called on a flat action")
+                return score(observation, action)
+            def score_actions(self, observation, actions):
+                return np.array([score(observation, action) for action in actions])
+            def bind_observation(self, observation):
+                if full_chunk:
+                    return lambda chunks: chunks[:, -1, 0].astype(np.float64) ** 2 + observation["joint_action"]["vector"][0]
+                return lambda actions: self.score_actions(observation, actions)
+        fake_critic = types.ModuleType("coverage_sampling.critic")
+        fake_critic.create_online_scorer = lambda args, config: Scorer()
+        env, client = Env(), Client()
+        args = {"task_name": "handover_to_tray", "policy_name": "Pi_05_RobotTwin", "clear_cache_freq": 10,
+                "render_freq": 0, "ckpt_setting": "test", "task_config": "test"}
+        usr_args = {"task_name": "handover_to_tray", "expert_check": False, "es_mode": mode,
+                    "es_critic": "test", "es_encoder_weights": "test", "es_window_start": 1,
+                    "es_window_end": 1, "es_num_candidates": num_candidates,
+                    "es_policy_microbatch": policy_microbatch, "es_horizon": 10 if full_chunk else 2,
+                    "es_beta": 1., "es_log_dir": directory}
+        if full_chunk:
+            usr_args.update(es_scorer="discriminator_chunk", es_calibration="fixture.json")
+        with patch.dict(sys.modules, {"coverage_sampling.critic": fake_critic}), contextlib.redirect_stdout(io.StringIO()), \
+             patch.object(sampling_calibration, "load_discriminator_calibration",
+                   return_value=({"beta": 1., "scale": 2., "degenerate": False}, "fixture")):
+            ns["eval_remote_policy"]("handover_to_tray", env, args, client, 7,
+                                     usr_args=usr_args, test_num=1, seed_list=[7])
+        return env, client
+
+    def test_full_chunk_evaluator_executes_mean_and_logs_actual_chunk_score(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True, full_chunk=True)
+            rows = [json.loads(x) for x in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            decision = next(x for x in rows if x["event"] == "decision" and x["active"])
+            actual = [x for x in rows if x["event"] == "executed" and x["active"]]
+            self.assertEqual(env.take_action_cnt, 20)
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
+            self.assertEqual(len(actual), 10)
+            np.testing.assert_allclose([x["action"] for x in actual], decision["blended_chunk"])
+            self.assertEqual(actual[0]["coverage"], decision["blended_chunk_score"])
+            self.assertNotAlmostEqual(actual[0]["coverage"], decision["weighted_candidate_score"])
+            self.assertTrue(all(x["coverage"] is None for x in actual[1:]))
+            self.assertEqual(actual[0]["coverage_basis"], "current_observation_full_chunk")
+
+    def test_32_candidates_use_eight_same_observation_microbatches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True, full_chunk=True,
+                                    num_candidates=32, policy_microbatch=4)
+            rows = [json.loads(x) for x in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            decision = next(x for x in rows if x["event"] == "decision" and x["active"])
+            self.assertEqual(client.calls.count("get_action_candidates"), 8)
+            self.assertEqual(len(client.observations), 20)
+            self.assertEqual(decision["num_candidates"], 32)
+            self.assertEqual(decision["candidate_generation"], "microbatched")
+            self.assertEqual(decision["policy_inference_requests"], 8)
+            self.assertEqual(np.asarray(decision["candidates"]).shape, (32, 10, 14))
+            self.assertEqual(env.take_action_cnt, 20)
+
+    def test_k32_single_batch_executes_one_weighted_chunk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True, full_chunk=True,
+                                    num_candidates=32, policy_microbatch=32)
+            rows = [json.loads(x) for x in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            decision = next(x for x in rows if x["event"] == "decision" and x["active"])
+            actual = [x for x in rows if x["event"] == "executed" and x["active"]]
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
+            self.assertEqual(decision["policy_inference_requests"], 1)
+            self.assertEqual(decision["candidate_generation"], "batched")
+            candidates = np.asarray(decision["candidates"])
+            self.assertEqual(candidates.shape, (32, 10, 14))
+            expected = np.einsum("k,khj->hj", decision["weights"], candidates)
+            np.testing.assert_allclose([x["action"] for x in actual], expected, atol=1e-6)
+            self.assertEqual(env.take_action_cnt, 20)
+
+    def test_opt_in_loop_no_policy_calls_in_branches_and_real_step_logging(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory)
+            self.assertEqual(client.calls.count("reset"), 1)
+            self.assertEqual(client.calls.count("get_action"), 1)
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
+            self.assertEqual(client.observations, [0, 1, 2, 3])  # only real execution, never lookahead
+            self.assertEqual(env.take_action_cnt, 4)
+            self.assertEqual(env.external_writes, 4)
+            records = [json.loads(line) for line in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            executed = [r for r in records if r["event"] == "executed"]
+            self.assertEqual([r["coverage"] for r in executed], [None, None, 3, None])
+            self.assertEqual([r["prediction_error"] for r in executed], [None] * 4)
+            self.assertTrue(records[-1]["window_reached"])
+            self.assertEqual(records[-1]["active_executed_scores"], 1)
+            decisions = [r for r in records if r["event"] == "decision"]
+            self.assertEqual([r["candidate_generation"] for r in decisions], ["single", "batched"])
+            self.assertEqual(decisions[1]["score_basis"], "current_observation_first_action")
+            self.assertEqual(decisions[1]["branches"], [])
+
+    def test_off_path_preserves_single_policy_call_per_decision(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("off", directory)
+            self.assertEqual(client.calls.count("get_action"), 2)
+            self.assertEqual(env.take_action_cnt, 4)
+            self.assertFalse(list(Path(directory).iterdir()))
+
+    def test_real_evaluator_executes_blended_chunk_not_a_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, client = self._run("enhanced", directory, distinct_candidates=True)
+            rows = [json.loads(line) for line in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            active = next(r for r in rows if r["event"] == "decision" and r["active"])
+            blend = np.asarray(active["blended_chunk"])
+            self.assertEqual(client.calls.count("get_action_candidates"), 1)
+            self.assertIsNone(active["selected"])
+            self.assertTrue(1 < blend[0, 0] < 3)
+            executed = [r for r in rows if r["event"] == "executed" and r["active"]]
+            np.testing.assert_allclose([r["action"] for r in executed], blend)
+            self.assertTrue(all(r["predicted_coverage"] is None for r in executed))
+            self.assertAlmostEqual(env.x, 2 + 2 * blend[0, 0], places=5)
+
+    def test_bad_candidate_aborts_instead_of_counting_as_policy_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(RuntimeError, "evaluation aborted"):
+                self._run("enhanced", directory, bad_chunk=True)
+            records = [json.loads(line) for line in next(Path(directory).glob("*.jsonl")).read_text().splitlines()]
+            self.assertIn("Expected finite", records[-1]["error"])
+            self.assertEqual(records[-1]["rollout_steps"], 0)
+
+    def test_comparison_uses_real_execution_and_rejects_unmatched_critics(self):
+        from summarize_enhanced_sampling import compare, read_suite
+        with tempfile.TemporaryDirectory() as directory:
+            vanilla_dir, enhanced_dir = Path(directory)/"vanilla", Path(directory)/"enhanced"
+            self._run("vanilla", vanilla_dir)
+            self._run("enhanced", enhanced_dir)
+            vanilla, enhanced = read_suite(vanilla_dir, "vanilla"), read_suite(enhanced_dir, "enhanced")
+            result = compare(vanilla, enhanced)
+            self.assertEqual(result["paired_window_reached"], 1)
+            self.assertEqual(result["paired_enhanced_minus_vanilla_active_min"], 0)
+            self.assertIsNone(result["per_seed"][0]["enhanced"]["max_execution_prediction_error"])
+            self.assertIsNotNone(result["per_seed"][0]["enhanced"]["mean_weighted_candidate_score"])
+            self.assertIsNone(result["per_seed"][0]["enhanced"]["mean_weighted_candidate_min"])
+            enhanced[7]["head"]["selection_score_basis"] = "legacy_branch_min"
+            with self.assertRaisesRegex(ValueError, "selection_score_basis"):
+                compare(vanilla, enhanced)
+            enhanced[7]["head"]["selection_score_basis"] = "current_observation_first_action"
+            enhanced[7]["head"]["critic_sha256"] = "different"
+            with self.assertRaisesRegex(ValueError, "critic_sha256"): compare(vanilla, enhanced)
+
+    def test_comparison_rejects_incomplete_log(self):
+        from summarize_enhanced_sampling import read_suite
+        with tempfile.TemporaryDirectory() as directory:
+            log = EpisodeLog(Path(directory)/"episode_0000.jsonl", SamplingConfig("enhanced", 0, 1), {})
+            log.stream.close()
+            with self.assertRaisesRegex(ValueError, "Incomplete"): read_suite(directory, "enhanced")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -109,6 +109,22 @@ If the checkpoint is stored elsewhere, pass its absolute directory path as
 checkpoint path before trying the conventional
 `<bench>-<ckpt>-<env>-<action>-<seed>` directory name.
 
+## Offline tail coverage value
+
+The optional frozen-policy coverage critic workflow is documented in
+[TAIL_VALUE_README.md](TAIL_VALUE_README.md). It adds `tail_data.py`,
+`train_tail.py`, and `eval_tail_value.py` under `RoboTwin/scripts/`, with
+mean/farthest candidate ablations and separate demonstration/HIL diagnostics.
+This is an approximate-transition research prototype, not a success predictor
+or an online recovery benchmark. Existing HIL collection is unchanged.
+
+## Coverage-guided enhanced sampling
+
+Fixed-window MC coverage-guided action-chunk sampling and its matched Vanilla
+control are documented in [ENHANCED_SAMPLING.md](ENHANCED_SAMPLING.md). The
+existing evaluation entry point opts in with `--es-mode enhanced`; default
+evaluation remains `--es-mode off`.
+
 ## Upstream sources
 
 - RoboTwin: https://github.com/robotwin-Platform/RoboTwin

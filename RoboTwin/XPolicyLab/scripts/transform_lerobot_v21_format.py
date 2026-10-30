@@ -591,6 +591,16 @@ def main():
     parser.add_argument("--data_version", type=str, default="v1.0", help="Dataset version, e.g. v1.0")
     parser.add_argument("--max_episode", type=int, default=200, help="Max episodes per task/env")
     parser.add_argument(
+        "--fps",
+        type=int,
+        default=None,
+        help=(
+            "Override the output dataset FPS. By default this is read from the "
+            "environment config. Use this when the native recording frequency "
+            "differs from that generic environment default."
+        ),
+    )
+    parser.add_argument(
         "--resolution",
         type=str,
         default=None,
@@ -616,10 +626,15 @@ def main():
         raise FileNotFoundError(f"No matching dataset/task/env_cfg targets found for patterns: {args.patterns}")
 
     metadata_by_target, target_dims, max_fps = _plan_target_metadata(targets)
+    if args.fps is not None:
+        if args.fps <= 0:
+            raise ValueError(f"--fps must be positive, got {args.fps}")
+        max_fps = args.fps
     target_inputs = _collect_target_input_files(targets)
     _print_matched_targets(target_inputs)
     image_height, image_width = _resolve_image_hw(args, target_inputs)
     print(f"Image size: {image_height}x{image_width}")
+    print(f"Output FPS: {max_fps or 50}")
     repo_id = args.repo_id or f"unified_{'_'.join(pattern.replace('*', 'all').replace('.', '_') for pattern in args.patterns)}".lower()
     motors = _build_motor_names_from_dims(target_dims)
     

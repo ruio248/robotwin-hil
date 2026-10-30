@@ -1,0 +1,49 @@
+{
+  "protocol": {
+    "name": "full_chunk_coverage_two_layer_v1",
+    "horizon": 10,
+    "action_dim": 14,
+    "joint_order": "left6,left_gripper,right6,right_gripper",
+    "neural_seeds": [42, 43, 44],
+    "td_steps": [1000, 10000, 20000],
+    "primary_methods": ["td_s42_10000", "knn", "svm", "disc_s42"],
+    "candidate_counts": [4, 8, 16, 32],
+    "beta_max": 100.0,
+    "ess_target": 0.5,
+    "temperature_direction": "low support exploration; exp(-beta*(score-min)/global_calibration_std)",
+    "branch_seeds": [200000, 200029],
+    "branch_fractions": [0.2, 0.5, 0.8],
+    "branch_candidates": 8,
+    "microbatch": 4,
+    "continuations": 3,
+    "max_policy_actions": 900,
+    "frequency_metadata": 30,
+    "sft_frequency_metadata": 15,
+    "restore_atol": 0.0001,
+    "bootstrap_repeats": 10000,
+    "prompt": "Pass the red bar from the left arm to the right arm and place it in the blue tray.",
+    "task_config": "handover_to_tray_v2_promptfix",
+    "expert_precheck": false,
+    "calibration_warning": "15/30 split of previously monitored internal validation, not independent heldout"
+  },
+  "profiles": {
+    "new_power_3": {
+      "sft_cache": "/data-training/robotwin-hil-lyt/outputs/tail_chunk_h10_alpha1_20261008/cache_full_450",
+      "td_root": "/data-training/robotwin-hil-lyt/outputs/tail_chunk_h10_alpha1_20261008",
+      "fit": "/data-training/robotwin-hil-lyt/outputs/coverage_benchmark_v1_20261009/fit"
+    },
+    "ubuntu": {
+      "fit": "/hdd/robotwin-hil-enhanced-sampling/outputs/coverage_benchmark_v1_20261009/fit",
+      "k32": "/hdd/robotwin-hil-enhanced-sampling/outputs/candidate_progress_k4_8_16_32_20261003_v3/full",
+      "hil": "/hdd/robotwin-hil-enhanced-sampling/outputs/tail_chunk_h10_alpha1_20261008/hil_cohort_1k_10k_20k",
+      "rollouts": "/hdd/robotwin-hil-enhanced-sampling/outputs/tail_chunk_h10_alpha1_20261008/rollout_comparison_1k_10k_20k",
+      "rollout_records": "/hdd/robotwin-hil/outputs/sft_policy_eval_100/eval_records.jsonl",
+      "encoder": "/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth",
+      "policy_url": "ws://127.0.0.1:18304",
+      "policy_config": "/hdd/robotwin-hil-enhanced-sampling/RoboTwin/XPolicyLab/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml",
+      "policy_checkpoint": "/hdd/robotwin-hil/RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/checkpoints/pi05_robotwin_handover_to_tray_v2_promptfix/robotwin_handover_to_tray_v2_promptfix_bf16_inference/9999",
+      "xpolicylab": "/hdd/robotwin-hil/RoboTwin/XPolicyLab",
+      "seed_audit_roots": ["/hdd/robotwin-hil/outputs", "/hdd/robotwin-hil-enhanced-sampling/outputs"]
+    }
+  }
+}

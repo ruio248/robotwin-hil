@@ -1,0 +1,4287 @@
+{
+  "schema_version": 1,
+  "report_date": "2026-10-28",
+  "timezone": "Asia/Shanghai",
+  "scope": "Three-task native H50 source-discriminator retraining; read-only result audit, no policy retraining",
+  "hosts_checked": {
+    "new_power_3": "2026-10-28T14:09:57.717292+00:00",
+    "ubuntu": "2026-10-28T14:09:13.708980+00:00"
+  },
+  "score_definition": "mean over candidate sigmoid probabilities, then mean within episode, then episode-equal group mean; success positive for AUC",
+  "tasks": {
+    "beat_block_hammer": {
+      "host": "new_power_3",
+      "remote_root": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/beat_block_hammer",
+      "status": "complete",
+      "completed_cst": "2026-10-28 20:53:42.054 +08:00",
+      "completed_stages": [
+        "smoke_native_pairs",
+        "encode_smoke",
+        "collect_0",
+        "encode_0",
+        "collect_1",
+        "encode_1",
+        "train",
+        "eval_smoke",
+        "eval_formal",
+        "outcome_k4",
+        "score",
+        "plot"
+      ],
+      "protocol": {
+        "task": "beat_block_hammer",
+        "status": "complete",
+        "horizon": 50,
+        "candidate_count": 4,
+        "total_expert_episodes": 50,
+        "train_episodes": 40,
+        "heldout_episodes": 10,
+        "train_scenes": [
+          100009,
+          200000,
+          100034,
+          200037,
+          200023,
+          200002,
+          200035,
+          200033,
+          200034,
+          100027,
+          200019,
+          200010,
+          200024,
+          100039,
+          100029,
+          100011,
+          100008,
+          200022,
+          200006,
+          100040,
+          200013,
+          100013,
+          200005,
+          100037,
+          200001,
+          200025,
+          100026,
+          200027,
+          200011,
+          100023,
+          100007,
+          200032,
+          200007,
+          100014,
+          200028,
+          100010,
+          100015,
+          100038,
+          100032,
+          200014
+        ],
+        "heldout_scenes": [
+          100000,
+          100020,
+          100022,
+          200036,
+          100006,
+          200015,
+          200012,
+          100003,
+          100021,
+          100012
+        ],
+        "all_expert_scenes": [
+          100000,
+          100003,
+          100006,
+          100007,
+          100008,
+          100009,
+          100010,
+          100011,
+          100012,
+          100013,
+          100014,
+          100015,
+          100020,
+          100021,
+          100022,
+          100023,
+          100026,
+          100027,
+          100029,
+          100032,
+          100034,
+          100037,
+          100038,
+          100039,
+          100040,
+          200000,
+          200001,
+          200002,
+          200005,
+          200006,
+          200007,
+          200010,
+          200011,
+          200012,
+          200013,
+          200014,
+          200015,
+          200019,
+          200022,
+          200023,
+          200024,
+          200025,
+          200027,
+          200028,
+          200032,
+          200033,
+          200034,
+          200035,
+          200036,
+          200037
+        ],
+        "steps": [
+          1000,
+          10000
+        ],
+        "seed": 42,
+        "batch": 256,
+        "lr": 0.0001,
+        "normalization": "training 40 episodes only",
+        "network": "disc_s42 ChunkCoverageCritic width256 three Linear-LayerNorm-SiLU blocks; full H50 input",
+        "loss": "0.5*(BCE(sigmoid(expert),1)+BCE(sigmoid(policy K4),0))",
+        "r3m_sha256": "58d7bfcda80d81a4c54582e0dd3b0a73aaa2cafff111325eff729419ea989c1e",
+        "limits": [
+          "Native regenerated demonstrations, not proven identical to unpublished checkpoint training episodes.",
+          "Expert-state pairs; not arbitrary policy-state expert continuations.",
+          "Episode holdout measures D generalization, not proof of policy pretraining independence."
+        ],
+        "final_batch_loss": 0.1682252585887909,
+        "source_count": 50,
+        "anchor_count": 668
+      },
+      "checkpoints": {
+        "1000": {
+          "path": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/beat_block_hammer/models/disc_s42_step_1000.pt",
+          "sha256": "d4f3a65b661003cf515a095f464804509869301e96fb57a6f40d2fae2d260141"
+        },
+        "10000": {
+          "path": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/beat_block_hammer/models/disc_s42_step_10000.pt",
+          "sha256": "a737af18a0619395c86f01fa6d9c4ece2c25f86cfd123114674e01febf6d8de5"
+        }
+      },
+      "data_summaries": {
+        "0": {
+          "attempted_scenes": 27,
+          "episodes": 25,
+          "pairs": 334,
+          "rejected_count": 2,
+          "scene_seeds": [
+            100000,
+            100003,
+            100006,
+            100007,
+            100008,
+            100009,
+            100010,
+            100011,
+            100012,
+            100013,
+            100014,
+            100015,
+            100020,
+            100021,
+            100022,
+            100023,
+            100026,
+            100027,
+            100029,
+            100032,
+            100034,
+            100037,
+            100038,
+            100039,
+            100040
+          ],
+          "pair_semantics": "native_save_event_next_H50_qpos_vs_same_observation_policy_H50_K4"
+        },
+        "1": {
+          "attempted_scenes": 29,
+          "episodes": 25,
+          "pairs": 334,
+          "rejected_count": 4,
+          "scene_seeds": [
+            200000,
+            200001,
+            200002,
+            200005,
+            200006,
+            200007,
+            200010,
+            200011,
+            200012,
+            200013,
+            200014,
+            200015,
+            200019,
+            200022,
+            200023,
+            200024,
+            200025,
+            200027,
+            200028,
+            200032,
+            200033,
+            200034,
+            200035,
+            200036,
+            200037
+          ],
+          "pair_semantics": "native_save_event_next_H50_qpos_vs_same_observation_policy_H50_K4"
+        }
+      },
+      "source_metrics": {
+        "1000": {
+          "train": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.9104510366916656,
+                "ci95": [
+                  0.8785700317844748,
+                  0.9398583739623427
+                ],
+                "episodes": 40
+              },
+              "top_of_four": {
+                "mean": 0.8899496659636498,
+                "ci95": [
+                  0.8551717336848379,
+                  0.9216810106113553
+                ],
+                "episodes": 40
+              },
+              "balanced_bce": {
+                "mean": 0.4720599539577961,
+                "ci95": [
+                  0.4345125739835203,
+                  0.5112649882212281
+                ],
+                "episodes": 40
+              },
+              "expert_probability": {
+                "mean": 0.7016031354665756,
+                "ci95": [
+                  0.6806672169640661,
+                  0.7219327733293176
+                ],
+                "episodes": 40
+              },
+              "policy_probability": {
+                "mean": 0.3832046024501324,
+                "ci95": [
+                  0.3453744983766228,
+                  0.42178853671066463
+                ],
+                "episodes": 40
+              },
+              "candidate_range_mean": {
+                "mean": 0.029022894240915774,
+                "ci95": [
+                  0.02361960651847767,
+                  0.03461164193926379
+                ],
+                "episodes": 40
+              },
+              "ess_k_median": {
+                "mean": 0.9999489650130272,
+                "ci95": [
+                  0.9999317643418908,
+                  0.9999648571759463
+                ],
+                "episodes": 40
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.014174370787804947,
+                "ci95": [
+                  0.010913344379659974,
+                  0.017717840214318128
+                ],
+                "episodes": 40
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          },
+          "heldout": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.8162088215351104,
+                "ci95": [
+                  0.7123626707494259,
+                  0.9131868423521519
+                ],
+                "episodes": 10
+              },
+              "top_of_four": {
+                "mean": 0.7917582631111145,
+                "ci95": [
+                  0.6906593620777131,
+                  0.8868269532918929
+                ],
+                "episodes": 10
+              },
+              "balanced_bce": {
+                "mean": 0.5882038295269012,
+                "ci95": [
+                  0.4673606270551681,
+                  0.7076316786557435
+                ],
+                "episodes": 10
+              },
+              "expert_probability": {
+                "mean": 0.6647674560546875,
+                "ci95": [
+                  0.5966460406780243,
+                  0.7291493575274943
+                ],
+                "episodes": 10
+              },
+              "policy_probability": {
+                "mean": 0.4332591637969017,
+                "ci95": [
+                  0.3421442050486803,
+                  0.5171533197164535
+                ],
+                "episodes": 10
+              },
+              "candidate_range_mean": {
+                "mean": 0.023142177518457173,
+                "ci95": [
+                  0.016126221094746145,
+                  0.03052675116341561
+                ],
+                "episodes": 10
+              },
+              "ess_k_median": {
+                "mean": 0.9999746084213257,
+                "ci95": [
+                  0.9999597883224488,
+                  0.9999875071644784
+                ],
+                "episodes": 10
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.010395879950374365,
+                "ci95": [
+                  0.006920901536941528,
+                  0.014645363027229904
+                ],
+                "episodes": 10
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          }
+        },
+        "10000": {
+          "train": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.9800824299454689,
+                "ci95": [
+                  0.9703631667047738,
+                  0.9889423177391291
+                ],
+                "episodes": 40
+              },
+              "top_of_four": {
+                "mean": 0.9721154004335404,
+                "ci95": [
+                  0.959065955877304,
+                  0.9835164934396744
+                ],
+                "episodes": 40
+              },
+              "balanced_bce": {
+                "mean": 0.1827005296945572,
+                "ci95": [
+                  0.15724432988557965,
+                  0.21067699436098328
+                ],
+                "episodes": 40
+              },
+              "expert_probability": {
+                "mean": 0.8499864891171456,
+                "ci95": [
+                  0.8246341671422124,
+                  0.8725853432342411
+                ],
+                "episodes": 40
+              },
+              "policy_probability": {
+                "mean": 0.09493624493479728,
+                "ci95": [
+                  0.08704035261645914,
+                  0.10309471701737494
+                ],
+                "episodes": 40
+              },
+              "candidate_range_mean": {
+                "mean": 0.023726502154022455,
+                "ci95": [
+                  0.0200287553697126,
+                  0.027657614646595902
+                ],
+                "episodes": 40
+              },
+              "ess_k_median": {
+                "mean": 0.9999952197074891,
+                "ci95": [
+                  0.9999903231114149,
+                  0.9999983549863101
+                ],
+                "episodes": 40
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.00967787392437458,
+                "ci95": [
+                  0.0074261951279186176,
+                  0.012295251290779559
+                ],
+                "episodes": 40
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          },
+          "heldout": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.8890110135078431,
+                "ci95": [
+                  0.7868132054805755,
+                  0.9769230961799622
+                ],
+                "episodes": 10
+              },
+              "top_of_four": {
+                "mean": 0.8890110135078431,
+                "ci95": [
+                  0.7868132054805755,
+                  0.9769230961799622
+                ],
+                "episodes": 10
+              },
+              "balanced_bce": {
+                "mean": 0.49139141142368314,
+                "ci95": [
+                  0.21568231079727412,
+                  0.7971738927066326
+                ],
+                "episodes": 10
+              },
+              "expert_probability": {
+                "mean": 0.7878097772598267,
+                "ci95": [
+                  0.691473753452301,
+                  0.8687937505543232
+                ],
+                "episodes": 10
+              },
+              "policy_probability": {
+                "mean": 0.13760076649487019,
+                "ci95": [
+                  0.09160623926669359,
+                  0.2059177447669208
+                ],
+                "episodes": 10
+              },
+              "candidate_range_mean": {
+                "mean": 0.027821130864322186,
+                "ci95": [
+                  0.017164375863503663,
+                  0.040596346650272605
+                ],
+                "episodes": 10
+              },
+              "ess_k_median": {
+                "mean": 0.999991238117218,
+                "ci95": [
+                  0.9999781844019889,
+                  0.9999993801116943
+                ],
+                "episodes": 10
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.014922483963891864,
+                "ci95": [
+                  0.00560479692358058,
+                  0.02744668821047523
+                ],
+                "episodes": 10
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          }
+        }
+      },
+      "evaluation_path": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/beat_block_hammer/outcome_formal",
+      "evaluation_metadata": {
+        "task": "beat_block_hammer",
+        "method": "fixed_h50",
+        "seed": 2,
+        "expected_episodes": 50,
+        "max_horizon": 50,
+        "prediction_horizon": 50,
+        "task_config": "demo_clean",
+        "instruction_type": "unseen",
+        "expert_check_mode": "cached_scenes",
+        "scene_cache": {
+          "file": "/data-training/robotwin-hil-lyt/outputs/h50_support_parallel_20261027/root/pace/configs/expert_scenes.json",
+          "sha256": "12ac49e3913308901113cc8ddd9f71f0987ce8c9ebd83f03c308c759bdbeb939"
+        },
+        "checkpoint_id": "/data-training/robotwin-hil-lyt/outputs/h50_support_parallel_20261027/checkpoints/beat_block_hammer",
+        "checkpoint_id_source": "operator declaration",
+        "gpu": 4,
+        "server_endpoint": "localhost:18521",
+        "selector": {
+          "fps": 50,
+          "min_distance": 10,
+          "smoothing_window": 11,
+          "polynomial_order": 3
+        },
+        "threshold": null,
+        "calibration_sha256": "9aa96b61974f8078feda3b139d9df4d375fa1fee8e3d1d9d756b35e33b8f36a2",
+        "code_commit": null,
+        "code_dirty": null,
+        "code_provenance": "isolated_copy_without_git",
+        "evaluator_sha256": "cec0981373fcb74335bfd8b681377b9742c8d5eefb3606b2b61636dd2518d459",
+        "task_source_sha256": "90269f15f9ce274fb5bcad703c47b0b552ff5a2f0a3ff62d12dbe9a553018014",
+        "upstream_commit": "13c3c47ff4312dd62484bcd51be034af55c062d1",
+        "status": "complete",
+        "server_metadata": {
+          "task": "beat_block_hammer",
+          "config": "pi05_robotwin_beat_block_hammer",
+          "action_horizon": 50,
+          "action_dim": 14,
+          "asset_id": "robotwin",
+          "action_space": "absolute_joint"
+        },
+        "episodes": 50,
+        "successes": 35,
+        "success_rate": 0.7
+      },
+      "record_validation": {
+        "records": 50,
+        "unique_scene_seeds": 50,
+        "successes": 35,
+        "infra_errors": 0
+      },
+      "outcome": {
+        "complete": true,
+        "task": "beat_block_hammer",
+        "successes": 35,
+        "episodes": 50,
+        "common_prefix_queries": 3,
+        "score_direction": "higher means more expert-like; success is positive for AUC",
+        "aggregation": "sigmoid per candidate, average K candidates, mean within episode, then episode-equal groups",
+        "models": {
+          "native_1000": {
+            "checkpoint_sha256": "d4f3a65b661003cf515a095f464804509869301e96fb57a6f40d2fae2d260141",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.41714285714285715,
+                  "ci95": [
+                    0.22857142857142856,
+                    0.6095238095238096
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.5005907013693026,
+                  "failure_mean": 0.5415349764128526,
+                  "success_minus_failure": -0.04094427504355003,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.638095238095238,
+                  "ci95": [
+                    0.4780952380952381,
+                    0.7885714285714286
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.48061327845567753,
+                  "failure_mean": 0.4095970766411888,
+                  "success_minus_failure": 0.07101620181448876,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6933333333333334,
+                  "ci95": [
+                    0.5161904761904762,
+                    0.8495238095238096
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.31531778020518164,
+                  "failure_mean": 0.21753263374169668,
+                  "success_minus_failure": 0.09778514646348496,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.638095238095238,
+                  "ci95": [
+                    0.4780952380952381,
+                    0.7885714285714286
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.48061327845567753,
+                  "failure_mean": 0.4095970766411888,
+                  "success_minus_failure": 0.07101620181448876,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.6,
+                  "ci95": [
+                    0.3,
+                    0.8666666666666667
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.5278748072683811,
+                  "failure_mean": 0.48984639644622807,
+                  "success_minus_failure": 0.038028410822153025,
+                  "eligible_episodes": 19
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.4038095238095238,
+                  "ci95": [
+                    0.21714285714285714,
+                    0.5961904761904762
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.4992501917995868,
+                  "failure_mean": 0.5413562336781372,
+                  "success_minus_failure": -0.04210604187855044,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.6419047619047619,
+                  "ci95": [
+                    0.48,
+                    0.7905238095238089
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.47929924838244914,
+                  "failure_mean": 0.4089021975381507,
+                  "success_minus_failure": 0.07039705084429843,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6895238095238095,
+                  "ci95": [
+                    0.5085714285714286,
+                    0.8495238095238096
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.3158978596329689,
+                  "failure_mean": 0.21787112802267075,
+                  "success_minus_failure": 0.09802673161029815,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.6419047619047619,
+                  "ci95": [
+                    0.48,
+                    0.7905238095238089
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.47929924838244914,
+                  "failure_mean": 0.4089021975381507,
+                  "success_minus_failure": 0.07039705084429843,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.6,
+                  "ci95": [
+                    0.3,
+                    0.8666666666666667
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.5265543527901173,
+                  "failure_mean": 0.48956738539040084,
+                  "success_minus_failure": 0.036986967399716464,
+                  "eligible_episodes": 19
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.43047619047619046,
+                  "ci95": [
+                    0.24761904761904763,
+                    0.6171428571428571
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.029381119997373632,
+                  "failure_mean": 0.1502138398277263,
+                  "success_minus_failure": -0.17959495982509993,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.6628571428571428,
+                  "ci95": [
+                    0.4990476190476191,
+                    0.8114285714285714
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.1173785031906196,
+                  "failure_mean": -0.5451599671608871,
+                  "success_minus_failure": 0.4277814639702675,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6933333333333334,
+                  "ci95": [
+                    0.5161904761904762,
+                    0.8495238095238096
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.9428301379084587,
+                  "failure_mean": -1.4667919238408407,
+                  "success_minus_failure": 0.523961785932382,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.6628571428571428,
+                  "ci95": [
+                    0.4990476190476191,
+                    0.8114285714285714
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.1173785031906196,
+                  "failure_mean": -0.5451599671608871,
+                  "success_minus_failure": 0.4277814639702675,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.6333333333333333,
+                  "ci95": [
+                    0.3333333333333333,
+                    0.9
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.18880271017551423,
+                  "failure_mean": -0.12445338214437167,
+                  "success_minus_failure": 0.3132560923198859,
+                  "eligible_episodes": 19
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.4361904761904762,
+                  "ci95": [
+                    0.25333333333333335,
+                    0.6209999999999993
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.0325991956286487,
+                  "failure_mean": 0.1482279388854901,
+                  "success_minus_failure": -0.1808271345141388,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.660952380952381,
+                  "ci95": [
+                    0.49709523809523815,
+                    0.8114285714285714
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.11933947297788802,
+                  "failure_mean": -0.5518271131647958,
+                  "success_minus_failure": 0.4324876401869078,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6895238095238095,
+                  "ci95": [
+                    0.5085714285714286,
+                    0.8495238095238096
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.9379151386874063,
+                  "failure_mean": -1.4603944063186645,
+                  "success_minus_failure": 0.5224792676312582,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.660952380952381,
+                  "ci95": [
+                    0.49709523809523815,
+                    0.8114285714285714
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -0.11933947297788802,
+                  "failure_mean": -0.5518271131647958,
+                  "success_minus_failure": 0.4324876401869078,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.65,
+                  "ci95": [
+                    0.3495833333333337,
+                    0.9166666666666666
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.19394725263118745,
+                  "failure_mean": -0.1276573453346888,
+                  "success_minus_failure": 0.32160459796587626,
+                  "eligible_episodes": 19
+                }
+              }
+            }
+          },
+          "native_10000": {
+            "checkpoint_sha256": "a737af18a0619395c86f01fa6d9c4ece2c25f86cfd123114674e01febf6d8de5",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.2895238095238095,
+                  "ci95": [
+                    0.08571428571428572,
+                    0.5257619047619041
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.3949371057745295,
+                  "failure_mean": 0.5781194446327845,
+                  "success_minus_failure": -0.18318233885825502,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.540952380952381,
+                  "ci95": [
+                    0.3580952380952381,
+                    0.7180952380952381
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.3553703532311504,
+                  "failure_mean": 0.3301121015750444,
+                  "success_minus_failure": 0.025258251656106012,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.4780952380952381,
+                  "ci95": [
+                    0.30666666666666664,
+                    0.6514285714285715
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00029540986018089044,
+                  "failure_mean": 0.0006556776703898018,
+                  "success_minus_failure": -0.0003602678102089114,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.540952380952381,
+                  "ci95": [
+                    0.3580952380952381,
+                    0.7180952380952381
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.3553703532311504,
+                  "failure_mean": 0.3301121015750444,
+                  "success_minus_failure": 0.025258251656106012,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.7,
+                  "ci95": [
+                    0.43333333333333335,
+                    0.9333333333333333
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.667451686093409,
+                  "failure_mean": 0.4878205772498283,
+                  "success_minus_failure": 0.1796311088435807,
+                  "eligible_episodes": 19
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.2895238095238095,
+                  "ci95": [
+                    0.08761904761904762,
+                    0.5219047619047619
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.3941667040965036,
+                  "failure_mean": 0.5758687196277227,
+                  "success_minus_failure": -0.18170201553121906,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5523809523809524,
+                  "ci95": [
+                    0.36952380952380953,
+                    0.7257142857142858
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.35315075878688296,
+                  "failure_mean": 0.32418643587142365,
+                  "success_minus_failure": 0.028964322915459306,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.44571428571428573,
+                  "ci95": [
+                    0.2819047619047619,
+                    0.6133333333333333
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00035064698531641627,
+                  "failure_mean": 0.0004820004745852202,
+                  "success_minus_failure": -0.00013135348926880393,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5523809523809524,
+                  "ci95": [
+                    0.36952380952380953,
+                    0.7257142857142858
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.35315075878688296,
+                  "failure_mean": 0.32418643587142365,
+                  "success_minus_failure": 0.028964322915459306,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.7333333333333333,
+                  "ci95": [
+                    0.48333333333333334,
+                    0.9333333333333333
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.6493908078497043,
+                  "failure_mean": 0.484248091100732,
+                  "success_minus_failure": 0.16514271674897224,
+                  "eligible_episodes": 19
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.3333333333333333,
+                  "ci95": [
+                    0.14090476190476195,
+                    0.5485714285714286
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -2.180636584187547,
+                  "failure_mean": 0.05072689553101858,
+                  "success_minus_failure": -2.2313634797185657,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.579047619047619,
+                  "ci95": [
+                    0.38857142857142857,
+                    0.7561904761904762
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -2.5565296801782793,
+                  "failure_mean": -3.4282022714614873,
+                  "success_minus_failure": 0.871672591283208,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.4876190476190476,
+                  "ci95": [
+                    0.3142857142857143,
+                    0.660952380952381
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -8.830477687290736,
+                  "failure_mean": -8.699748770395916,
+                  "success_minus_failure": -0.1307289168948209,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.579047619047619,
+                  "ci95": [
+                    0.38857142857142857,
+                    0.7561904761904762
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -2.5565296801782793,
+                  "failure_mean": -3.4282022714614873,
+                  "success_minus_failure": 0.871672591283208,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.6333333333333333,
+                  "ci95": [
+                    0.39958333333333373,
+                    0.8666666666666667
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.9580232374370098,
+                  "failure_mean": -1.2671611865361532,
+                  "success_minus_failure": 2.225184423973163,
+                  "eligible_episodes": 19
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.3352380952380952,
+                  "ci95": [
+                    0.14285714285714285,
+                    0.5504761904761905
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -2.188694891762876,
+                  "failure_mean": 0.03655976603428523,
+                  "success_minus_failure": -2.2252546577971613,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5847619047619048,
+                  "ci95": [
+                    0.3980952380952381,
+                    0.758095238095238
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -2.5586590014752892,
+                  "failure_mean": -3.469013358487023,
+                  "success_minus_failure": 0.9103543570117338,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.44571428571428573,
+                  "ci95": [
+                    0.2819047619047619,
+                    0.6133333333333333
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -8.794517040252686,
+                  "failure_mean": -8.672837130228679,
+                  "success_minus_failure": -0.12167991002400669,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5847619047619048,
+                  "ci95": [
+                    0.3980952380952381,
+                    0.758095238095238
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -2.5586590014752892,
+                  "failure_mean": -3.469013358487023,
+                  "success_minus_failure": 0.9103543570117338,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.6666666666666666,
+                  "ci95": [
+                    0.4166666666666667,
+                    0.8833333333333333
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 0.9740607373416424,
+                  "failure_mean": -1.2897620685895284,
+                  "success_minus_failure": 2.263822805931171,
+                  "eligible_episodes": 19
+                }
+              }
+            }
+          },
+          "old_h50_10000": {
+            "checkpoint_sha256": "a96cc2ad65b86a2cb41fd609478e9255d803625f7a7e6989a74cace51110f1eb",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.35619047619047617,
+                  "ci95": [
+                    0.20952380952380953,
+                    0.5257142857142857
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00006043371611652117,
+                  "failure_mean": 0.016267783876725398,
+                  "success_minus_failure": -0.016207350160608876,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5028571428571429,
+                  "ci95": [
+                    0.33904761904761904,
+                    0.6723809523809524
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00006037196931120413,
+                  "failure_mean": 0.022205384626370357,
+                  "success_minus_failure": -0.022145012657059152,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.4,
+                  "ci95": [
+                    0.21714285714285714,
+                    0.5942857142857143
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 7.143095055133537e-7,
+                  "failure_mean": 8.28024224119872e-7,
+                  "success_minus_failure": -1.1371471860651836e-7,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5028571428571429,
+                  "ci95": [
+                    0.33904761904761904,
+                    0.6723809523809524
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00006037196931120413,
+                  "failure_mean": 0.022205384626370357,
+                  "success_minus_failure": -0.022145012657059152,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.38333333333333336,
+                  "ci95": [
+                    0.11666666666666667,
+                    0.6833333333333333
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 9.448798678590719e-7,
+                  "failure_mean": 0.01592013665178949,
+                  "success_minus_failure": -0.01591919177192163,
+                  "eligible_episodes": 19
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.3466666666666667,
+                  "ci95": [
+                    0.2019047619047619,
+                    0.5161904761904762
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00006194704573396221,
+                  "failure_mean": 0.017068018119115656,
+                  "success_minus_failure": -0.017006071073381694,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5123809523809524,
+                  "ci95": [
+                    0.3485714285714286,
+                    0.6838095238095238
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00006191600978857943,
+                  "failure_mean": 0.022208202954952745,
+                  "success_minus_failure": -0.022146286945164167,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.379047619047619,
+                  "ci95": [
+                    0.2057142857142857,
+                    0.5657142857142857
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 7.082564593474672e-7,
+                  "failure_mean": 8.311046068835519e-7,
+                  "success_minus_failure": -1.2284814753608468e-7,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5123809523809524,
+                  "ci95": [
+                    0.3485714285714286,
+                    0.6838095238095238
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": 0.00006191600978857943,
+                  "failure_mean": 0.022208202954952745,
+                  "success_minus_failure": -0.022146286945164167,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.38333333333333336,
+                  "ci95": [
+                    0.11666666666666667,
+                    0.6833333333333333
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": 9.5400713462368e-7,
+                  "failure_mean": 0.01565387997556513,
+                  "success_minus_failure": -0.015652925968430507,
+                  "eligible_episodes": 19
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.31238095238095237,
+                  "ci95": [
+                    0.17714285714285713,
+                    0.4704761904761905
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -13.741899434271312,
+                  "failure_mean": -13.089782977104187,
+                  "success_minus_failure": -0.652116457167125,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.49142857142857144,
+                  "ci95": [
+                    0.32761904761904764,
+                    0.6628571428571428
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -13.791690930866059,
+                  "failure_mean": -13.556315061781142,
+                  "success_minus_failure": -0.23537586908491726,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.4,
+                  "ci95": [
+                    0.21714285714285714,
+                    0.5942857142857143
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -14.196252468654087,
+                  "failure_mean": -14.093839836120605,
+                  "success_minus_failure": -0.10241263253348265,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.49142857142857144,
+                  "ci95": [
+                    0.32761904761904764,
+                    0.6628571428571428
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -13.791690930866059,
+                  "failure_mean": -13.556315061781142,
+                  "success_minus_failure": -0.23537586908491726,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.36666666666666664,
+                  "ci95": [
+                    0.11666666666666667,
+                    0.65
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": -14.0264799118042,
+                  "failure_mean": -13.288854586283366,
+                  "success_minus_failure": -0.7376253255208347,
+                  "eligible_episodes": 19
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.3047619047619048,
+                  "ci95": [
+                    0.17142857142857143,
+                    0.46285714285714286
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -13.749760222662063,
+                  "failure_mean": -13.062567392985025,
+                  "success_minus_failure": -0.6871928296770378,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.4876190476190476,
+                  "ci95": [
+                    0.3238095238095238,
+                    0.6571428571428571
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -13.792384129478817,
+                  "failure_mean": -13.554101043277317,
+                  "success_minus_failure": -0.23828308620150018,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.379047619047619,
+                  "ci95": [
+                    0.2057142857142857,
+                    0.5657142857142857
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -14.200873402186803,
+                  "failure_mean": -14.084410794576009,
+                  "success_minus_failure": -0.11646260761079397,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4876190476190476,
+                  "ci95": [
+                    0.3238095238095238,
+                    0.6571428571428571
+                  ],
+                  "success_count": 35,
+                  "failure_count": 15,
+                  "success_mean": -13.792384129478817,
+                  "failure_mean": -13.554101043277317,
+                  "success_minus_failure": -0.23828308620150018,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.36666666666666664,
+                  "ci95": [
+                    0.11666666666666667,
+                    0.65
+                  ],
+                  "success_count": 4,
+                  "failure_count": 15,
+                  "success_mean": -14.01774263381958,
+                  "failure_mean": -13.2389417886734,
+                  "success_minus_failure": -0.7788008451461792,
+                  "eligible_episodes": 19
+                }
+              }
+            }
+          }
+        },
+        "limits": [
+          "0-1 is source probability under training sampling, not calibrated task-success probability.",
+          "Normalized progress plots use future episode length; descriptive, not early failure detection.",
+          "Common query prefix is equal query count, not guaranteed equal semantic stage.",
+          "Original D used all 50 expert episodes and different sampling; new D trains on 40 with 10 held out.",
+          "No HIL-event labels or takeover detection claim."
+        ],
+        "length_control": {
+          "auc": 0.014285714285714285,
+          "ci95": [
+            0,
+            0.04285714285714286
+          ],
+          "success_count": 35,
+          "failure_count": 15,
+          "success_mean": 3.4857142857142858,
+          "failure_mean": 8,
+          "success_minus_failure": -4.514285714285714
+        }
+      },
+      "remote_file_sha256": {
+        "state.json": "edc3a8dcb39122082835d60f490e4df24811a229e394dab3abdf73807482c150",
+        "models/protocol.json": "30772b73505cbec298d1f869020bd779bc9404e2e1ddec5dfd1bc8724b45e834",
+        "models/metrics_1000.json": "f008a23c9989f36e147ac65caf461f7c659d9586cd78b9ebca565d64c8611d2c",
+        "models/metrics_10000.json": "48ebed10db466e76675651640eb709f47065fe26db94d36b740fba251784414d",
+        "results/aggregate.json": "e2c9a506bb1e643a2928dc5b432db6a36228d503f90793bbafb01b5aafd66dd4",
+        "results/native_10000_scores.json": "b5c6532a61d012660c112de02be593ad7a9d3634cafde5d96bf51518021cf48e",
+        "results/native_1000_scores.json": "e69e280d2ebaa0268c16a2c492d9b820aa9657c9aef5fb2a3c7f4f850ff08ec2"
+      }
+    },
+    "place_empty_cup": {
+      "host": "new_power_3",
+      "remote_root": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/place_empty_cup",
+      "status": "complete",
+      "completed_cst": "2026-10-28 21:06:23.164 +08:00",
+      "completed_stages": [
+        "smoke_native_pairs",
+        "encode_smoke",
+        "collect_0",
+        "encode_0",
+        "collect_1",
+        "encode_1",
+        "train",
+        "eval_smoke",
+        "eval_formal",
+        "outcome_k4",
+        "score",
+        "plot"
+      ],
+      "protocol": {
+        "task": "place_empty_cup",
+        "status": "complete",
+        "horizon": 50,
+        "candidate_count": 4,
+        "total_expert_episodes": 50,
+        "train_episodes": 40,
+        "heldout_episodes": 10,
+        "train_scenes": [
+          100007,
+          200001,
+          100023,
+          200028,
+          200018,
+          200004,
+          200026,
+          200024,
+          200025,
+          100019,
+          200016,
+          200008,
+          200019,
+          100026,
+          100020,
+          100009,
+          100005,
+          200017,
+          200006,
+          100028,
+          200012,
+          100011,
+          200005,
+          100024,
+          200002,
+          200020,
+          100018,
+          200021,
+          200010,
+          100017,
+          100004,
+          200023,
+          200007,
+          100012,
+          200022,
+          100008,
+          100013,
+          100025,
+          100021,
+          200014
+        ],
+        "heldout_scenes": [
+          100000,
+          100014,
+          100016,
+          200027,
+          100002,
+          200015,
+          200011,
+          100001,
+          100015,
+          100010
+        ],
+        "all_expert_scenes": [
+          100000,
+          100001,
+          100002,
+          100004,
+          100005,
+          100007,
+          100008,
+          100009,
+          100010,
+          100011,
+          100012,
+          100013,
+          100014,
+          100015,
+          100016,
+          100017,
+          100018,
+          100019,
+          100020,
+          100021,
+          100023,
+          100024,
+          100025,
+          100026,
+          100028,
+          200001,
+          200002,
+          200004,
+          200005,
+          200006,
+          200007,
+          200008,
+          200010,
+          200011,
+          200012,
+          200014,
+          200015,
+          200016,
+          200017,
+          200018,
+          200019,
+          200020,
+          200021,
+          200022,
+          200023,
+          200024,
+          200025,
+          200026,
+          200027,
+          200028
+        ],
+        "steps": [
+          1000,
+          10000
+        ],
+        "seed": 42,
+        "batch": 256,
+        "lr": 0.0001,
+        "normalization": "training 40 episodes only",
+        "network": "disc_s42 ChunkCoverageCritic width256 three Linear-LayerNorm-SiLU blocks; full H50 input",
+        "loss": "0.5*(BCE(sigmoid(expert),1)+BCE(sigmoid(policy K4),0))",
+        "r3m_sha256": "58d7bfcda80d81a4c54582e0dd3b0a73aaa2cafff111325eff729419ea989c1e",
+        "limits": [
+          "Native regenerated demonstrations, not proven identical to unpublished checkpoint training episodes.",
+          "Expert-state pairs; not arbitrary policy-state expert continuations.",
+          "Episode holdout measures D generalization, not proof of policy pretraining independence."
+        ],
+        "final_batch_loss": 0.13056524097919464,
+        "source_count": 50,
+        "anchor_count": 1249
+      },
+      "checkpoints": {
+        "1000": {
+          "path": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/place_empty_cup/models/disc_s42_step_1000.pt",
+          "sha256": "4e01feb0ba8a75b86324098be5d3c41e209393f4b3965d3dd53b1450f9e9ac08"
+        },
+        "10000": {
+          "path": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/place_empty_cup/models/disc_s42_step_10000.pt",
+          "sha256": "54b8db74cc682030b387cd3497f60d9088f55a762f5f097125e4fee04a6a56e2"
+        }
+      },
+      "data_summaries": {
+        "0": {
+          "attempted_scenes": 25,
+          "episodes": 25,
+          "pairs": 623,
+          "rejected_count": 0,
+          "scene_seeds": [
+            100000,
+            100001,
+            100002,
+            100004,
+            100005,
+            100007,
+            100008,
+            100009,
+            100010,
+            100011,
+            100012,
+            100013,
+            100014,
+            100015,
+            100016,
+            100017,
+            100018,
+            100019,
+            100020,
+            100021,
+            100023,
+            100024,
+            100025,
+            100026,
+            100028
+          ],
+          "pair_semantics": "native_save_event_next_H50_qpos_vs_same_observation_policy_H50_K4"
+        },
+        "1": {
+          "attempted_scenes": 26,
+          "episodes": 25,
+          "pairs": 626,
+          "rejected_count": 1,
+          "scene_seeds": [
+            200001,
+            200002,
+            200004,
+            200005,
+            200006,
+            200007,
+            200008,
+            200010,
+            200011,
+            200012,
+            200014,
+            200015,
+            200016,
+            200017,
+            200018,
+            200019,
+            200020,
+            200021,
+            200022,
+            200023,
+            200024,
+            200025,
+            200026,
+            200027,
+            200028
+          ],
+          "pair_semantics": "native_save_event_next_H50_qpos_vs_same_observation_policy_H50_K4"
+        }
+      },
+      "source_metrics": {
+        "1000": {
+          "train": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.9390608131885528,
+                "ci95": [
+                  0.9071584608778357,
+                  0.962964756116271
+                ],
+                "episodes": 40
+              },
+              "top_of_four": {
+                "mean": 0.9229589268565178,
+                "ci95": [
+                  0.8902883955091238,
+                  0.9491026651486755
+                ],
+                "episodes": 40
+              },
+              "balanced_bce": {
+                "mean": 0.35053842030465604,
+                "ci95": [
+                  0.31168985228985546,
+                  0.3903154801670462
+                ],
+                "episodes": 40
+              },
+              "expert_probability": {
+                "mean": 0.7683625832200051,
+                "ci95": [
+                  0.7373621298000216,
+                  0.7975346510857343
+                ],
+                "episodes": 40
+              },
+              "policy_probability": {
+                "mean": 0.26910637617111205,
+                "ci95": [
+                  0.23361407770775258,
+                  0.30717039993032813
+                ],
+                "episodes": 40
+              },
+              "candidate_range_mean": {
+                "mean": 0.030437029851600527,
+                "ci95": [
+                  0.02700347772566602,
+                  0.03399126867589075
+                ],
+                "episodes": 40
+              },
+              "ess_k_median": {
+                "mean": 0.9999270185828208,
+                "ci95": [
+                  0.9999019334465266,
+                  0.9999478922039271
+                ],
+                "episodes": 40
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.021321398112922905,
+                "ci95": [
+                  0.018590263829100877,
+                  0.02404321651323698
+                ],
+                "episodes": 40
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          },
+          "heldout": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.8464904099702835,
+                "ci95": [
+                  0.7340605948120356,
+                  0.9404359340667725
+                ],
+                "episodes": 10
+              },
+              "top_of_four": {
+                "mean": 0.8247820675373078,
+                "ci95": [
+                  0.7076375152170657,
+                  0.926628208309412
+                ],
+                "episodes": 10
+              },
+              "balanced_bce": {
+                "mean": 0.6730959683656692,
+                "ci95": [
+                  0.4583627735823393,
+                  0.894409644305706
+                ],
+                "episodes": 10
+              },
+              "expert_probability": {
+                "mean": 0.6540921986103058,
+                "ci95": [
+                  0.506948062106967,
+                  0.7803516992926597
+                ],
+                "episodes": 10
+              },
+              "policy_probability": {
+                "mean": 0.33783098608255385,
+                "ci95": [
+                  0.2545908057317138,
+                  0.41971286740154023
+                ],
+                "episodes": 10
+              },
+              "candidate_range_mean": {
+                "mean": 0.029404389671981335,
+                "ci95": [
+                  0.022677113031968475,
+                  0.03714273898396641
+                ],
+                "episodes": 10
+              },
+              "ess_k_median": {
+                "mean": 0.9999277412891387,
+                "ci95": [
+                  0.9998890861868858,
+                  0.9999633254110812
+                ],
+                "episodes": 10
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.018599561601877212,
+                "ci95": [
+                  0.01434736440423876,
+                  0.023550422007683664
+                ],
+                "episodes": 10
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          }
+        },
+        "10000": {
+          "train": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.9911993131041527,
+                "ci95": [
+                  0.9858810120820999,
+                  0.9959098666161299
+                ],
+                "episodes": 40
+              },
+              "top_of_four": {
+                "mean": 0.9806466028094292,
+                "ci95": [
+                  0.9693511139228941,
+                  0.990861424393952
+                ],
+                "episodes": 40
+              },
+              "balanced_bce": {
+                "mean": 0.13378318431787192,
+                "ci95": [
+                  0.11205989458714612,
+                  0.1569319789909059
+                ],
+                "episodes": 40
+              },
+              "expert_probability": {
+                "mean": 0.8923752620816231,
+                "ci95": [
+                  0.8703957715258002,
+                  0.9135935122147202
+                ],
+                "episodes": 40
+              },
+              "policy_probability": {
+                "mean": 0.06414019211078995,
+                "ci95": [
+                  0.052177827739069475,
+                  0.07748597991332644
+                ],
+                "episodes": 40
+              },
+              "candidate_range_mean": {
+                "mean": 0.014813959290040656,
+                "ci95": [
+                  0.011674825131776742,
+                  0.018321889599028505
+                ],
+                "episodes": 40
+              },
+              "ess_k_median": {
+                "mean": 0.9999983072280884,
+                "ci95": [
+                  0.9999956667423249,
+                  0.9999997943639756
+                ],
+                "episodes": 40
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.008398572687292471,
+                "ci95": [
+                  0.00596140833440586,
+                  0.011179769185328038
+                ],
+                "episodes": 40
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          },
+          "heldout": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.9264134645462037,
+                "ci95": [
+                  0.8555384710431099,
+                  0.9859999895095826
+                ],
+                "episodes": 10
+              },
+              "top_of_four": {
+                "mean": 0.9143205106258392,
+                "ci95": [
+                  0.8373333215713501,
+                  0.9801538407802581
+                ],
+                "episodes": 10
+              },
+              "balanced_bce": {
+                "mean": 1.5581835567951203,
+                "ci95": [
+                  0.7903107941150666,
+                  2.4957270246744154
+                ],
+                "episodes": 10
+              },
+              "expert_probability": {
+                "mean": 0.6405334003269673,
+                "ci95": [
+                  0.4524085646867752,
+                  0.8078478864580393
+                ],
+                "episodes": 10
+              },
+              "policy_probability": {
+                "mean": 0.23529061749577523,
+                "ci95": [
+                  0.16338738204911352,
+                  0.3082101085782051
+                ],
+                "episodes": 10
+              },
+              "candidate_range_mean": {
+                "mean": 0.02779215881600976,
+                "ci95": [
+                  0.018023843520786613,
+                  0.038477567450609054
+                ],
+                "episodes": 10
+              },
+              "ess_k_median": {
+                "mean": 0.999997901916504,
+                "ci95": [
+                  0.9999961373209952,
+                  0.9999993205070495
+                ],
+                "episodes": 10
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.014557195873931051,
+                "ci95": [
+                  0.008897113078273833,
+                  0.020534817979205394
+                ],
+                "episodes": 10
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          }
+        }
+      },
+      "evaluation_path": "/data-training/robotwin-hil-lyt/outputs/three_task_native_h50_d_retrain_20261028/place_empty_cup/outcome_formal",
+      "evaluation_metadata": {
+        "task": "place_empty_cup",
+        "method": "fixed_h50",
+        "seed": 2,
+        "expected_episodes": 50,
+        "max_horizon": 50,
+        "prediction_horizon": 50,
+        "task_config": "demo_clean",
+        "instruction_type": "unseen",
+        "expert_check_mode": "cached_scenes",
+        "scene_cache": {
+          "file": "/data-training/robotwin-hil-lyt/outputs/h50_support_parallel_20261027/root/pace/configs/expert_scenes.json",
+          "sha256": "12ac49e3913308901113cc8ddd9f71f0987ce8c9ebd83f03c308c759bdbeb939"
+        },
+        "checkpoint_id": "/data-training/robotwin-hil-lyt/outputs/h50_support_parallel_20261027/checkpoints/place_empty_cup",
+        "checkpoint_id_source": "operator declaration",
+        "gpu": 7,
+        "server_endpoint": "localhost:18522",
+        "selector": {
+          "fps": 50,
+          "min_distance": 10,
+          "smoothing_window": 11,
+          "polynomial_order": 3
+        },
+        "threshold": null,
+        "calibration_sha256": "02f5cc4d4b6ffeb6518cecfcf2b399a5d40c114f320cfb97c3d342786a714da6",
+        "code_commit": null,
+        "code_dirty": null,
+        "code_provenance": "isolated_copy_without_git",
+        "evaluator_sha256": "cec0981373fcb74335bfd8b681377b9742c8d5eefb3606b2b61636dd2518d459",
+        "task_source_sha256": "424bbd61f990ebfffb283eb152d17103c2a990edd20f68229203a96a2fd4d581",
+        "upstream_commit": "13c3c47ff4312dd62484bcd51be034af55c062d1",
+        "status": "complete",
+        "server_metadata": {
+          "task": "place_empty_cup",
+          "config": "pi05_robotwin_place_empty_cup",
+          "action_horizon": 50,
+          "action_dim": 14,
+          "asset_id": "robotwin",
+          "action_space": "absolute_joint"
+        },
+        "episodes": 50,
+        "successes": 23,
+        "success_rate": 0.46
+      },
+      "record_validation": {
+        "records": 50,
+        "unique_scene_seeds": 50,
+        "successes": 23,
+        "infra_errors": 0
+      },
+      "outcome": {
+        "complete": true,
+        "task": "place_empty_cup",
+        "successes": 23,
+        "episodes": 50,
+        "common_prefix_queries": 3,
+        "score_direction": "higher means more expert-like; success is positive for AUC",
+        "aggregation": "sigmoid per candidate, average K candidates, mean within episode, then episode-equal groups",
+        "models": {
+          "native_1000": {
+            "checkpoint_sha256": "4e01feb0ba8a75b86324098be5d3c41e209393f4b3965d3dd53b1450f9e9ac08",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.16264090177133655,
+                  "ci95": [
+                    0.061191626409017714,
+                    0.286634460547504
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.373107573214203,
+                  "failure_mean": 0.5739729559876854,
+                  "success_minus_failure": -0.20086538277348237,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.3896940418679549,
+                  "ci95": [
+                    0.23671497584541062,
+                    0.5491545893719801
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.3485258294309935,
+                  "failure_mean": 0.40601649473386786,
+                  "success_minus_failure": -0.05749066530287439,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.573268921095008,
+                  "ci95": [
+                    0.4074074074074074,
+                    0.7294685990338164
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.47414862040592276,
+                  "failure_mean": 0.41421068528736077,
+                  "success_minus_failure": 0.05993793511856199,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.3896940418679549,
+                  "ci95": [
+                    0.23671497584541062,
+                    0.5491545893719801
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.3485258294309935,
+                  "failure_mean": 0.40601649473386786,
+                  "success_minus_failure": -0.05749066530287439,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.3888888888888889,
+                  "ci95": [
+                    0,
+                    0.8148148148148148
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": 0.43679048698395495,
+                  "failure_mean": 0.49803523339883043,
+                  "success_minus_failure": -0.061244746414875484,
+                  "eligible_episodes": 29
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.16264090177133655,
+                  "ci95": [
+                    0.05954106280193241,
+                    0.28989533011272084
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.37317940946061,
+                  "failure_mean": 0.5706185004242731,
+                  "success_minus_failure": -0.19743909096366308,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.41545893719806765,
+                  "ci95": [
+                    0.25925925925925924,
+                    0.5748792270531401
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.3490388756078007,
+                  "failure_mean": 0.4005097941909399,
+                  "success_minus_failure": -0.05147091858313918,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.5636070853462157,
+                  "ci95": [
+                    0.3961352657004831,
+                    0.7214170692431562
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.47552195531518565,
+                  "failure_mean": 0.4195279612861298,
+                  "success_minus_failure": 0.05599399402905586,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.41545893719806765,
+                  "ci95": [
+                    0.25925925925925924,
+                    0.5748792270531401
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.3490388756078007,
+                  "failure_mean": 0.4005097941909399,
+                  "success_minus_failure": -0.05147091858313918,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.42592592592592593,
+                  "ci95": [
+                    0,
+                    0.8888888888888888
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": 0.4423157414421439,
+                  "failure_mean": 0.49098653697098293,
+                  "success_minus_failure": -0.04867079552883902,
+                  "eligible_episodes": 29
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.13848631239935588,
+                  "ci95": [
+                    0.04669887278582931,
+                    0.25442834138486314
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.8242696713494218,
+                  "failure_mean": 0.5564924587288663,
+                  "success_minus_failure": -1.380762130078288,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.4331723027375201,
+                  "ci95": [
+                    0.2753623188405797,
+                    0.5958132045088567
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.9683940445167432,
+                  "failure_mean": -0.6089474408553889,
+                  "success_minus_failure": -0.3594466036613543,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.5748792270531401,
+                  "ci95": [
+                    0.40901771336553944,
+                    0.7310789049919485
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.07847289125556531,
+                  "failure_mean": -0.47032526908097444,
+                  "success_minus_failure": 0.39185237782540916,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4331723027375201,
+                  "ci95": [
+                    0.2753623188405797,
+                    0.5958132045088567
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.9683940445167432,
+                  "failure_mean": -0.6089474408553889,
+                  "success_minus_failure": -0.3594466036613543,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.37037037037037035,
+                  "ci95": [
+                    0.07407407407407407,
+                    0.7037037037037037
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": -0.4407750278711319,
+                  "failure_mean": 0.08589545355212908,
+                  "success_minus_failure": -0.526670481423261,
+                  "eligible_episodes": 29
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.14492753623188406,
+                  "ci95": [
+                    0.04830917874396135,
+                    0.2673107890499195
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.8230169494946797,
+                  "failure_mean": 0.5355420876018426,
+                  "success_minus_failure": -1.3585590370965224,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.4428341384863124,
+                  "ci95": [
+                    0.28502415458937197,
+                    0.6103059581320451
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.964000036535056,
+                  "failure_mean": -0.6410627492048122,
+                  "success_minus_failure": -0.32293728733024374,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.5636070853462157,
+                  "ci95": [
+                    0.3961352657004831,
+                    0.7214170692431562
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.08682490561319434,
+                  "failure_mean": -0.43916372444342683,
+                  "success_minus_failure": 0.3523388188302325,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4428341384863124,
+                  "ci95": [
+                    0.28502415458937197,
+                    0.6103059581320451
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -0.964000036535056,
+                  "failure_mean": -0.6410627492048122,
+                  "success_minus_failure": -0.32293728733024374,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.37037037037037035,
+                  "ci95": [
+                    0.037037037037037035,
+                    0.7407407407407407
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": -0.4050986737012863,
+                  "failure_mean": 0.04523816955862223,
+                  "success_minus_failure": -0.4503368432599085,
+                  "eligible_episodes": 29
+                }
+              }
+            }
+          },
+          "native_10000": {
+            "checkpoint_sha256": "54b8db74cc682030b387cd3497f60d9088f55a762f5f097125e4fee04a6a56e2",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.07407407407407407,
+                  "ci95": [
+                    0.017713365539452495,
+                    0.15458937198067632
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.27061200039042627,
+                  "failure_mean": 0.6367316822154663,
+                  "success_minus_failure": -0.36611968182504,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.4396135265700483,
+                  "ci95": [
+                    0.2834138486312399,
+                    0.607085346215781
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.2166392383476699,
+                  "failure_mean": 0.2621255322135881,
+                  "success_minus_failure": -0.04548629386591818,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6634460547504025,
+                  "ci95": [
+                    0.5024154589371981,
+                    0.8083735909822867
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.21141774641111385,
+                  "failure_mean": 0.08810220266167124,
+                  "success_minus_failure": 0.12331554374944262,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4396135265700483,
+                  "ci95": [
+                    0.2834138486312399,
+                    0.607085346215781
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.2166392383476699,
+                  "failure_mean": 0.2621255322135881,
+                  "success_minus_failure": -0.04548629386591818,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.35185185185185186,
+                  "ci95": [
+                    0.1111111111111111,
+                    0.5925925925925926
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": 0.35881356021311606,
+                  "failure_mean": 0.4598187446336165,
+                  "success_minus_failure": -0.10100518442050044,
+                  "eligible_episodes": 29
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.07407407407407407,
+                  "ci95": [
+                    0.017713365539452495,
+                    0.15619967793880837
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.26914946566362763,
+                  "failure_mean": 0.6333552332973915,
+                  "success_minus_failure": -0.3642057676337639,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.4492753623188406,
+                  "ci95": [
+                    0.29307568438003223,
+                    0.6135265700483091
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.2153249332906066,
+                  "failure_mean": 0.25436733950214724,
+                  "success_minus_failure": -0.03904240621154065,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6586151368760065,
+                  "ci95": [
+                    0.4975845410628019,
+                    0.8019323671497585
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.20795402757065187,
+                  "failure_mean": 0.09457232921940212,
+                  "success_minus_failure": 0.11338169835124975,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4492753623188406,
+                  "ci95": [
+                    0.29307568438003223,
+                    0.6135265700483091
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.2153249332906066,
+                  "failure_mean": 0.25436733950214724,
+                  "success_minus_failure": -0.03904240621154065,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.3888888888888889,
+                  "ci95": [
+                    0.1111111111111111,
+                    0.6666666666666666
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": 0.36408434923604316,
+                  "failure_mean": 0.45084337409321096,
+                  "success_minus_failure": -0.0867590248571678,
+                  "eligible_episodes": 29
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.04830917874396135,
+                  "ci95": [
+                    0.00644122383252818,
+                    0.10950080515297907
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -3.6577663993597893,
+                  "failure_mean": 2.9157454828421274,
+                  "success_minus_failure": -6.573511882201917,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.42995169082125606,
+                  "ci95": [
+                    0.2721417069243156,
+                    0.5958132045088567
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -4.4910461503634425,
+                  "failure_mean": -3.2182659992465266,
+                  "success_minus_failure": -1.272780151116916,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6618357487922706,
+                  "ci95": [
+                    0.5023752012882449,
+                    0.8067632850241546
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -4.106139434420544,
+                  "failure_mean": -6.207939474670975,
+                  "success_minus_failure": 2.1018000402504313,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.42995169082125606,
+                  "ci95": [
+                    0.2721417069243156,
+                    0.5958132045088567
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -4.4910461503634425,
+                  "failure_mean": -3.2182659992465266,
+                  "success_minus_failure": -1.272780151116916,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.4444444444444444,
+                  "ci95": [
+                    0.18518518518518517,
+                    0.7037037037037037
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": -1.172730767726898,
+                  "failure_mean": -0.19783945149845555,
+                  "success_minus_failure": -0.9748913162284425,
+                  "eligible_episodes": 29
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.05314009661835749,
+                  "ci95": [
+                    0.00966183574879227,
+                    0.11755233494363929
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -3.668800399247287,
+                  "failure_mean": 2.869453039986116,
+                  "success_minus_failure": -6.538253439233403,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.4428341384863124,
+                  "ci95": [
+                    0.286634460547504,
+                    0.607085346215781
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -4.49717509455007,
+                  "failure_mean": -3.3259815511144235,
+                  "success_minus_failure": -1.1711935434356469,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.6586151368760065,
+                  "ci95": [
+                    0.4975845410628019,
+                    0.8019323671497585
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -4.155376504296842,
+                  "failure_mean": -6.149231888629772,
+                  "success_minus_failure": 1.9938553843329299,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4428341384863124,
+                  "ci95": [
+                    0.286634460547504,
+                    0.607085346215781
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -4.49717509455007,
+                  "failure_mean": -3.3259815511144235,
+                  "success_minus_failure": -1.1711935434356469,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.48148148148148145,
+                  "ci95": [
+                    0.18518518518518517,
+                    0.7777777777777778
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": -1.0898984670639038,
+                  "failure_mean": -0.30366711484061343,
+                  "success_minus_failure": -0.7862313522232904,
+                  "eligible_episodes": 29
+                }
+              }
+            }
+          },
+          "old_h50_10000": {
+            "checkpoint_sha256": "74d4606f23a1adc02a72b5e0b0a1e7d5f8b7941538821f70f011916e1f8023fb",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.09500805152979067,
+                  "ci95": [
+                    0.01610305958132045,
+                    0.1996779388083736
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.01739190004577067,
+                  "failure_mean": 0.12474666153411773,
+                  "success_minus_failure": -0.10735476148834706,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.31561996779388085,
+                  "ci95": [
+                    0.16747181964573268,
+                    0.4718196457326892
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 6.479113292770954e-7,
+                  "failure_mean": 0.08644948341401808,
+                  "success_minus_failure": -0.0864488355026888,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.3687600644122383,
+                  "ci95": [
+                    0.21900161030595813,
+                    0.533011272141707
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 8.235947659515027e-7,
+                  "failure_mean": 0.0000019876640698789238,
+                  "success_minus_failure": -0.0000011640693039274212,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.31561996779388085,
+                  "ci95": [
+                    0.16747181964573268,
+                    0.4718196457326892
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 6.479113292770954e-7,
+                  "failure_mean": 0.08644948341401808,
+                  "success_minus_failure": -0.0864488355026888,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.7222222222222222,
+                  "ci95": [
+                    0.5185185185185185,
+                    0.8888888888888888
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": 0.20000041895895604,
+                  "failure_mean": 0.12393948315425488,
+                  "success_minus_failure": 0.07606093580470116,
+                  "eligible_episodes": 29
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.09178743961352658,
+                  "ci95": [
+                    0.01288244766505636,
+                    0.1964573268921095
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 0.01739189921468197,
+                  "failure_mean": 0.12522154256975232,
+                  "success_minus_failure": -0.10782964335507035,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.3075684380032206,
+                  "ci95": [
+                    0.15942028985507245,
+                    0.463768115942029
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 6.57107302702676e-7,
+                  "failure_mean": 0.08642493046267105,
+                  "success_minus_failure": -0.08642427335536834,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.357487922705314,
+                  "ci95": [
+                    0.20772946859903382,
+                    0.5201288244766505
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 8.979944477291808e-7,
+                  "failure_mean": 0.0000016837341516091126,
+                  "success_minus_failure": -7.857397038799318e-7,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.3075684380032206,
+                  "ci95": [
+                    0.15942028985507245,
+                    0.463768115942029
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": 6.57107302702676e-7,
+                  "failure_mean": 0.08642493046267105,
+                  "success_minus_failure": -0.08642427335536834,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.7222222222222222,
+                  "ci95": [
+                    0.48148148148148145,
+                    0.9259259259259259
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": 0.20000065091488467,
+                  "failure_mean": 0.12526803100004122,
+                  "success_minus_failure": 0.07473261991484345,
+                  "eligible_episodes": 29
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.0853462157809984,
+                  "ci95": [
+                    0.00966183574879227,
+                    0.18840579710144928
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -13.935939211085225,
+                  "failure_mean": -10.590219273390593,
+                  "success_minus_failure": -3.345719937694632,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.3107890499194847,
+                  "ci95": [
+                    0.16264090177133655,
+                    0.4669887278582931
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -14.421519459157754,
+                  "failure_mean": -11.771771254362886,
+                  "success_minus_failure": -2.649748204794868,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.3719806763285024,
+                  "ci95": [
+                    0.22061191626409019,
+                    0.534621578099839
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -14.164402422697648,
+                  "failure_mean": -13.806802643669975,
+                  "success_minus_failure": -0.35759977902767304,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.3107890499194847,
+                  "ci95": [
+                    0.16264090177133655,
+                    0.4669887278582931
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -14.421519459157754,
+                  "failure_mean": -11.771771254362886,
+                  "success_minus_failure": -2.649748204794868,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.6296296296296297,
+                  "ci95": [
+                    0.4444444444444444,
+                    0.8148148148148148
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": -8.75191946029663,
+                  "failure_mean": -10.532020344557587,
+                  "success_minus_failure": 1.780100884260957,
+                  "eligible_episodes": 29
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.08695652173913043,
+                  "ci95": [
+                    0.00966183574879227,
+                    0.19001610305958133
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -13.93813487066739,
+                  "failure_mean": -10.59611561342522,
+                  "success_minus_failure": -3.342019257242171,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.30434782608695654,
+                  "ci95": [
+                    0.15619967793880837,
+                    0.4605475040257649
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -14.420263013977937,
+                  "failure_mean": -11.766132896329148,
+                  "success_minus_failure": -2.654130117648789,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.357487922705314,
+                  "ci95": [
+                    0.20772946859903382,
+                    0.5201288244766505
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -14.151310547538426,
+                  "failure_mean": -13.808296062328198,
+                  "success_minus_failure": -0.3430144852102277,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.30434782608695654,
+                  "ci95": [
+                    0.15619967793880837,
+                    0.4605475040257649
+                  ],
+                  "success_count": 23,
+                  "failure_count": 27,
+                  "success_mean": -14.420263013977937,
+                  "failure_mean": -11.766132896329148,
+                  "success_minus_failure": -2.654130117648789,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.6851851851851852,
+                  "ci95": [
+                    0.4444444444444444,
+                    0.8888888888888888
+                  ],
+                  "success_count": 2,
+                  "failure_count": 27,
+                  "success_mean": -8.680466651916504,
+                  "failure_mean": -10.527465679910447,
+                  "success_minus_failure": 1.8469990279939434,
+                  "eligible_episodes": 29
+                }
+              }
+            }
+          }
+        },
+        "limits": [
+          "0-1 is source probability under training sampling, not calibrated task-success probability.",
+          "Normalized progress plots use future episode length; descriptive, not early failure detection.",
+          "Common query prefix is equal query count, not guaranteed equal semantic stage.",
+          "Original D used all 50 expert episodes and different sampling; new D trains on 40 with 10 held out.",
+          "No HIL-event labels or takeover detection claim."
+        ],
+        "length_control": {
+          "auc": 0,
+          "ci95": [
+            0,
+            0
+          ],
+          "success_count": 23,
+          "failure_count": 27,
+          "success_mean": 3.391304347826087,
+          "failure_mean": 10,
+          "success_minus_failure": -6.608695652173913
+        }
+      },
+      "remote_file_sha256": {
+        "state.json": "9fd06902aae43706df282b1b89453be194763d0a3276abe89b532958fd5885d5",
+        "models/protocol.json": "4fb04df51023f2bf292a61cb79ab9c4ededba00ec53b00a80901f003458a0a5b",
+        "models/metrics_1000.json": "2d91efd8879bf4e792897dc576d76b40bd81871ed1dae84cb22637e1e48cdf9d",
+        "models/metrics_10000.json": "4801e5027cabaa8ca747e2a37eb5e0b31de4d602d9fd47ce18f0462184ff47cd",
+        "results/aggregate.json": "707a269cb1d05bb67f29d7fb359f5770de954c57fbb23456d49e9a318aab5079",
+        "results/native_10000_scores.json": "d1866dc55e8193846d8970665e01f8efc840abfe30fe4897c0fb0920532266e6",
+        "results/native_1000_scores.json": "eb568cedc2af18431ab30c602ddfe992a62fffaac6e258b5b7d6a4e2e056ed10"
+      }
+    },
+    "open_microwave": {
+      "host": "ubuntu",
+      "remote_root": "/media/ruio/hdd/three_task_native_h50_d_retrain_20261028/open_microwave",
+      "status": "complete",
+      "completed_cst": "2026-10-28 21:23:26.521 +08:00",
+      "completed_stages": [
+        "smoke_native_pairs",
+        "encode_smoke",
+        "collect_0",
+        "encode_0",
+        "collect_1",
+        "encode_1",
+        "train",
+        "outcome_k4",
+        "score",
+        "plot"
+      ],
+      "protocol": {
+        "task": "open_microwave",
+        "status": "complete",
+        "horizon": 50,
+        "candidate_count": 4,
+        "total_expert_episodes": 50,
+        "train_episodes": 40,
+        "heldout_episodes": 10,
+        "train_scenes": [
+          100016,
+          200001,
+          100052,
+          200059,
+          200039,
+          200006,
+          200054,
+          200052,
+          200053,
+          100045,
+          200037,
+          200012,
+          200044,
+          100061,
+          100047,
+          100019,
+          100014,
+          200038,
+          200010,
+          100066,
+          200025,
+          100021,
+          200007,
+          100055,
+          200002,
+          200045,
+          100044,
+          200048,
+          200013,
+          100041,
+          100013,
+          200051,
+          200011,
+          100022,
+          200050,
+          100018,
+          100023,
+          100058,
+          100051,
+          200030
+        ],
+        "heldout_scenes": [
+          100000,
+          100032,
+          100037,
+          200057,
+          100003,
+          200035,
+          200019,
+          100001,
+          100033,
+          100020
+        ],
+        "all_expert_scenes": [
+          100000,
+          100001,
+          100003,
+          100013,
+          100014,
+          100016,
+          100018,
+          100019,
+          100020,
+          100021,
+          100022,
+          100023,
+          100032,
+          100033,
+          100037,
+          100041,
+          100044,
+          100045,
+          100047,
+          100051,
+          100052,
+          100055,
+          100058,
+          100061,
+          100066,
+          200001,
+          200002,
+          200006,
+          200007,
+          200010,
+          200011,
+          200012,
+          200013,
+          200019,
+          200025,
+          200030,
+          200035,
+          200037,
+          200038,
+          200039,
+          200044,
+          200045,
+          200048,
+          200050,
+          200051,
+          200052,
+          200053,
+          200054,
+          200057,
+          200059
+        ],
+        "steps": [
+          1000,
+          10000
+        ],
+        "seed": 42,
+        "batch": 256,
+        "lr": 0.0001,
+        "normalization": "training 40 episodes only",
+        "network": "disc_s42 ChunkCoverageCritic width256 three Linear-LayerNorm-SiLU blocks; full H50 input",
+        "loss": "0.5*(BCE(sigmoid(expert),1)+BCE(sigmoid(policy K4),0))",
+        "r3m_sha256": "58d7bfcda80d81a4c54582e0dd3b0a73aaa2cafff111325eff729419ea989c1e",
+        "limits": [
+          "Native regenerated demonstrations, not proven identical to unpublished checkpoint training episodes.",
+          "Expert-state pairs; not arbitrary policy-state expert continuations.",
+          "Episode holdout measures D generalization, not proof of policy pretraining independence."
+        ],
+        "final_batch_loss": 0.4208289086818695,
+        "anchor_count": 7055,
+        "source_count": 50
+      },
+      "checkpoints": {
+        "1000": {
+          "path": "/media/ruio/hdd/three_task_native_h50_d_retrain_20261028/open_microwave/models/disc_s42_step_1000.pt",
+          "sha256": "edb38db3a9b85ac4f67b28b1f19258bf7ffaa90b580c6f203b95afd25e6b7457"
+        },
+        "10000": {
+          "path": "/media/ruio/hdd/three_task_native_h50_d_retrain_20261028/open_microwave/models/disc_s42_step_10000.pt",
+          "sha256": "6307c1c28d8e4f94100e1adf9355339ec6fafa49ac374fe893b29723bfc6c2fe"
+        }
+      },
+      "data_summaries": {
+        "0": {
+          "attempted_scenes": 54,
+          "episodes": 25,
+          "pairs": 3500,
+          "rejected_count": 29,
+          "scene_seeds": [
+            100000,
+            100001,
+            100003,
+            100013,
+            100014,
+            100016,
+            100018,
+            100019,
+            100020,
+            100021,
+            100022,
+            100023,
+            100032,
+            100033,
+            100037,
+            100041,
+            100044,
+            100045,
+            100047,
+            100051,
+            100052,
+            100055,
+            100058,
+            100061,
+            100066
+          ],
+          "pair_semantics": "native_save_event_next_H50_qpos_vs_same_observation_policy_H50_K4"
+        },
+        "1": {
+          "attempted_scenes": 51,
+          "episodes": 25,
+          "pairs": 3555,
+          "rejected_count": 26,
+          "scene_seeds": [
+            200001,
+            200002,
+            200006,
+            200007,
+            200010,
+            200011,
+            200012,
+            200013,
+            200019,
+            200025,
+            200030,
+            200035,
+            200037,
+            200038,
+            200039,
+            200044,
+            200045,
+            200048,
+            200050,
+            200051,
+            200052,
+            200053,
+            200054,
+            200057,
+            200059
+          ],
+          "pair_semantics": "native_save_event_next_H50_qpos_vs_same_observation_policy_H50_K4"
+        }
+      },
+      "source_metrics": {
+        "1000": {
+          "train": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.767417135834694,
+                "ci95": [
+                  0.7185233848169446,
+                  0.814507927261293
+                ],
+                "episodes": 40
+              },
+              "top_of_four": {
+                "mean": 0.7090742371976375,
+                "ci95": [
+                  0.6522887204214931,
+                  0.7645805035158991
+                ],
+                "episodes": 40
+              },
+              "balanced_bce": {
+                "mean": 0.5669591046869755,
+                "ci95": [
+                  0.5146207086741924,
+                  0.6132165079005062
+                ],
+                "episodes": 40
+              },
+              "expert_probability": {
+                "mean": 0.6283085092902183,
+                "ci95": [
+                  0.591550138629973,
+                  0.6688812281563878
+                ],
+                "episodes": 40
+              },
+              "policy_probability": {
+                "mean": 0.4413086427375674,
+                "ci95": [
+                  0.40878453698474915,
+                  0.4696558985859155
+                ],
+                "episodes": 40
+              },
+              "candidate_range_mean": {
+                "mean": 0.03565404866822064,
+                "ci95": [
+                  0.02784871055628173,
+                  0.0440927352081053
+                ],
+                "episodes": 40
+              },
+              "ess_k_median": {
+                "mean": 0.9998738124966622,
+                "ci95": [
+                  0.9998108964785933,
+                  0.9999306964501739
+                ],
+                "episodes": 40
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.02062774049118161,
+                "ci95": [
+                  0.017293824592488818,
+                  0.024193628787179476
+                ],
+                "episodes": 40
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          },
+          "heldout": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.7423002392053604,
+                "ci95": [
+                  0.6438882822543383,
+                  0.838093598857522
+                ],
+                "episodes": 10
+              },
+              "top_of_four": {
+                "mean": 0.6707833677530288,
+                "ci95": [
+                  0.5494217998534441,
+                  0.7863815574347973
+                ],
+                "episodes": 10
+              },
+              "balanced_bce": {
+                "mean": 0.5945583760738373,
+                "ci95": [
+                  0.48207616090774535,
+                  0.6860689640045166
+                ],
+                "episodes": 10
+              },
+              "expert_probability": {
+                "mean": 0.6013492345809937,
+                "ci95": [
+                  0.5245272380113601,
+                  0.6904063648730516
+                ],
+                "episodes": 10
+              },
+              "policy_probability": {
+                "mean": 0.42299199253320696,
+                "ci95": [
+                  0.3528375741839409,
+                  0.48166255071759223
+                ],
+                "episodes": 10
+              },
+              "candidate_range_mean": {
+                "mean": 0.04065510770305991,
+                "ci95": [
+                  0.02467253556009382,
+                  0.057434859634377056
+                ],
+                "episodes": 10
+              },
+              "ess_k_median": {
+                "mean": 0.9998270571231842,
+                "ci95": [
+                  0.999655540883541,
+                  0.9999608546495438
+                ],
+                "episodes": 10
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.02631098832935095,
+                "ci95": [
+                  0.016517585397232325,
+                  0.039742167359218
+                ],
+                "episodes": 10
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          }
+        },
+        "10000": {
+          "train": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.9016432285308837,
+                "ci95": [
+                  0.8730148556083441,
+                  0.9276464410871267
+                ],
+                "episodes": 40
+              },
+              "top_of_four": {
+                "mean": 0.860572250932455,
+                "ci95": [
+                  0.8209466945193709,
+                  0.8964717853814363
+                ],
+                "episodes": 40
+              },
+              "balanced_bce": {
+                "mean": 0.4437920067459345,
+                "ci95": [
+                  0.38985111394897104,
+                  0.4959078743495047
+                ],
+                "episodes": 40
+              },
+              "expert_probability": {
+                "mean": 0.7271769344806671,
+                "ci95": [
+                  0.6849998956173659,
+                  0.7697587833926081
+                ],
+                "episodes": 40
+              },
+              "policy_probability": {
+                "mean": 0.3628496825695038,
+                "ci95": [
+                  0.32558054626919325,
+                  0.39741510258987545
+                ],
+                "episodes": 40
+              },
+              "candidate_range_mean": {
+                "mean": 0.05911808805540204,
+                "ci95": [
+                  0.05307015251135454,
+                  0.06558610650012268
+                ],
+                "episodes": 40
+              },
+              "ess_k_median": {
+                "mean": 0.9997213840484619,
+                "ci95": [
+                  0.9996454561501742,
+                  0.9997910676151515
+                ],
+                "episodes": 40
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.03753091378603131,
+                "ci95": [
+                  0.025672253831871786,
+                  0.05341207628720439
+                ],
+                "episodes": 40
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          },
+          "heldout": {
+            "episode_equal": {
+              "pairwise": {
+                "mean": 0.8187240421772003,
+                "ci95": [
+                  0.7292472763359547,
+                  0.9024255999922751
+                ],
+                "episodes": 10
+              },
+              "top_of_four": {
+                "mean": 0.7513258904218674,
+                "ci95": [
+                  0.6415295290201903,
+                  0.8559723111242056
+                ],
+                "episodes": 10
+              },
+              "balanced_bce": {
+                "mean": 0.5289223223924637,
+                "ci95": [
+                  0.41002009086310864,
+                  0.6256198580563068
+                ],
+                "episodes": 10
+              },
+              "expert_probability": {
+                "mean": 0.6733457446098328,
+                "ci95": [
+                  0.5906950357556343,
+                  0.7613214288651942
+                ],
+                "episodes": 10
+              },
+              "policy_probability": {
+                "mean": 0.3812985859811306,
+                "ci95": [
+                  0.27265164321288465,
+                  0.4802199004963039
+                ],
+                "episodes": 10
+              },
+              "candidate_range_mean": {
+                "mean": 0.0615563865751028,
+                "ci95": [
+                  0.04819373617880046,
+                  0.07829654718749225
+                ],
+                "episodes": 10
+              },
+              "ess_k_median": {
+                "mean": 0.9996297419071197,
+                "ci95": [
+                  0.999356915652752,
+                  0.9998343260586262
+                ],
+                "episodes": 10
+              },
+              "tilted_joint_rms_mrad": {
+                "mean": 0.04690463533625007,
+                "ci95": [
+                  0.022999534974806012,
+                  0.08729681434575468
+                ],
+                "episodes": 10
+              }
+            },
+            "weighting_protocol": "softmax(-sigmoid_logit), fixed beta=1, no heldout fitting; not historical calibrated beta"
+          }
+        }
+      },
+      "evaluation_path": "/media/ruio/hdd/h50_support_20261027/outcome/formal/open_microwave",
+      "evaluation_metadata": {
+        "task": "open_microwave",
+        "method": "fixed_h50",
+        "seed": 2,
+        "expected_episodes": 50,
+        "max_horizon": 50,
+        "prediction_horizon": 50,
+        "task_config": "demo_clean",
+        "instruction_type": "unseen",
+        "expert_check_mode": "cached_scenes",
+        "scene_cache": {
+          "file": "/media/ruio/hdd/pace_pi05_eval_20261022/pace/configs/expert_scenes.json",
+          "sha256": "12ac49e3913308901113cc8ddd9f71f0987ce8c9ebd83f03c308c759bdbeb939"
+        },
+        "checkpoint_id": "/media/ruio/hdd/pace_pi05_eval_20261022/checkpoints/open_microwave",
+        "checkpoint_id_source": "operator declaration",
+        "gpu": 0,
+        "server_endpoint": "localhost:18496",
+        "selector": {
+          "fps": 50,
+          "min_distance": 10,
+          "smoothing_window": 11,
+          "polynomial_order": 3
+        },
+        "threshold": null,
+        "calibration_sha256": "c0658c0cd99ad08006894f9443f876e53a20f0e395befd211e078e951a0dc697",
+        "code_commit": "31f15cfe30dad3c2df53ab53bcb0910331ec9b5d",
+        "code_dirty": true,
+        "upstream_commit": "13c3c47ff4312dd62484bcd51be034af55c062d1",
+        "status": "complete",
+        "server_metadata": {
+          "task": "open_microwave",
+          "config": "pi05_robotwin_open_microwave",
+          "action_horizon": 50,
+          "action_dim": 14,
+          "asset_id": "robotwin",
+          "action_space": "absolute_joint"
+        },
+        "episodes": 50,
+        "successes": 42,
+        "success_rate": 0.84
+      },
+      "record_validation": {
+        "records": 50,
+        "unique_scene_seeds": 50,
+        "successes": 42,
+        "infra_errors": 0,
+        "scored_records": 50
+      },
+      "outcome": {
+        "complete": true,
+        "task": "open_microwave",
+        "successes": 42,
+        "episodes": 50,
+        "common_prefix_queries": 5,
+        "score_direction": "higher means more expert-like; success is positive for AUC",
+        "aggregation": "sigmoid per candidate, average K candidates, mean within episode, then episode-equal groups",
+        "models": {
+          "native_1000": {
+            "checkpoint_sha256": "edb38db3a9b85ac4f67b28b1f19258bf7ffaa90b580c6f203b95afd25e6b7457",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.3244047619047619,
+                  "ci95": [
+                    0.18452380952380953,
+                    0.47619047619047616
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.28107695663782717,
+                  "failure_mean": 0.35673620575107634,
+                  "success_minus_failure": -0.07565924911324917,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.33035714285714285,
+                  "ci95": [
+                    0.16071428571428573,
+                    0.5238095238095238
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.45446504176195174,
+                  "failure_mean": 0.5220476284623146,
+                  "success_minus_failure": -0.06758258670036282,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.4583333333333333,
+                  "ci95": [
+                    0.20833333333333334,
+                    0.7232142857142857
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.4759682125988461,
+                  "failure_mean": 0.4741402864456177,
+                  "success_minus_failure": 0.0018279261532284097,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5595238095238095,
+                  "ci95": [
+                    0.35119047619047616,
+                    0.7529761904761905
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.4828012903176603,
+                  "failure_mean": 0.47908487915992737,
+                  "success_minus_failure": 0.003716411157732913,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.33035714285714285,
+                  "ci95": [
+                    0.16071428571428573,
+                    0.5238095238095238
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.45446504176195174,
+                  "failure_mean": 0.5220476284623146,
+                  "success_minus_failure": -0.06758258670036282,
+                  "eligible_episodes": 50
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.3244047619047619,
+                  "ci95": [
+                    0.18452380952380953,
+                    0.47619047619047616
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.2809512916388277,
+                  "failure_mean": 0.35558617489878086,
+                  "success_minus_failure": -0.07463488325995316,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.33035714285714285,
+                  "ci95": [
+                    0.15773809523809523,
+                    0.5297619047619048
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.45383986211603594,
+                  "failure_mean": 0.5214738193899393,
+                  "success_minus_failure": -0.06763395727390337,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.43154761904761907,
+                  "ci95": [
+                    0.19047619047619047,
+                    0.6904761904761905
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.4761030397244862,
+                  "failure_mean": 0.47591957449913025,
+                  "success_minus_failure": 0.0001834652253559499,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5446428571428571,
+                  "ci95": [
+                    0.34226190476190477,
+                    0.7381696428571418
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.4821813220069522,
+                  "failure_mean": 0.47917136177420616,
+                  "success_minus_failure": 0.003009960232746023,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.33035714285714285,
+                  "ci95": [
+                    0.15773809523809523,
+                    0.5297619047619048
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.45383986211603594,
+                  "failure_mean": 0.5214738193899393,
+                  "success_minus_failure": -0.06763395727390337,
+                  "eligible_episodes": 50
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.31547619047619047,
+                  "ci95": [
+                    0.17559523809523808,
+                    0.46726190476190477
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -1.4450403923952155,
+                  "failure_mean": -0.6829498969484121,
+                  "success_minus_failure": -0.7620904954468034,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.34523809523809523,
+                  "ci95": [
+                    0.17559523809523808,
+                    0.5327380952380952
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.2170966121323762,
+                  "failure_mean": 0.13777585409116,
+                  "success_minus_failure": -0.3548724662235362,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.4583333333333333,
+                  "ci95": [
+                    0.20833333333333334,
+                    0.7232142857142857
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.0963683347882969,
+                  "failure_mean": -0.10391298681497574,
+                  "success_minus_failure": 0.007544652026678839,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5625,
+                  "ci95": [
+                    0.3541666666666667,
+                    0.7559523809523809
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.05274869748465127,
+                  "failure_mean": -0.061786287813447416,
+                  "success_minus_failure": 0.009037590328796148,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.34523809523809523,
+                  "ci95": [
+                    0.17559523809523808,
+                    0.5327380952380952
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.2170966121323762,
+                  "failure_mean": 0.13777585409116,
+                  "success_minus_failure": -0.3548724662235362,
+                  "eligible_episodes": 50
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.31845238095238093,
+                  "ci95": [
+                    0.17857142857142858,
+                    0.46726190476190477
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -1.4432159518201553,
+                  "failure_mean": -0.686658469432344,
+                  "success_minus_failure": -0.7565574823878113,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.3392857142857143,
+                  "ci95": [
+                    0.17559523809523808,
+                    0.5208333333333334
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.216422158532909,
+                  "failure_mean": 0.13068922162055965,
+                  "success_minus_failure": -0.34711138015346865,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.43154761904761907,
+                  "ci95": [
+                    0.19047619047619047,
+                    0.6904761904761905
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.09581020101904869,
+                  "failure_mean": -0.09671986009925604,
+                  "success_minus_failure": 0.0009096590802073479,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5386904761904762,
+                  "ci95": [
+                    0.3392857142857143,
+                    0.7291666666666666
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.05216526210544602,
+                  "failure_mean": -0.06319181093325218,
+                  "success_minus_failure": 0.011026548827806168,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.3392857142857143,
+                  "ci95": [
+                    0.17559523809523808,
+                    0.5208333333333334
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.216422158532909,
+                  "failure_mean": 0.13068922162055965,
+                  "success_minus_failure": -0.34711138015346865,
+                  "eligible_episodes": 50
+                }
+              }
+            }
+          },
+          "native_10000": {
+            "checkpoint_sha256": "6307c1c28d8e4f94100e1adf9355339ec6fafa49ac374fe893b29723bfc6c2fe",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.3482142857142857,
+                  "ci95": [
+                    0.20833333333333334,
+                    0.49404761904761907
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.31307698105098625,
+                  "failure_mean": 0.37627808752440617,
+                  "success_minus_failure": -0.06320110647341992,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5148809523809523,
+                  "ci95": [
+                    0.33035714285714285,
+                    0.6994047619047619
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.5000633061223199,
+                  "failure_mean": 0.49894224014133215,
+                  "success_minus_failure": 0.0011210659809877122,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.44345238095238093,
+                  "ci95": [
+                    0.22023809523809523,
+                    0.6755952380952381
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.3391275725194386,
+                  "failure_mean": 0.3488927558064461,
+                  "success_minus_failure": -0.009765183287007484,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.6339285714285714,
+                  "ci95": [
+                    0.4523809523809524,
+                    0.8005952380952381
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.45317879152144225,
+                  "failure_mean": 0.4302451939632495,
+                  "success_minus_failure": 0.022933597558192742,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.5148809523809523,
+                  "ci95": [
+                    0.33035714285714285,
+                    0.6994047619047619
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.5000633061223199,
+                  "failure_mean": 0.49894224014133215,
+                  "success_minus_failure": 0.0011210659809877122,
+                  "eligible_episodes": 50
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.34226190476190477,
+                  "ci95": [
+                    0.20238095238095238,
+                    0.48816964285714176
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.3126607842433741,
+                  "failure_mean": 0.3758745932234888,
+                  "success_minus_failure": -0.0632138089801147,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.49404761904761907,
+                  "ci95": [
+                    0.3125,
+                    0.6785714285714286
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.49850286483817313,
+                  "failure_mean": 0.5059705851599574,
+                  "success_minus_failure": -0.007467720321784277,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.43154761904761907,
+                  "ci95": [
+                    0.2113095238095238,
+                    0.6666666666666666
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.3382392834339823,
+                  "failure_mean": 0.3535459656268358,
+                  "success_minus_failure": -0.015306682192853527,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.6041666666666666,
+                  "ci95": [
+                    0.41369047619047616,
+                    0.7827380952380952
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.4513656122883457,
+                  "failure_mean": 0.4321666384736697,
+                  "success_minus_failure": 0.019198973814676,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.49404761904761907,
+                  "ci95": [
+                    0.3125,
+                    0.6785714285714286
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.49850286483817313,
+                  "failure_mean": 0.5059705851599574,
+                  "success_minus_failure": -0.007467720321784277,
+                  "eligible_episodes": 50
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.30952380952380953,
+                  "ci95": [
+                    0.17261904761904762,
+                    0.45535714285714285
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -2.0945260826062317,
+                  "failure_mean": -0.34118009974869584,
+                  "success_minus_failure": -1.753345982857536,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5238095238095238,
+                  "ci95": [
+                    0.3333333333333333,
+                    0.7113095238095238
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.8003355039194935,
+                  "failure_mean": 0.5736656002700329,
+                  "success_minus_failure": 0.2266699036494606,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.44345238095238093,
+                  "ci95": [
+                    0.22023809523809523,
+                    0.6755952380952381
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.6800228456656138,
+                  "failure_mean": -0.6410051938146353,
+                  "success_minus_failure": -0.039017651850978496,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.6726190476190477,
+                  "ci95": [
+                    0.49702380952380953,
+                    0.8333333333333334
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.38915529369657476,
+                  "failure_mean": -0.13807572424411774,
+                  "success_minus_failure": 0.5272310179406925,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.5238095238095238,
+                  "ci95": [
+                    0.3333333333333333,
+                    0.7113095238095238
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.8003355039194935,
+                  "failure_mean": 0.5736656002700329,
+                  "success_minus_failure": 0.2266699036494606,
+                  "eligible_episodes": 50
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.31845238095238093,
+                  "ci95": [
+                    0.18154761904761904,
+                    0.4642857142857143
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -2.0852757124496804,
+                  "failure_mean": -0.3384695696566875,
+                  "success_minus_failure": -1.7468061427929928,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5029761904761905,
+                  "ci95": [
+                    0.32142857142857145,
+                    0.6875
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.7907962209323333,
+                  "failure_mean": 0.6149603209923953,
+                  "success_minus_failure": 0.17583589993993798,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.43154761904761907,
+                  "ci95": [
+                    0.2113095238095238,
+                    0.6666666666666666
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -0.683955924674159,
+                  "failure_mean": -0.6194868115708232,
+                  "success_minus_failure": -0.0644691131033358,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.6666666666666666,
+                  "ci95": [
+                    0.5,
+                    0.8214285714285714
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.3803269569688137,
+                  "failure_mean": -0.13354377580496174,
+                  "success_minus_failure": 0.5138707327737755,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.5029761904761905,
+                  "ci95": [
+                    0.32142857142857145,
+                    0.6875
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.7907962209323333,
+                  "failure_mean": 0.6149603209923953,
+                  "success_minus_failure": 0.17583589993993798,
+                  "eligible_episodes": 50
+                }
+              }
+            }
+          },
+          "old_h50_10000": {
+            "checkpoint_sha256": "bf4d693cb8f116f37b0308085a06505a7f09cc98901a3203fb0bb30eba6d426b",
+            "outcome": {
+              "prob_k4": {
+                "full": {
+                  "auc": 0.20833333333333334,
+                  "ci95": [
+                    0.09523809523809523,
+                    0.3392857142857143
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.1416788017409259,
+                  "failure_mean": 0.29876587571405366,
+                  "success_minus_failure": -0.15708707397312777,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.4375,
+                  "ci95": [
+                    0.2261904761904762,
+                    0.6547619047619048
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.03494408987109171,
+                  "failure_mean": 0.01965058850047683,
+                  "success_minus_failure": 0.01529350137061488,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.4523809523809524,
+                  "ci95": [
+                    0.23214285714285715,
+                    0.6875
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.002206048801131796,
+                  "failure_mean": 0.0007142852136894362,
+                  "success_minus_failure": 0.0014917635874423596,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4494047619047619,
+                  "ci95": [
+                    0.24107142857142858,
+                    0.6636904761904762
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.016229433748058287,
+                  "failure_mean": 0.032502059397756966,
+                  "success_minus_failure": -0.01627262564969868,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.4375,
+                  "ci95": [
+                    0.2261904761904762,
+                    0.6547619047619048
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.03494408987109171,
+                  "failure_mean": 0.01965058850047683,
+                  "success_minus_failure": 0.01529350137061488,
+                  "eligible_episodes": 50
+                }
+              },
+              "prob_k1": {
+                "full": {
+                  "auc": 0.2113095238095238,
+                  "ci95": [
+                    0.09821428571428571,
+                    0.34226190476190477
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.13996476586273726,
+                  "failure_mean": 0.2871110091485595,
+                  "success_minus_failure": -0.14714624328582226,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.45535714285714285,
+                  "ci95": [
+                    0.23214285714285715,
+                    0.6845238095238095
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.03504186610515111,
+                  "failure_mean": 0.021129442086024144,
+                  "success_minus_failure": 0.013912424019126964,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.44642857142857145,
+                  "ci95": [
+                    0.23511904761904762,
+                    0.6666666666666666
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.002527577267063039,
+                  "failure_mean": 0.0005195984867896186,
+                  "success_minus_failure": 0.00200797878027342,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.4642857142857143,
+                  "ci95": [
+                    0.24702380952380953,
+                    0.6845238095238095
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.015192725702953729,
+                  "failure_mean": 0.034957075792154534,
+                  "success_minus_failure": -0.019764350089200806,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.45535714285714285,
+                  "ci95": [
+                    0.23214285714285715,
+                    0.6845238095238095
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": 0.03504186610515111,
+                  "failure_mean": 0.021129442086024144,
+                  "success_minus_failure": 0.013912424019126964,
+                  "eligible_episodes": 50
+                }
+              },
+              "logit_k4": {
+                "full": {
+                  "auc": 0.2619047619047619,
+                  "ci95": [
+                    0.13690476190476192,
+                    0.3958333333333333
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -7.367664669184476,
+                  "failure_mean": -5.209003312901284,
+                  "success_minus_failure": -2.1586613562831927,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5714285714285714,
+                  "ci95": [
+                    0.3273809523809524,
+                    0.8036458333333323
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.673615777847312,
+                  "failure_mean": -9.273467583954336,
+                  "success_minus_failure": 0.5998518061070239,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.44345238095238093,
+                  "ci95": [
+                    0.22023809523809523,
+                    0.6785714285714286
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.44953531878335,
+                  "failure_mean": -8.19750851392746,
+                  "success_minus_failure": -0.25202680485589113,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5059523809523809,
+                  "ci95": [
+                    0.27380952380952384,
+                    0.7351190476190477
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.352552094156781,
+                  "failure_mean": -8.294667733212313,
+                  "success_minus_failure": -0.05788436094446858,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.5714285714285714,
+                  "ci95": [
+                    0.3273809523809524,
+                    0.8036458333333323
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.673615777847312,
+                  "failure_mean": -9.273467583954336,
+                  "success_minus_failure": 0.5998518061070239,
+                  "eligible_episodes": 50
+                }
+              },
+              "logit_k1": {
+                "full": {
+                  "auc": 0.2619047619047619,
+                  "ci95": [
+                    0.13690476190476192,
+                    0.3958333333333333
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -7.3964418193340595,
+                  "failure_mean": -5.292537574594219,
+                  "success_minus_failure": -2.103904244739841,
+                  "eligible_episodes": 50
+                },
+                "common_prefix": {
+                  "auc": 0.5714285714285714,
+                  "ci95": [
+                    0.31845238095238093,
+                    0.8095238095238095
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.691209562903358,
+                  "failure_mean": -9.264429664239287,
+                  "success_minus_failure": 0.573220101335929,
+                  "eligible_episodes": 50
+                },
+                "first_1": {
+                  "auc": 0.44642857142857145,
+                  "ci95": [
+                    0.23511904761904762,
+                    0.6666666666666666
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.496962411063057,
+                  "failure_mean": -8.354509472846985,
+                  "success_minus_failure": -0.1424529382160724,
+                  "eligible_episodes": 50
+                },
+                "first_3": {
+                  "auc": 0.5208333333333334,
+                  "ci95": [
+                    0.2857142857142857,
+                    0.75
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.365339802844185,
+                  "failure_mean": -8.342911481236417,
+                  "success_minus_failure": -0.022428321607767643,
+                  "eligible_episodes": 50
+                },
+                "first_5": {
+                  "auc": 0.5714285714285714,
+                  "ci95": [
+                    0.31845238095238093,
+                    0.8095238095238095
+                  ],
+                  "success_count": 42,
+                  "failure_count": 8,
+                  "success_mean": -8.691209562903358,
+                  "failure_mean": -9.264429664239287,
+                  "success_minus_failure": 0.573220101335929,
+                  "eligible_episodes": 50
+                }
+              }
+            }
+          }
+        },
+        "limits": [
+          "0-1 is source probability under training sampling, not calibrated task-success probability.",
+          "Normalized progress plots use future episode length; descriptive, not early failure detection.",
+          "Common query prefix is equal query count, not guaranteed equal semantic stage.",
+          "Original D used all 50 expert episodes and different sampling; new D trains on 40 with 10 held out.",
+          "No HIL-event labels or takeover detection claim."
+        ],
+        "length_control": {
+          "auc": 0,
+          "ci95": [
+            0,
+            0
+          ],
+          "success_count": 42,
+          "failure_count": 8,
+          "success_mean": 15.666666666666666,
+          "failure_mean": 30,
+          "success_minus_failure": -14.333333333333334
+        }
+      },
+      "remote_file_sha256": {
+        "state.json": "b0801dc2147fe1ab68d7b6deab87afc8efde88b5271daa47884639805f38c129",
+        "models/protocol.json": "de7512ee42cca9bafb4e9f7d7cf10287b0d854480f87c83dd8fb54adca5d050b",
+        "models/metrics_1000.json": "d12e336f724562468b77d02d4391f812be37c0db5555ee96b4bdc178e9509787",
+        "models/metrics_10000.json": "84417bd623a0aa66b968584fdcc5b602938ff1cb42857dea0e6e800f0fd23d99",
+        "results/aggregate.json": "78cc1058386a5e4fed952eb7689af634c54d3fbbccf6c4b6ad02ec2689ac1ff0",
+        "results/native_10000_scores.json": "0f5b3e19e922d435ab1281fe8662c9256e285d9b7d16dbcc8c742db3ed2efb00",
+        "results/native_1000_scores.json": "0e098a0a3808e374078d1af153cad3d6dc60cd6b9038901479c8f5c89f4b9ac2"
+      }
+    }
+  }
+}

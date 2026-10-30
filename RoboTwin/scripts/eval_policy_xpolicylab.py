@@ -20,7 +20,9 @@ import numpy as np
 import yaml
 
 
-ROBOTWIN_ROOT = Path(__file__).resolve().parents[1]
+ROBOTWIN_ROOT = Path(
+    os.environ.get("ROBOTWIN_ROOT", Path(__file__).resolve().parents[1])
+).resolve()
 DEFAULT_XPOLICYLAB_ROOT = ROBOTWIN_ROOT / "XPolicyLab"
 TASK_CONFIG_ROOT = ROBOTWIN_ROOT / "env_cfg" / "task_config"
 
@@ -268,6 +270,8 @@ def print_config(args: dict[str, Any], embodiment_name: str) -> None:
 
 
 def main(usr_args: dict[str, Any]) -> None:
+    from coverage_sampling.options import config_from_args
+    config_from_args(usr_args)  # Validate before opening a simulator or policy connection.
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
     task_name = usr_args["task_name"]
     task_config = usr_args.get("task_config", "demo_clean")
@@ -288,6 +292,8 @@ def main(usr_args: dict[str, Any]) -> None:
         task_name, policy_name, task_config, ckpt_setting, current_time
     )
     save_dir.mkdir(parents=True, exist_ok=True)
+    if not usr_args.get("es_log_dir"):
+        usr_args["es_log_dir"] = str(save_dir / "enhanced_sampling")
     video_size = None
 
     if args["eval_video_log"]:
@@ -335,6 +341,8 @@ def main(usr_args: dict[str, Any]) -> None:
 
 
 def main_batch(usr_args: dict[str, Any]) -> None:
+    from coverage_sampling.options import config_from_args
+    config_from_args({**usr_args, "eval_batch": True})
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
     task_name = usr_args["task_name"]
     task_config = usr_args.get("task_config", "demo_clean")
@@ -793,6 +801,15 @@ def eval_remote_policy(
     frequency = int(usr_args.get("frequency", usr_args.get("ctrl_freq", 30)))
     action_type = str(usr_args.get("action_type", "joint"))
 
+    from coverage_sampling.options import config_from_args
+    sampling_config = config_from_args(usr_args)
+    scorer = None
+    if sampling_config is not None:
+        from coverage_sampling.core import DecisionSampler, EpisodeLog
+        if sampling_config.requires_scores:
+            from coverage_sampling.critic import create_online_scorer
+            scorer = create_online_scorer(usr_args, sampling_config)
+
     task_env.suc = 0
     task_env.test_num = 0
 
@@ -902,9 +919,25 @@ def eval_remote_policy(
         succ = False
         rollout_steps = 0
         rollout_failed = False
+        decision_step, sampling_log, sampler, sampling_error = 0, None, None, None
         prepare_policy_case(model_client, task_name, now_seed, instruction, action_type)
         reset_policy(model_client)
         try:
+            if sampling_config is not None:
+                sampler = DecisionSampler(sampling_config, None, now_seed)
+                sampling_log = EpisodeLog(
+                    Path(usr_args["es_log_dir"]) / f"episode_{task_env.test_num:04d}_seed_{now_seed}.jsonl",
+                    sampling_config, {**(scorer.metadata if scorer is not None else {
+                                          "scorer_kind": None,
+                                          "score_semantics": None,
+                                          "gaussian_noise_space": "absolute_joint_chunk_output",
+                                          "gaussian_noise_grippers": False,
+                                      }), "episode_seed": now_seed,
+                                      "instruction": instruction, "policy_checkpoint": args["ckpt_setting"],
+                                      "task_config": args["task_config"], "frequency": frequency,
+                                      "selection_score_basis": sampling_config.score_basis,
+                                      "executor": "Base_Task.take_action(qpos)",
+                                      "window_units": "zero-based policy decision calls; inclusive"})
             while not is_episode_end(task_env):
                 observation = task_env.get_obs()
                 xpl_obs = robotwin_obs_to_xpolicylab(
@@ -915,7 +948,22 @@ def eval_remote_policy(
                     task_env=task_env,
                 )
                 model_client.call(func_name="update_obs", obs=xpl_obs)
-                action_chunk = normalize_action_chunk(model_client.call(func_name="get_action"))
+                selection = None
+                if sampler is not None:
+                    def sample_absolute_chunk():
+                        return sample_absolute_joint_chunk(model_client, observation, action_type)
+                    def sample_candidates(count):
+                        return sample_absolute_joint_candidates(
+                            model_client, observation, action_type, count, sampling_config.policy_microbatch
+                        )
+                    action_chunk, selection = sampler.select(
+                        decision_step, sample_absolute_chunk, sample_candidates=sample_candidates,
+                        score_candidates=(scorer.bind_observation(observation)
+                                          if scorer is not None else None),
+                    )
+                    sampling_log.decision(selection)
+                else:
+                    action_chunk = normalize_action_chunk(model_client.call(func_name="get_action"))
                 if len(action_chunk) == 0:
                     raise RuntimeError("Policy returned an empty action chunk.")
 
@@ -925,8 +973,26 @@ def eval_remote_policy(
                         action_type=action_type,
                         current_observation=observation,
                     )
+                    actual_coverage = None
+                    if scorer is not None and selection["active"] and action_idx == 0:
+                        actual_coverage = (selection["blended_chunk_score"]
+                                           if sampling_config.score_representation == "full_chunk"
+                                           else scorer(observation, flat_action))
                     task_env.take_action(flat_action, action_type=robotwin_action_type)
                     rollout_steps += 1
+                    if sampling_log is not None:
+                        predicted = None
+                        if selection["active"] and selection["selected"] is not None:
+                            curve = selection["branches"][selection["selected"]]["coverage"]
+                            if action_idx < len(curve):
+                                predicted = curve[action_idx]
+                        sampling_log.executed(decision_step, action_idx, actual_coverage,
+                                              selection["active"], flat_action,
+                                              coverage_basis=sampling_config.score_basis,
+                                              coverage_time="pre_execution_decision_observation",
+                                              predicted_coverage=predicted,
+                                              prediction_error=actual_coverage - predicted if predicted is not None else None,
+                                              success=bool(task_env.eval_success), rollout_step=rollout_steps)
 
                     if task_env.eval_success:
                         succ = True
@@ -944,15 +1010,23 @@ def eval_remote_policy(
                     )
                     model_client.call(func_name="update_obs", obs=xpl_obs)
 
+                decision_step += 1
                 if succ:
                     break
-        except Exception:
+        except Exception as exc:
             rollout_failed = True
+            sampling_error = exc
             print("\n\033[91mPolicy rollout error:\033[0m")
             print(traceback.format_exc())
 
         if task_env.eval_video_path is not None:
             task_env._del_eval_video_ffmpeg()
+
+        if sampling_log is not None:
+            sampling_log.finish(succ, str(sampling_error) if sampling_error else None, rollout_steps)
+        if sampling_config is not None and sampling_error is not None:
+            safe_close_env(task_env)
+            raise RuntimeError("Enhanced-sampling evaluation aborted; see its episode log") from sampling_error
 
         notify_trial_end(model_client, task_name, now_seed, succ)
 
@@ -1144,6 +1218,56 @@ def normalize_action_chunk(actions: Any) -> list[Any]:
         return list(actions)
 
     raise TypeError(f"Unsupported action response type: {type(actions)!r}")
+
+
+def sample_absolute_joint_chunk(model_client, observation: Mapping[str, Any], action_type: str) -> np.ndarray:
+    """Draw one policy chunk and convert it to physical absolute joint targets."""
+    return absolute_joint_chunk_from_response(
+        model_client.call(func_name="get_action"), observation, action_type
+    )
+
+
+def absolute_joint_chunk_from_response(raw, observation: Mapping[str, Any], action_type: str) -> np.ndarray:
+    raw = normalize_action_chunk(raw)
+    converted = [
+        xpolicylab_action_to_robotwin(
+            action, action_type=action_type, current_observation=observation
+        )
+        for action in raw
+    ]
+    if not converted or any(kind != "qpos" or action.shape != (14,) or not np.isfinite(action).all()
+                            for action, kind in converted):
+        raise ValueError("MC candidates must contain absolute 14D joint actions")
+    return np.stack([action for action, _ in converted])
+
+
+def sample_absolute_joint_candidates(
+    model_client, observation: Mapping[str, Any], action_type: str, num_candidates: int,
+    microbatch_size: int = 4,
+) -> np.ndarray:
+    """Fetch K same-observation chunks in policy-supported microbatches."""
+    if (isinstance(num_candidates, bool) or not isinstance(num_candidates, int)
+            or not 1 <= num_candidates <= 32):
+        raise ValueError("num_candidates must be an integer between 1 and 32")
+    if (isinstance(microbatch_size, bool) or not isinstance(microbatch_size, int)
+            or not 2 <= microbatch_size <= 32):
+        raise ValueError("microbatch_size must be an integer between 2 and 32")
+    chunks = []
+    remaining = num_candidates
+    while remaining:
+        batch_size = min(microbatch_size, remaining)
+        if batch_size == 1:
+            raw_batch = [model_client.call(func_name="get_action")]
+        else:
+            raw_batch = model_client.call(func_name="get_action_candidates", obs=batch_size)
+        if not isinstance(raw_batch, (list, tuple, np.ndarray)) or len(raw_batch) != batch_size:
+            raise ValueError(f"policy must return exactly {batch_size} candidate chunks")
+        chunks.extend(absolute_joint_chunk_from_response(candidate, observation, action_type)
+                      for candidate in raw_batch)
+        remaining -= batch_size
+    if len({chunk.shape for chunk in chunks}) != 1:
+        raise ValueError("candidate chunks must have the same shape")
+    return np.stack(chunks)
 
 
 def xpolicylab_action_to_robotwin(
@@ -1413,6 +1537,8 @@ def parse_args() -> dict[str, Any]:
     parser.add_argument("--max_seed_attempts", type=int, default=None)
     parser.add_argument("--seed_manifest", default=None)
     parser.add_argument("--seed_split", choices=("development", "test"), default="test")
+    from coverage_sampling.options import add_arguments
+    add_arguments(parser)
     args = parser.parse_args()
 
     usr_args: dict[str, Any] = {
@@ -1447,6 +1573,7 @@ def parse_args() -> dict[str, Any]:
         usr_args["seed_split"] = args.seed_split
 
     usr_args.update(parse_additional_info(args.additional_info))
+    usr_args.update({key: value for key, value in vars(args).items() if key.startswith("es_")})
     usr_args.setdefault("ckpt_setting", usr_args.get("ckpt_name"))
     usr_args.setdefault("action_type", "joint")
     return usr_args

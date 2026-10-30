@@ -11,6 +11,7 @@ dataset.  Policy actions are never written as expert labels.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -46,8 +47,18 @@ from eval_policy_xpolicylab import (  # noqa: E402
     reset_policy,
     robotwin_obs_to_xpolicylab,
     safe_close_env,
+    sample_absolute_joint_chunk,
+    sample_absolute_joint_candidates,
     xpolicylab_action_to_robotwin,
 )
+from coverage_sampling.options import add_arguments as add_sampling_arguments, config_from_args  # noqa: E402
+from hg_dagger_resume import collection_lock, inspect_collection, preserve_incomplete_cache  # noqa: E402
+from one_stage_dagger import (  # noqa: E402
+    baseline_handoffs, baseline_seeds, handoff_pair_differences,
+    handoff_pair_ready, handoff_record, is_valid_hil,
+)
+from policy_rollout_archive import archive_policy_rollout  # noqa: E402
+from x11_fullscreen import request_fullscreen_for_current_process  # noqa: E402
 
 
 PROMPT = "Pass the red bar from the left arm to the right arm and place it in the blue tray."
@@ -100,6 +111,14 @@ DEFAULT_KEYS = {
     "q": "quit",
 }
 
+
+class OperatorInterrupt(Exception):
+    """A real operator key arrived while policy sampling was in progress."""
+
+    def __init__(self, event: str):
+        super().__init__(event)
+        self.event = event
+
 # Human-readable stage names shown at takeover time. Stage 2 (source_lift) is
 # an intermediate motion folded into the resume_handover entry point (3);
 # stage 4 (receiver_grasp) also serves as the direct "grasp-and-place from
@@ -147,6 +166,7 @@ class HumanInterventionInput:
         }
         self._fd: int | None = None
         self._term_attrs = None
+        self._viewer_held: set[str] = set()
 
     def __enter__(self):
         try:
@@ -173,7 +193,17 @@ class HumanInterventionInput:
             return None
         for key, event in self.key_map.items():
             try:
-                if bool(window.key_press(key)) or bool(window.key_down(key)):
+                pressed = bool(window.key_press(key))
+                down = bool(window.key_down(key))
+                if event == "sampling_toggle":
+                    if not down:
+                        self._viewer_held.discard(key)
+                    elif key not in self._viewer_held:
+                        self._viewer_held.add(key)
+                        return event
+                    if pressed and not down:
+                        return event
+                elif pressed or down:
                     return event
             except (AttributeError, RuntimeError):
                 continue
@@ -259,16 +289,6 @@ def choose_recovery_stage(task_env, keyboard) -> tuple[Any, int | None]:
             chosen = int(answer)
             return task_env.recovery_stage_iterator(start_stage_id=chosen), chosen
         print("\033[91m  无效输入，请输入 Y / 1-6 / q\033[0m")
-
-
-def next_episode_index(output_dir: Path) -> int:
-    indexes = []
-    for path in (output_dir / "data").glob("episode_*.hdf5"):
-        try:
-            indexes.append(int(path.stem.rsplit("_", 1)[1]))
-        except (IndexError, ValueError):
-            continue
-    return max(indexes, default=-1) + 1
 
 
 def read_json_object(path: Path) -> dict[str, Any]:
@@ -362,6 +382,8 @@ def finalize_episode(
         raise RuntimeError("Episode produced fewer than two recorded frames; cannot save.")
 
     raw_dir = output_dir / "raw" / f"episode_{episode_index:07d}"
+    if raw_dir.exists():
+        raise FileExistsError(f"Refusing to overwrite saved raw episode: {raw_dir}")
     frames_dir = raw_dir / "frames"
     raw_dir.mkdir(parents=True, exist_ok=True)
     cache = getattr(task_env, "folder_path", {}).get("cache")
@@ -424,6 +446,12 @@ def render_initial_frame(task_env) -> None:
         )
     task_env._update_render()
     viewer.render()
+    # SAPIEN exposes resize but not a portable fullscreen API. Ask the active
+    # X11 window manager to fullscreen only the X window owned by this process.
+    # Keep this best-effort so headless diagnostics and non-X11 sessions work.
+    if not getattr(viewer, "manages_fullscreen", False) and getattr(task_env, "_hil_fullscreen_viewer", None) is not viewer:
+        request_fullscreen_for_current_process()
+        task_env._hil_fullscreen_viewer = viewer
 
 
 def setup_viewer_diagnostics(task_env) -> None:
@@ -498,49 +526,67 @@ def setup_viewer_diagnostics(task_env) -> None:
 
 
 def install_viewer_frame_limit(task_env) -> None:
-    """Redraw the viewer at most ``HIL_VIEWER_MAX_FPS`` times per second.
+    """Refresh the live viewer during physics substeps, with a wall-clock cap.
 
-    ``Base_Task.take_action`` redraws the viewer on entry and exit regardless
-    of ``--render-freq``, so a supervised rollout pays for two viewer renders
-    per policy step (~2 x 15 ms at 960x540, more at higher resolutions).  The
-    supervisor only needs the window to look smooth, so throttle the redraw by
-    wall-clock time instead. ``HIL_VIEWER_MAX_FPS=0`` restores the old
-    behaviour of rendering on every call.
+    Entry/exit-only drawing makes a long action appear as a jump. Use the
+    existing render-update hook inside the physics loop as an opportunity to
+    draw. Lookahead sets render_freq=0, so hypothetical states remain hidden.
+    This does not change physics steps, commands, recording or model images.
     """
-    if getattr(task_env, "_hil_viewer_fps_installed", False):
+    viewer = getattr(task_env, "viewer", None)
+    if viewer is None or getattr(task_env, "_hil_viewer_bound_instance", None) is viewer:
         return
-    task_env._hil_viewer_fps_installed = True
+    task_env._hil_viewer_bound_instance = viewer
 
-    raw = os.environ.get("HIL_VIEWER_MAX_FPS", "10").strip()
+    raw = os.environ.get("HIL_VIEWER_MAX_FPS", "30").strip()
     try:
         max_fps = float(raw)
     except ValueError:
-        print(f"[VIEWER] invalid HIL_VIEWER_MAX_FPS={raw!r}; keeping 10 fps", flush=True)
-        max_fps = 10.0
+        print(f"[VIEWER] invalid HIL_VIEWER_MAX_FPS={raw!r}; keeping 30 fps", flush=True)
+        max_fps = 30.0
 
-    viewer = getattr(task_env, "viewer", None)
-    if viewer is None or max_fps <= 0:
+    if max_fps <= 0:
         print(f"[VIEWER] frame limit disabled (HIL_VIEWER_MAX_FPS={raw})", flush=True)
         return
 
     min_interval = 1.0 / max_fps
     original_render = viewer.render
-    state = {"last": 0.0, "rendered": 0, "skipped": 0}
+    state = {"last": 0.0, "rendered": 0, "skipped": 0,
+             "report_time": time.perf_counter(), "report_frames": 0, "max_gap": 0.0}
+    task_env._hil_viewer_stats = state
 
     def throttled_render(*args, **kwargs):
         now = time.perf_counter()
         if now - state["last"] < min_interval:
             state["skipped"] += 1
             return None
+        if state["last"]:
+            state["max_gap"] = max(state["max_gap"], now - state["last"])
         state["last"] = now
         state["rendered"] += 1
-        return original_render(*args, **kwargs)
+        result = original_render(*args, **kwargs)
+        if os.environ.get("HIL_DIAG_VIEWER") == "1" and now - state["report_time"] >= 5:
+            elapsed = now - state["report_time"]
+            fps = (state["rendered"] - state["report_frames"]) / elapsed
+            print(f"\n[VIEWER] measured={fps:.1f} fps max_gap={state['max_gap']:.3f}s", flush=True)
+            state.update(report_time=now, report_frames=state["rendered"], max_gap=0.0)
+        return result
 
     viewer.render = throttled_render
+    original_update = getattr(task_env, "_hil_viewer_original_update", task_env._update_render)
+    task_env._hil_viewer_original_update = original_update
+
+    def update_live_viewer(*args, **kwargs):
+        result = original_update(*args, **kwargs)
+        if task_env.render_freq and getattr(task_env, "viewer", None) is not None:
+            task_env._render_viewer_if_available()
+        return result
+
+    task_env._update_render = update_live_viewer
     print(
         f"[VIEWER] render limited to {max_fps:g} fps "
         f"(min interval {min_interval * 1000:.0f} ms); "
-        "set HIL_VIEWER_MAX_FPS=0 to disable",
+        "drawing live physics substeps; set HIL_VIEWER_MAX_FPS=0 for legacy drawing",
         flush=True,
     )
 
@@ -587,6 +633,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ckpt-name", default="v2_promptfix_9999")
     parser.add_argument("--task-config", default="handover_to_tray_v2_promptfix")
     parser.add_argument("--seed-start", type=int, default=40000)
+    parser.add_argument(
+        "--one-stage", action="store_true",
+        help="Scripted stages 1-5, then policy-only stage 6; auto-select recovery branch.",
+    )
+    parser.add_argument(
+        "--paired-baseline-report", type=Path,
+        help="Enhanced arm: replay every seed in a completed one-stage baseline report.",
+    )
     parser.add_argument(
         "--seed-mode",
         choices=["sequential", "random"],
@@ -653,7 +707,15 @@ def parse_args() -> argparse.Namespace:
         / "handover_to_tray"
         / "aloha_agilex",
     )
+    parser.add_argument(
+        "--resume", action="store_true",
+        help="Resume counters and saved raw episodes in --output-dir after a completed session.",
+    )
     parser.add_argument("--save-data", default="true")
+    parser.add_argument(
+        "--save-policy-rollouts", action="store_true",
+        help="Also archive completed policy-controlled segments separately under policy_rollouts/; never use them as HIL labels.",
+    )
     parser.add_argument(
         "--save-video",
         default="false",
@@ -704,7 +766,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--auto-save",
-        choices=["true", "false", "none"],
+        choices=["true", "false", "none", "valid_hil"],
         default="none",
         help="Test-only hook: skip the manual save/discard prompt.",
     )
@@ -720,13 +782,84 @@ def parse_args() -> argparse.Namespace:
         default=-1,
         help="Test-only hook: simulate pressing x after this many policy steps.",
     )
+    parser.add_argument(
+        "--takeover-eval", action="store_true",
+        help="Run matched-seed rollouts and report the manual i-key request rate.",
+    )
+    parser.add_argument(
+        "--es-activation", choices=("fixed", "manual"), default="fixed",
+        help="fixed: use the configured decision window; manual: press e to start a fresh window.",
+    )
+    parser.add_argument(
+        "--es-manual-duration", type=int, default=10,
+        help="Number of policy decisions enhanced after pressing e in manual mode.",
+    )
+    add_sampling_arguments(parser)
     return parser.parse_args()
 
 
 def main() -> int:
     cli = parse_args()
+    if cli.one_stage:
+        if cli.target_mode != "expert" or cli.seed_mode != "sequential":
+            raise ValueError("One-stage collection requires --target-mode expert and sequential seeds")
+        if cli.es_activation != "fixed" or cli.takeover_eval or cli.auto_handback_step >= 0:
+            raise ValueError("One-stage collection requires fixed sampling and full expert recovery")
+        if cli.bias_magnitude or cli.label_mode != "auto":
+            raise ValueError("One-stage comparison disallows action bias and manual outcome labels")
+        if cli.paired_baseline_report and cli.es_mode not in {"enhanced", "gaussian"}:
+            raise ValueError("Paired baseline report is only for enhanced or gaussian arms")
+    elif cli.paired_baseline_report or cli.auto_save == "valid_hil":
+        raise ValueError("Paired baseline report and valid_hil autosave require --one-stage")
+    paired_report_sha = None
+    paired_seeds = None
+    paired_handoffs = None
+    if cli.paired_baseline_report:
+        source = cli.paired_baseline_report.expanduser().resolve()
+        paired_seeds = baseline_seeds(
+            source, checkpoint=cli.ckpt_name, task_config=cli.task_config,
+            frequency=int(cli.frequency),
+        )
+        paired_report_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+        paired_handoffs = baseline_handoffs(source)
+        cli.episodes = len(paired_seeds)
     if cli.render_freq <= 0 and os.environ.get("HIL_DIAG_ALLOW_NO_VIEWER") != "1":
         raise ValueError("--render-freq must be positive for human supervision")
+    if cli.es_activation == "manual":
+        if cli.es_mode == "off" or cli.es_manual_duration < 1:
+            raise ValueError("Manual sampling requires vanilla/enhanced/gaussian mode and a positive duration")
+        cli.es_window_start = 0
+        cli.es_window_end = cli.es_manual_duration - 1
+    if cli.takeover_eval:
+        if cli.acceptance or cli.seed_mode != "sequential":
+            raise ValueError("Takeover comparison requires sequential matched seeds and no acceptance mode")
+        if cli.auto_intervene_step >= 0 or cli.auto_abort_step >= 0:
+            raise ValueError("Takeover comparison cannot use automatic intervention or abort hooks")
+        if cli.es_window_start is None or cli.es_window_end is None:
+            raise ValueError("Takeover comparison requires the same declared window in all three arms")
+    if cli.resume and cli.acceptance:
+        raise ValueError("Acceptance runs cannot resume a collection")
+    if (cli.es_mode != "off" or cli.takeover_eval) and cli.bias_magnitude:
+        raise ValueError("Action bias is incompatible with simulated candidate scoring")
+    from coverage_sampling.core import config_record
+    sampling_config = config_from_args({
+        **vars(cli), "task_name": "handover_to_tray", "action_type": "joint", "eval_batch": False,
+    })
+    scorer = None
+    if sampling_config is not None and sampling_config.requires_scores:
+        from coverage_sampling.critic import create_online_scorer
+
+        scorer = create_online_scorer(vars(cli), sampling_config)
+        print(f"[SAMPLING] {sampling_config.score_basis}; beta={sampling_config.beta:g}; "
+              f"scale={sampling_config.score_scale:g}; K={sampling_config.num_candidates}; "
+              f"policy_batch={sampling_config.policy_microbatch}; full-chunk weighted mean", flush=True)
+    elif sampling_config is not None:
+        print(
+            f"[SAMPLING] output-space isotropic Gaussian; sigma={sampling_config.gaussian_sigma:g} rad; "
+            f"K={sampling_config.num_candidates}; policy_batch={sampling_config.policy_microbatch}; "
+            "base=uniform candidate mean; arm joints only; grippers unchanged",
+            flush=True,
+        )
     if cli.acceptance:
         cli.episodes = 1
         cli.save_data = "false"
@@ -738,14 +871,48 @@ def main() -> int:
             f"[SEEDS] random mode, run rng-seed={cli.rng_seed} "
             "(pass --rng-seed to reproduce this order)"
         )
-    seed_iter = build_seed_stream(cli)
+    seed_iter = iter(paired_seeds) if paired_seeds is not None else build_seed_stream(cli)
     cli.output_dir = cli.output_dir.expanduser().resolve()
     cli.output_dir.mkdir(parents=True, exist_ok=True)
+    lock_handle = collection_lock(cli.output_dir)
+    expected_resume = {
+        "sampling_mode": cli.es_mode,
+        "sampling_activation": cli.es_activation,
+        "sampling_config": config_record(sampling_config) if sampling_config is not None else None,
+        "target_mode": cli.target_mode,
+        "checkpoint_name": cli.ckpt_name,
+        "task_config": cli.task_config,
+        "instruction": PROMPT,
+        "frequency": int(cli.frequency),
+        "seed_mode": cli.seed_mode,
+        "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,
+    }
+    if cli.save_policy_rollouts:
+        expected_resume["save_policy_rollouts"] = True
+    if cli.one_stage:
+        expected_resume.update(one_stage=True, paired_baseline_sha256=paired_report_sha)
+    progress = inspect_collection(cli.output_dir, target_mode=cli.target_mode,
+                                  expected=expected_resume, resume=cli.resume)
+    if cli.resume:
+        previous_range = read_json_object(Path(progress.source_report)).get("seed_range")
+        expected_start = [int(cli.seed_min), int(cli.seed_max)] if cli.seed_mode == "random" else None
+        if expected_start is not None and previous_range != expected_start:
+            raise ValueError(f"Resume seed range mismatch: {previous_range} != {expected_start}")
+        if cli.seed_mode == "sequential" and previous_range[0] != int(cli.seed_start):
+            raise ValueError("Resume seed-start differs from the previous session")
+        preserved = preserve_incomplete_cache(cli.output_dir)
+        print(f"[RESUME] next rollout={progress.next_rollout_index + 1}/{cli.episodes}, "
+              f"next raw episode={progress.next_episode_index}, "
+              f"saved valid HIL={progress.saved_valid_hil}/{cli.target_saved}")
+        for path in preserved:
+            print(f"[RESUME] preserved unfinished frames: {path}")
 
     user_args, args = build_runtime_args(cli)
     task_env = class_decorator("handover_to_tray")
     model_client = build_policy_client(user_args)
     save_data = parse_bool(cli.save_data)
+    if cli.save_policy_rollouts and not save_data:
+        raise ValueError("--save-policy-rollouts requires --save-data true")
     if parse_bool(cli.save_video):
         print(
             "[HG-DAGGER] --save-video is deprecated in collection; "
@@ -753,34 +920,62 @@ def main() -> int:
             flush=True,
         )
     auto_label = None if cli.auto_label == "none" else cli.auto_label
-    auto_save = None if cli.auto_save == "none" else parse_bool(cli.auto_save)
+    auto_save = (False if cli.takeover_eval else None) if cli.auto_save == "none" else (
+        "valid_hil" if cli.auto_save == "valid_hil" else parse_bool(cli.auto_save)
+    )
     bias_dims = joint_bias_dims(
         cli.bias_dims,
         int(user_args["left_arm_dim"]),
         int(user_args["right_arm_dim"]),
     )
-    data_episode_index = next_episode_index(cli.output_dir)
-    records: list[dict[str, Any]] = []
+    data_episode_index = progress.next_episode_index
+    records: list[dict[str, Any]] = list(progress.records)
+    used_seeds = set(progress.used_seeds)
     aborted = False
+    sampling_log = None
 
     print("\n" + "=" * 72)
     print("RoboTwin handover_to_tray human-gated DAgger")
-    print("Keys: i=takeover, r=hand back to policy, x=abort episode, q=quit.")
+    if cli.one_stage:
+        print("One-stage: scripted expert stages 1-5; policy controls stage 6 only.")
+        print("Keys: i=takeover (automatic expert recovery), x=abort episode, q=quit.")
+    else:
+        print("Keys: i=takeover, r=hand back to policy, x=abort episode, q=quit.")
+    if cli.es_activation == "manual":
+        print(f"Press e during policy control to toggle {cli.es_manual_duration} sampled decisions.")
     print("After each episode: s/f=success/failure, y/n=save/discard.")
     print(f"Prompt: {PROMPT}")
+    print(f"Sampling: {cli.es_mode}; takeover evaluation: {cli.takeover_eval}")
     print(f"Output: {cli.output_dir}")
     print("=" * 72 + "\n")
 
     try:
-        rollout_index = 0
-        saved_hil_count = 0
-        aborted_rollouts = 0
+        if sampling_config is not None and min(
+            sampling_config.num_candidates, sampling_config.policy_microbatch
+        ) > 8:
+            requested_batch = min(sampling_config.num_candidates, sampling_config.policy_microbatch)
+            try:
+                capability = model_client.call(func_name="candidate_sampling_info")
+                if not isinstance(capability, dict) or capability.get("max_batch_size", 0) < requested_batch:
+                    raise ValueError(f"Server capability: {capability!r}")
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Policy batch={requested_batch} requires the updated Pi0.5 service. "
+                    "Restart the policy server with the updated adapter before collecting; "
+                    "an already running process does not reload source changes."
+                ) from exc
+        rollout_index = progress.next_rollout_index
+        saved_hil_count = progress.saved_valid_hil
+        aborted_rollouts = progress.aborted_rollouts
         session_started = time.time()
         while (
             rollout_index < int(cli.episodes)
-            and saved_hil_count < int(cli.target_saved)
+            and (cli.takeover_eval or paired_seeds is not None or saved_hil_count < int(cli.target_saved))
         ):
             seed = next(seed_iter)
+            while seed in used_seeds:
+                seed = next(seed_iter)
+            used_seeds.add(seed)
             rollout_started = time.time()
             args["save_data"] = False
             args["need_plan"] = True
@@ -797,7 +992,44 @@ def main() -> int:
             render_initial_frame(task_env)
             if rollout_index == 0:
                 setup_viewer_diagnostics(task_env)
-                install_viewer_frame_limit(task_env)
+            install_viewer_frame_limit(task_env)
+            stage6_handoff = None
+            if cli.one_stage:
+                task_env.current_control_source = "expert_prefix"
+                prefix_ok = task_env.play_prefix_until_placement()
+                stage6_handoff = handoff_record(task_env)
+                stage6_handoff["prefix_plan_success"] = bool(prefix_ok)
+                paired_prefix_error = None
+                if paired_handoffs is not None:
+                    baseline_handoff = paired_handoffs[int(seed)]
+                    if not baseline_handoff.get("ready"):
+                        paired_prefix_error = "baseline_prefix_not_ready"
+                    elif stage6_handoff["ready"]:
+                        differences = handoff_pair_differences(
+                            baseline_handoff, stage6_handoff,
+                        )
+                        stage6_handoff["paired_differences"] = differences
+                        if not handoff_pair_ready(differences):
+                            paired_prefix_error = "handoff_state_mismatch"
+                if not stage6_handoff["ready"] or paired_prefix_error:
+                    status = "paired_prefix_excluded" if paired_prefix_error else "prefix_failed"
+                    stage6_handoff["paired_prefix_error"] = paired_prefix_error
+                    print(f"\n[ONE-STAGE] seed={seed} stage-6 handoff excluded: "
+                          f"{stage6_handoff['state']}; pairing={paired_prefix_error}", flush=True)
+                    records.append({
+                        "rollout_index": rollout_index, "seed": int(seed),
+                        "one_stage": True, "rollout_status": status,
+                        "stage6_handoff": stage6_handoff, "policy_steps": 0,
+                        "manual_takeover_requests": 0, "intervention_count": 0,
+                        "autonomous_success": False, "save_decision": False,
+                        "rollout_seconds": round(time.time() - rollout_started, 2),
+                    })
+                    notify_trial_end(model_client, "handover_to_tray", seed, False)
+                    safe_close_env(task_env)
+                    rollout_index += 1
+                    continue
+                print(f"\n[ONE-STAGE] seed={seed} expert stages 1-5 complete; "
+                      "policy starts at stage 6.", flush=True)
             prepare_policy_case(model_client, "handover_to_tray", seed, PROMPT, "joint")
             reset_policy(model_client)
 
@@ -818,7 +1050,11 @@ def main() -> int:
 
             mode = "policy"
             policy_steps = 0
+            decision_step = 0
             intervention_count = 0
+            manual_takeover_requests = 0
+            takeover_request_events: list[dict[str, Any]] = []
+            sampling_activation_events: list[dict[str, Any]] = []
             segments: list[dict[str, Any]] = []
             interventions: list[dict[str, Any]] = []
             current_source = "policy"
@@ -843,14 +1079,85 @@ def main() -> int:
                 current_source = new_source
                 source_start_step = int(task_env.FRAME_IDX)
 
+            def finish_sampling_log(status: str, error: str | None = None) -> None:
+                nonlocal sampling_log
+                if sampling_log is None:
+                    return
+                sampling_log.write({
+                    "event": "hil_outcome", "status": status,
+                    "manual_takeover_requests": manual_takeover_requests,
+                    "interventions": intervention_count,
+                    "policy_steps": policy_steps,
+                })
+                sampling_log.finish(bool(task_env.eval_success), error, policy_steps)
+                sampling_log = None
+
             print(
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
                 f"saved valid HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
                 f"seed={seed}; "
-                "i=takeover, r=handback, x=abort episode, q=quit.\033[0m"
+                f"{'e=sampling, ' if cli.es_activation == 'manual' else ''}"
+                +
+                ("i=takeover, x=abort episode, q=quit.\033[0m"
+                 if cli.one_stage else
+                 "i=takeover, r=handback, x=abort episode, q=quit.\033[0m")
             )
 
-            with HumanInterventionInput(task_env) as keyboard:
+            key_map = {**DEFAULT_KEYS, **({"e": "sampling_toggle"} if cli.es_activation == "manual" else {})}
+            if cli.one_stage:
+                key_map.pop("r", None)
+            with HumanInterventionInput(task_env, key_map=key_map) as keyboard:
+                sampler = None
+                manual_window = None
+                if sampling_config is not None:
+                    from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow
+
+                    if cli.es_activation == "manual":
+                        manual_window = ManualSamplingWindow(cli.es_manual_duration)
+
+                    def toggle_sampling() -> None:
+                        enabled = manual_window.toggle(decision_step)
+                        record = {
+                            "event": "sampling_activation", "enabled": enabled,
+                            "decision": int(decision_step), "policy_steps": int(policy_steps),
+                            "frame_idx": int(task_env.FRAME_IDX),
+                            "window_end_exclusive": int(decision_step + cli.es_manual_duration) if enabled else None,
+                        }
+                        sampling_activation_events.append(record)
+                        sampling_log.write(record)
+                        status = (f"ON for decisions {decision_step}–{decision_step + cli.es_manual_duration - 1}"
+                                  if enabled else "OFF")
+                        print(f"\n[SAMPLING] {status}; policy remains in control.", flush=True)
+
+                    def poll_live_control() -> None:
+                        # Draw and poll on the main thread; never step physics here.
+                        task_env._render_viewer_if_available()
+                        pending = keyboard.poll()
+                        if pending in {"intervene", "abort", "quit", "sampling_toggle"}:
+                            print(f"\n[CONTROL] {pending} requested; waiting for policy RPC to drain.", flush=True)
+                            raise OperatorInterrupt(pending)
+
+                    sampler = DecisionSampler(sampling_config, None, seed)
+                    log_dir = Path(cli.es_log_dir) if cli.es_log_dir else cli.output_dir / "sampling"
+                    sampling_log = EpisodeLog(
+                        log_dir / f"episode_{rollout_index:04d}_seed_{seed}.jsonl",
+                        sampling_config,
+                        {**(scorer.metadata if scorer is not None else {
+                            "scorer_kind": None,
+                            "score_semantics": None,
+                            "gaussian_noise_space": "absolute_joint_chunk_output",
+                            "gaussian_noise_grippers": False,
+                        }), "episode_seed": seed, "instruction": PROMPT,
+                         "policy_checkpoint": cli.ckpt_name, "task_config": cli.task_config,
+                         "frequency": int(cli.frequency), "evaluation_type": "human_gated",
+                         "selection_score_basis": sampling_config.score_basis,
+                         "sampling_activation": cli.es_activation,
+                         "manual_duration": cli.es_manual_duration if manual_window is not None else None,
+                         "executor": "Base_Task.take_action(qpos)",
+                         "window_units": ("zero-based policy decisions relative to e activation; inclusive"
+                                          if manual_window is not None else
+                                          "zero-based policy decision calls; inclusive")},
+                    )
                 while True:
                     event = keyboard.poll()
                     if event == "quit":
@@ -863,15 +1170,34 @@ def main() -> int:
                         break
 
                     if mode == "policy":
+                        if event == "sampling_toggle":
+                            toggle_sampling()
+                            continue
                         if event == "intervene":
-                            recovery_iter, chosen_stage = choose_recovery_stage(
-                                task_env, keyboard
-                            )
+                            manual_takeover_requests += 1
+                            request_event = {
+                                "policy_steps": int(policy_steps), "decision": int(decision_step),
+                                "frame_idx": int(task_env.FRAME_IDX),
+                                "elapsed_seconds": round(time.time() - rollout_started, 2),
+                                "accepted": False,
+                            }
+                            takeover_request_events.append(request_event)
+                            if sampling_log is not None:
+                                sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
+                                                    "decision": decision_step, "source": "human"})
+                            if cli.one_stage:
+                                recovery_iter = task_env.recovery_stage_iterator()
+                                chosen_stage = None
+                            else:
+                                recovery_iter, chosen_stage = choose_recovery_stage(
+                                    task_env, keyboard
+                                )
                             if recovery_iter is None:
                                 print(
                                     "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
                                 )
                                 continue
+                            request_event["accepted"] = True
                             switch_source("hil")
                             intervention_count += 1
                             interventions.append(
@@ -888,9 +1214,9 @@ def main() -> int:
                             print(
                                 "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
                             )
-                            print(
-                                "\033[93m[HG-DAGGER] Expert takeover; press r to hand back.\033[0m"
-                            )
+                            print("\033[93m[HG-DAGGER] Expert takeover; "
+                                  + ("automatic recovery to completion." if cli.one_stage
+                                     else "press r to hand back.") + "\033[0m")
                             continue
 
                         observation = task_env.get_obs()
@@ -902,20 +1228,59 @@ def main() -> int:
                             task_env=task_env,
                         )
                         model_client.call(func_name="update_obs", obs=xpl_obs)
-                        action_chunk = normalize_action_chunk(
-                            model_client.call(func_name="get_action")
-                        )
-                        if not action_chunk:
-                            raise RuntimeError("Policy returned an empty action chunk.")
-
                         chunk_interrupted = False
-                        for action in action_chunk:
-                            event = keyboard.poll()
-                            if event == "quit":
-                                quit_requested = True
+                        manual_trigger = True
+                        selection = None
+                        if sampler is not None:
+                            def sample_chunk():
+                                poll_live_control()
+                                responsive_wait = getattr(model_client, "responsive_wait", None)
+                                with (responsive_wait(poll_live_control) if responsive_wait else nullcontext()):
+                                    chunk = sample_absolute_joint_chunk(model_client, observation, "joint")
+                                poll_live_control()
+                                return chunk
+
+                            def sample_candidates(count):
+                                poll_live_control()
+                                responsive_wait = getattr(model_client, "responsive_wait", None)
+                                with (responsive_wait(poll_live_control) if responsive_wait else nullcontext()):
+                                    chunks = sample_absolute_joint_candidates(
+                                        model_client, observation, "joint", count,
+                                        sampling_config.policy_microbatch,
+                                    )
+                                poll_live_control()
+                                return chunks
+
+                            try:
+                                action_chunk, selection = sampler.select(
+                                    decision_step, sample_chunk,
+                                    sample_candidates=sample_candidates,
+                                    score_candidates=(scorer.bind_observation(observation)
+                                                      if scorer is not None else None),
+                                    active_override=manual_window.active(decision_step) if manual_window is not None else None,
+                                )
+                            except OperatorInterrupt as interruption:
+                                event = interruption.event
+                                action_chunk = []
                                 chunk_interrupted = True
-                                break
-                            if event == "intervene":
+                                if event == "quit":
+                                    quit_requested = True
+                            else:
+                                sampling_log.decision(selection)
+                        else:
+                            action_chunk = normalize_action_chunk(
+                                model_client.call(func_name="get_action")
+                            )
+                        if len(action_chunk) == 0 and not chunk_interrupted:
+                            raise RuntimeError("Policy returned an empty action chunk.")
+                        if not chunk_interrupted:
+                            decision_step += 1
+
+                        for action_idx, action in enumerate(action_chunk):
+                            event = keyboard.poll()
+                            if event in {"quit", "abort", "intervene", "sampling_toggle"}:
+                                if event == "quit":
+                                    quit_requested = True
                                 chunk_interrupted = True
                                 break
 
@@ -934,12 +1299,40 @@ def main() -> int:
                                     bias_dims,
                                     cli.bias_magnitude,
                                 )
+                            should_score = scorer is not None and selection["active"] and action_idx == 0
+                            actual_coverage = None
+                            if should_score:
+                                actual_coverage = (selection["blended_chunk_score"]
+                                                   if sampling_config.score_representation == "full_chunk"
+                                                   else scorer(observation, flat_action))
+                            pending = keyboard.poll() if scorer is not None else None
+                            if pending in {"quit", "abort", "intervene", "sampling_toggle"}:
+                                event = pending
+                                if event == "quit":
+                                    quit_requested = True
+                                chunk_interrupted = True
+                                break
                             task_env.current_control_source = "policy"
                             task_env.take_action(
                                 flat_action,
                                 action_type=robotwin_action_type,
                             )
                             policy_steps += 1
+                            if sampling_log is not None:
+                                predicted = None
+                                if selection["active"] and selection["selected"] is not None:
+                                    curve = selection["branches"][selection["selected"]]["coverage"]
+                                    if action_idx < len(curve):
+                                        predicted = curve[action_idx]
+                                sampling_log.executed(
+                                    decision_step - 1, action_idx, actual_coverage,
+                                    selection["active"], flat_action,
+                                    coverage_basis=sampling_config.score_basis,
+                                    coverage_time="pre_execution_decision_observation",
+                                    predicted_coverage=predicted,
+                                    prediction_error=actual_coverage - predicted if predicted is not None else None,
+                                    success=bool(task_env.eval_success), rollout_step=policy_steps,
+                                )
                             if save_data and policy_steps % int(cli.save_freq) == 0:
                                 task_env._take_picture()
 
@@ -952,6 +1345,7 @@ def main() -> int:
                                 and intervention_count == 0
                             ):
                                 event = "intervene"
+                                manual_trigger = False
                                 chunk_interrupted = True
                                 break
                             if (
@@ -962,15 +1356,25 @@ def main() -> int:
                                 chunk_interrupted = True
                                 break
 
-                            observation = task_env.get_obs()
-                            xpl_obs = robotwin_obs_to_xpolicylab(
-                                observation,
-                                instruction=PROMPT,
-                                env_idx=0,
-                                frequency=int(cli.frequency),
-                                task_env=task_env,
+                            # Pi0.5 consumes only the latest observation at the next
+                            # chunk boundary. The critic scores the first action at
+                            # that observation; later actions need no extra image.
+                            chunk_observations = (
+                                cli.policy_name == "Pi_05_RobotTwin"
+                                and sampler is not None
+                                and os.environ.get("HIL_CHUNK_OBSERVATIONS", "0") == "1"
                             )
-                            model_client.call(func_name="update_obs", obs=xpl_obs)
+                            if not chunk_observations:
+                                observation = task_env.get_obs()
+                            if not chunk_observations:
+                                xpl_obs = robotwin_obs_to_xpolicylab(
+                                    observation,
+                                    instruction=PROMPT,
+                                    env_idx=0,
+                                    frequency=int(cli.frequency),
+                                    task_env=task_env,
+                                )
+                                model_client.call(func_name="update_obs", obs=xpl_obs)
 
                         if quit_requested:
                             break
@@ -979,15 +1383,36 @@ def main() -> int:
                         if chunk_interrupted and event == "abort":
                             episode_aborted = True
                             break
+                        if chunk_interrupted and event == "sampling_toggle":
+                            toggle_sampling()
+                            continue
                         if chunk_interrupted and event == "intervene":
-                            recovery_iter, chosen_stage = choose_recovery_stage(
-                                task_env, keyboard
-                            )
+                            if manual_trigger:
+                                manual_takeover_requests += 1
+                                request_event = {
+                                    "policy_steps": int(policy_steps), "decision": int(decision_step),
+                                    "frame_idx": int(task_env.FRAME_IDX),
+                                    "elapsed_seconds": round(time.time() - rollout_started, 2),
+                                    "accepted": False,
+                                }
+                                takeover_request_events.append(request_event)
+                                if sampling_log is not None:
+                                    sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
+                                                        "decision": decision_step, "source": "human"})
+                            if cli.one_stage:
+                                recovery_iter = task_env.recovery_stage_iterator()
+                                chosen_stage = None
+                            else:
+                                recovery_iter, chosen_stage = choose_recovery_stage(
+                                    task_env, keyboard
+                                )
                             if recovery_iter is None:
                                 print(
                                     "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
                                 )
                                 continue
+                            if manual_trigger:
+                                request_event["accepted"] = True
                             switch_source("hil")
                             intervention_count += 1
                             interventions.append(
@@ -1004,23 +1429,25 @@ def main() -> int:
                             print(
                                 "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
                             )
-                            print(
-                                "\033[93m[HG-DAGGER] Expert takeover; press r to hand back.\033[0m"
-                            )
+                            print("\033[93m[HG-DAGGER] Expert takeover; "
+                                  + ("automatic recovery to completion." if cli.one_stage
+                                     else "press r to hand back.") + "\033[0m")
                             continue
                     else:
                         # Expert mode. The supervisor can hand back at any
                         # stage boundary. Each ``next()`` executes one stage.
-                        if event == "handback" or (
+                        if not cli.one_stage and (event == "handback" or (
                             cli.auto_handback_step >= 0
                             and expert_stage_count >= cli.auto_handback_step
-                        ):
+                        )):
                             if interventions:
                                 interventions[-1]["handback_step"] = int(task_env.FRAME_IDX)
                                 interventions[-1]["expert_progress"] = last_expert_progress
                             switch_source("policy")
                             mode = "policy"
                             reset_policy(model_client)
+                            if sampler is not None:
+                                sampler.checked_replay = False
                             print("\033[93m[HG-DAGGER] Hand back to policy.\033[0m")
                             continue
 
@@ -1047,6 +1474,7 @@ def main() -> int:
 
             if quit_requested:
                 aborted = True
+                finish_sampling_log("quit")
                 notify_trial_end(model_client, "handover_to_tray", seed, False)
                 safe_close_env(task_env)
                 break
@@ -1056,6 +1484,7 @@ def main() -> int:
                 # immediately instead of waiting for the episode to finish or
                 # sitting through the save prompt.
                 aborted_rollouts += 1
+                finish_sampling_log("aborted")
                 discard_recovery_cache(task_env)
                 notify_trial_end(model_client, "handover_to_tray", seed, False)
                 print(
@@ -1064,6 +1493,23 @@ def main() -> int:
                     f"(frame_idx={int(task_env.FRAME_IDX)}, "
                     f"interventions={intervention_count}); discarded, next rollout.\033[0m"
                 )
+                aborted_record = {
+                    "rollout_index": rollout_index, "seed": int(seed),
+                    "one_stage": bool(cli.one_stage),
+                    "stage6_handoff": stage6_handoff,
+                    "sampling_mode": cli.es_mode, "rollout_status": "aborted",
+                    "policy_steps": int(policy_steps),
+                    "manual_takeover_requests": manual_takeover_requests,
+                    "takeover_request_events": takeover_request_events,
+                    "sampling_activation_events": sampling_activation_events,
+                    "intervention_count": intervention_count,
+                    "interventions": interventions,
+                    "autonomous_success": False, "save_decision": False,
+                    "rollout_seconds": round(time.time() - rollout_started, 2),
+                }
+                records.append(aborted_record)
+                if cli.takeover_eval:
+                    append_jsonl(cli.output_dir / "takeover_rollouts.jsonl", aborted_record)
                 safe_close_env(task_env)
                 rollout_index += 1
                 continue
@@ -1074,6 +1520,11 @@ def main() -> int:
             hil_frames = sum(
                 1 for item in task_env.control_mask if str(item).lower() == "hil"
             )
+            valid_hil = is_valid_hil(
+                interventions=intervention_count, hil_frames=hil_frames,
+                expert_result=last_expert_result, final_success=bool(final_check_success),
+                joints_legal=bool(joints_legal),
+            ) if cli.one_stage else False
 
             if auto_label is not None:
                 supervisor_label = auto_label
@@ -1092,7 +1543,10 @@ def main() -> int:
                     "[TRAJECTORY] Mark trajectory: [s]uccess / [f]ailure",
                 )
 
-            if auto_save is None:
+            if auto_save == "valid_hil":
+                do_save = valid_hil
+                print(f"[ONE-STAGE] valid HIL={valid_hil}; auto-save={do_save}", flush=True)
+            elif auto_save is None:
                 do_save = (
                     prompt_choice(
                         task_env,
@@ -1106,15 +1560,27 @@ def main() -> int:
 
             episode_record = {
                 "rollout_index": rollout_index,
+                "rollout_status": "completed",
+                "one_stage": bool(cli.one_stage),
+                "stage6_handoff": stage6_handoff,
+                "valid_hil": bool(valid_hil),
+                "sampling_mode": cli.es_mode,
                 "episode_index": int(data_episode_index),
                 "seed": int(seed),
                 "instruction": PROMPT,
                 "policy_steps": int(policy_steps),
+                "policy_decisions": int(decision_step),
+                "manual_takeover_requests": manual_takeover_requests,
+                "takeover_request_events": takeover_request_events,
+                "sampling_activation_events": sampling_activation_events,
                 "intervention_count": intervention_count,
                 "interventions": interventions,
                 "segments": segments,
                 "control_mask": list(task_env.control_mask),
-                "autonomous_success": bool(task_env.eval_success),
+                "autonomous_success": bool(
+                    (final_check_success and intervention_count == 0)
+                    if cli.one_stage else task_env.eval_success
+                ),
                 "final_check_success": bool(final_check_success),
                 "final_success_metrics": final_success_metrics,
                 "expert_result": last_expert_result,
@@ -1127,6 +1593,22 @@ def main() -> int:
                 "rollout_seconds": round(time.time() - rollout_started, 2),
                 "timestamp": datetime.now().isoformat(timespec="seconds"),
             }
+
+            if cli.save_policy_rollouts:
+                policy_cache = getattr(task_env, "folder_path", {}).get("cache")
+                policy_archive = archive_policy_rollout(
+                    Path(policy_cache) if policy_cache else None,
+                    cli.output_dir,
+                    rollout_index=rollout_index,
+                    seed=int(seed),
+                    control_mask=list(task_env.control_mask),
+                    save_freq=int(cli.save_freq),
+                    sampling_mode=cli.es_mode,
+                    autonomous_success=bool(episode_record["autonomous_success"]),
+                )
+                episode_record["policy_rollout_dir"] = (
+                    str(policy_archive) if policy_archive else None
+                )
 
             raw_dir = finalize_episode(
                 task_env,
@@ -1144,10 +1626,14 @@ def main() -> int:
                 data_episode_index += 1
                 expert_success = bool((last_expert_result or {}).get("success"))
                 if hil_frames > 0 and (
-                    cli.target_mode != "expert" or expert_success
+                    (valid_hil if cli.one_stage else
+                     (cli.target_mode != "expert" or expert_success))
                 ):
                     saved_hil_count += 1
             records.append(episode_record)
+            if cli.takeover_eval:
+                append_jsonl(cli.output_dir / "takeover_rollouts.jsonl", episode_record)
+            finish_sampling_log("completed")
             notify_trial_end(
                 model_client,
                 "handover_to_tray",
@@ -1189,13 +1675,38 @@ def main() -> int:
     except Exception:
         print("\n\033[91mHG-DAgger session error:\033[0m")
         print(traceback.format_exc())
+        if sampling_log is not None:
+            try:
+                sampling_log.finish(False, traceback.format_exc(), 0)
+            except Exception:
+                pass
         safe_close_env(task_env, clear_cache=True)
         return 3
     finally:
         close_policy_client(model_client)
+        lock_handle.close()
 
     session_report = {
         "aborted": aborted,
+        "one_stage": bool(cli.one_stage),
+        "paired_baseline_report": str(cli.paired_baseline_report.expanduser().resolve()) if cli.paired_baseline_report else None,
+        "paired_baseline_sha256": paired_report_sha,
+        "sampling_mode": cli.es_mode,
+        "save_policy_rollouts": bool(cli.save_policy_rollouts),
+        "sampling_activation": cli.es_activation,
+        "sampling_manual_duration": cli.es_manual_duration if cli.es_activation == "manual" else None,
+        "sampling_config": config_record(sampling_config) if sampling_config is not None else None,
+        "sampling_window": [cli.es_window_start, cli.es_window_end],
+        "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,
+        "takeover_eval": bool(cli.takeover_eval),
+        "policy_name": cli.policy_name,
+        "policy_host": cli.host,
+        "policy_port": int(cli.port),
+        "checkpoint_name": cli.ckpt_name,
+        "task_config": cli.task_config,
+        "instruction": PROMPT,
+        "frequency": int(cli.frequency),
+        "step_limit": cli.step_limit,
         "seed_mode": cli.seed_mode,
         "rng_seed": cli.rng_seed,
         "seed_range": (
@@ -1206,6 +1717,26 @@ def main() -> int:
         "target_mode": cli.target_mode,
         "target_saved": int(cli.target_saved),
         "max_rollouts": int(cli.episodes),
+        "resumed_from": progress.source_report,
+        "next_rollout_index": int(rollout_index),
+        "next_episode_index": int(data_episode_index),
+        "saved_valid_hil_episodes": int(saved_hil_count),
+        "eligible_stage6_rollouts": sum(
+            item.get("one_stage") and item.get("rollout_status") == "completed"
+            for item in records
+        ) if cli.one_stage else None,
+        "prefix_failures": sum(
+            item.get("rollout_status") == "prefix_failed" for item in records
+        ) if cli.one_stage else None,
+        "paired_prefix_exclusions": sum(
+            item.get("rollout_status") == "paired_prefix_excluded" for item in records
+        ) if cli.one_stage else None,
+        "valid_hil_events": sum(bool(item.get("valid_hil")) for item in records) if cli.one_stage else None,
+        "recovery_failures": sum(
+            item.get("one_stage") and item.get("intervention_count", 0) > 0
+            and not item.get("valid_hil") and item.get("rollout_status") == "completed"
+            for item in records
+        ) if cli.one_stage else None,
         "rollouts": len(records),
         "total_rollouts": len(records),
         "aborted_rollouts": int(aborted_rollouts),
@@ -1222,21 +1753,42 @@ def main() -> int:
         "autonomous_successes": sum(
             1 for item in records if item.get("autonomous_success")
         ),
-        "total_seconds": round(time.time() - session_started, 2),
+        "total_seconds": round(progress.prior_seconds + time.time() - session_started, 2),
+        "this_session_seconds": round(time.time() - session_started, 2),
         "seconds_per_rollout": round(
-            (time.time() - session_started) / len(records), 2
+            (progress.prior_seconds + time.time() - session_started) / len(records), 2
         ) if records else None,
         "seconds_per_saved_episode": round(
-            (time.time() - session_started)
+            (progress.prior_seconds + time.time() - session_started)
             / max(1, sum(1 for item in records if item.get("save_decision"))),
             2,
         ),
         "records": records,
     }
+    valid_records = [
+        item for item in records
+        if int(item.get("policy_steps", 0)) > 0 or int(item.get("manual_takeover_requests", 0)) > 0
+    ]
+    requested = sum(int(item.get("manual_takeover_requests", 0)) > 0 for item in valid_records)
+    triggered = sum(int(item.get("intervention_count", 0)) > 0 for item in valid_records)
+    session_report["takeover_measurement"] = {
+        "valid_rollouts": len(valid_records),
+        "manual_request_episodes": requested,
+        "manual_request_probability": requested / len(valid_records) if valid_records else None,
+        "recovery_trigger_episodes": triggered,
+        "recovery_trigger_probability": triggered / len(valid_records) if valid_records else None,
+        "excluded_zero_step_rollouts": len(records) - len(valid_records),
+        "aborted_valid_rollouts": sum(item.get("rollout_status") == "aborted" for item in valid_records),
+    }
     session_report["seeds"] = [item.get("seed") for item in records]
     report_path = cli.output_dir / f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    if report_path.exists():
+        raise FileExistsError(f"Refusing to overwrite session report: {report_path}")
     write_json(report_path, session_report)
     print(f"session_report={report_path}")
+    if cli.takeover_eval:
+        print(f"[TAKEOVER] {requested}/{len(valid_records)} valid rollouts requested takeover "
+              f"({session_report['takeover_measurement']['manual_request_probability']})")
     return 130 if aborted else 0
 
 

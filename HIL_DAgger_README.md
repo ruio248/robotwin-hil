@@ -157,15 +157,28 @@ session 报告里会记录 `total_rollouts`、每个 rollout 的 `rollout_second
 
 ### 3.3 窗口分辨率与速度
 
-SAPIEN viewer 的**固有渲染目标分辨率**（framebuffer）是速度的主要瓶颈，
-和窗口拖多大无关。代码现在固定为 `1280x720`，并在创建 viewer 后显式调用
-`window.resize()` 强制该尺寸；可用 `HIL_VIEWER_RESOLUTION` 覆盖：
+原生 SAPIEN 3.0.0b1 的窗口尺寸与渲染目标尺寸绑定：`Viewer.resolution`
+调用的也是 `window.resize()`；拉大窗口或全屏会提高实际场景渲染分辨率。
+此前“和窗口拖多大无关”的说明有误。`45 fps` 只是刷新上限，不能当作实测帧率。
+
+HIL 启动脚本现在默认使用 `preview`：一个独立的 **320×180** 旁观相机，
+由 SDL 放大显示到 **1600×900** 窗口。拖大或全屏只改变显示尺寸；策略三视角相机、
+训练/采集图像、物理步长和控制频率都不由这些显示参数修改。
 
 ```bash
-HIL_VIEWER_RESOLUTION=960x540 bash ./enter_robotwin_hil.sh python ...
+HIL_VIEWER_BACKEND=preview \
+HIL_VIEWER_RENDER_RESOLUTION=320x180 \
+HIL_VIEWER_WINDOW_RESOLUTION=1600x900 \
+HIL_VIEWER_FULLSCREEN=0 \
+bash local_serving/run_hg_dagger_smooth.sh
 ```
 
-同一批 test seed、`--save-videos none` 下的实测步速：
+窗口支持 `e/i/r/x/q`；右键拖动调整视角，滚轮前后移动旁观相机。
+低分辨率画面放大会变粗糙；可把 `HIL_VIEWER_RENDER_RESOLUTION` 调到 `640x360`。
+需要原生 SAPIEN 检查面板时可选 `HIL_VIEWER_BACKEND=sapien`，此时旧的
+`HIL_VIEWER_RESOLUTION` 控制原生窗口和渲染尺寸。预览模式不提供原生实体检查面板。
+
+以下是此前记录的原生窗口历史步速，不是新版预览的性能保证：
 
 | viewer 分辨率 | 步速 |
 |---|---|
@@ -173,8 +186,30 @@ HIL_VIEWER_RESOLUTION=960x540 bash ./enter_robotwin_hil.sh python ...
 | 960x540 | ~8.0 步/秒 |
 | 无窗口（`--render-freq 0`） | ~9.3 步/秒 |
 
-默认 `1280x720` 的预期速度介于 960x540 和 4K 之间。需要人看时用默认或
-960x540；纯自动化测试直接用 `--render-freq 0`。
+端到端速度还包括策略推理、原始观测相机、物理执行和数据保存。用
+`HIL_DIAG_VIEWER=1` 记录真实绘制耗时、帧率与间隔，再判断剩余瓶颈；
+纯自动化测试可用 `--render-freq 0`。
+
+### 3.4 中断后继续同一批采集
+
+退出采集后，指定**原来的**输出目录并显式打开恢复开关：
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+MANUAL_OUTPUT_DIR=/hdd/robotwin-hil-enhanced-sampling/outputs/hg_dagger_collection_smooth_20260930_163549 \
+HIL_RESUME=1 \
+HIL_VIEWER_RENDER_RESOLUTION=320x180 \
+HIL_VIEWER_WINDOW_RESOLUTION=1280x720 \
+bash local_serving/run_hg_dagger_smooth.sh
+```
+
+恢复时先核对 `session_*.json`、`episodes.jsonl`、`raw/episode_*/episode.json`
+和采样日志；从保存的 raw 数据计算有效 HIL 数和下一个 episode 编号，
+从采样日志接续 rollout 编号并跳过已使用的 seed。未完成 episode 的 `.cache`
+会移到 `interrupted_cache/` 留作检查，不计入有效数据。仿真从新的 rollout
+开始，不能恢复被打断时的物理状态。若元数据或配置不一致，程序会拒绝启动。
+
+不加 `HIL_RESUME=1` 时，脚本拒绝在已有采集数据的目录里重新开始，避免覆盖 raw episode。
 
 ## 4. 数据保存（raw-first）
 

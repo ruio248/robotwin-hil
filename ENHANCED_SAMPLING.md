@@ -1,0 +1,472 @@
+# Fixed-window coverage-guided enhanced sampling
+
+Based on `tail-coverage-value-v2` (`74af6f1`). Entry point:
+`RoboTwin/scripts/eval_policy_xpolicylab.py`, opt in with `--es-mode enhanced`.
+Default `off` preserves the existing single-policy-call evaluation path.
+
+## Code layout
+
+- `RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/model.py` owns same-observation
+  Pi0.5 candidate batching; its OpenPI `robotwin_policy.py` transform preserves
+  batch axes for images, masks and actions.
+- `RoboTwin/scripts/eval_policy_xpolicylab.py` converts one batched RPC result
+  into physical 14D joint chunks. Both offline evaluation and
+  `RoboTwin/scripts/hg_dagger_handover.py` use this helper.
+- `RoboTwin/scripts/coverage_sampling/core.py` owns candidate selection and
+  branch evaluation; it never calls the remote policy itself. Thus `e` changes
+  only the active HIL decision, while `off` retains the original path.
+
+## Algorithm and experiment contract
+
+Choose an inclusive **zero-based policy decision window** `[t_on, t_off]`
+before running either experiment. One decision generates and executes one
+chunk; these indices are neither physics steps, saved frames, nor seconds.
+The initial window must be chosen from development trajectories, not inferred
+from coverage or adjusted separately for the two experiment arms.
+
+Outside the window, draw and execute one ordinary policy chunk. Inside:
+
+1. Send the current observation to Pi0.5 once, then call
+   `get_action_candidates(N)` once. The `Pi_05_RobotTwin` adapter repeats that
+   observation across N batch rows and makes **one** Flow inference call;
+   each row receives independent Flow noise. This is distinct from
+   `get_action_batch`, which accepts different environment observations and
+   currently loops over them. The PiperX chunk-queue deployment executes
+   part of one inferred chunk; here N distinct chunks are sampled for one
+   current observation and their 14D absolute-joint chunks are averaged after
+   branch evaluation.
+2. Capture the live simulator state. Starting from that state for each
+   candidate, execute its full H-step chunk through the existing
+   `Base_Task.take_action(qpos)` and get fresh observations at every step.
+3. Compute `c[i,h] = C(o[i,h], a[i,h])` **before** executing that step and
+   `J[i] = min_h c[i,h]`. Thus h=0 uses the current observation, and h>0 uses
+   genuinely simulated future observations. Restore the live state after
+   every branch, including exception paths.
+4. Enhanced: `w = softmax(-beta * J)` and execute the complete weighted chunk
+   `A_bar[h, j] = sum_i w[i] * A[i, h, j]` on the restored live scene. Vanilla
+   uses the same candidates and rollouts, but averages them uniformly. The
+   weights apply once per full chunk, not separately at each time step or
+   joint. `J-min(J)` is used solely for numerical stability.
+
+This is a finite-N, self-normalized Monte Carlo estimate of the mean action
+under `q_beta(A|s) ∝ pi(A|s) exp(-beta J(A;s))`. The executed average need not
+be one of the sampled chunks and is not a draw from `q_beta`. Since proposals
+already come from pi, do not multiply by a second policy-likelihood factor.
+The 14D targets, including both grippers, are continuous absolute joints;
+convex averaging stays within each candidate dimension's range. The blended
+chunk is not separately simulated. Its coverage is measured on actual
+execution, not inferred from a candidate branch curve.
+
+The two arms use identical policy/critic weights, task config, initial scene
+seed list, window, N, H and execution code. Identical scene seeds do not imply
+identical remote Flow RNG streams or states after actions diverge. All actual
+candidate arrays and blended chunks are logged. Outside the window, policy
+inference is called once in both arms. Earlier categorical-resampling logs
+have a different action-aggregation config and must not be mixed with these
+weighted-mean runs. `--es-seed` remains in the log for CLI compatibility; it
+does not seed a local selection draw in this deterministic averaging method.
+
+## Action, observation, and checkpoint conventions
+
+- Candidates are physical **absolute 14D joint/gripper targets**, ordered as
+  `[left arm 6, left gripper, right arm 6, right gripper]`. There is no extra
+  delta conversion or policy normalization. Runtime gripper handling remains
+  in the existing executor.
+- The critic uses the same three-view frozen ResNet18 ImageNet V1 encoder,
+  RGB aspect-preserving resize/padding and normalization as tail training.
+  Its state is `joint_action.vector`, the recorded drive-target representation
+  used by training, not a newly substituted EEF state.
+- Supply the critic checkpoint and local encoder weight file explicitly.
+  Full training and inference-only critic payloads are accepted. Record their
+  SHA-256, training step, alpha and bootstrap type in every episode log.
+  The Ubuntu preset now uses the alpha=1.0 inference artifact at step 10000,
+  `bootstrap=policy_next_action_mean`, SHA-256
+  `e925f81c4b84537930ecbdfbfaa69089c6622e444b1e80ef5f739a174420c055`.
+  It had the largest success/failure score gap on the offline 100-rollout
+  diagnostic; alpha=0.5 had the highest final-third outcome AUC. Neither
+  metric establishes online action-selection benefit.
+- The expected full chunk length defaults to H=10. A differently shaped
+  response fails explicitly; it is not silently truncated or reinterpreted
+  as N candidates. Candidate count is limited to 2..8 and defaults to N=4;
+  beta defaults to 10. Beta is a configurable sampling parameter, distinct
+  from the critic-training alpha.
+
+## Simulator isolation and limits
+
+V1 supports serial `handover_to_tray` absolute-joint evaluation with SAPIEN 3
+CPU PhysX state pack/unpack. It restores physics state, drive position and
+velocity targets, generalized forces/accelerations, Python gripper state,
+step counters, success flags, cached observations and Python/NumPy RNG.
+Lookahead disables evaluation video writes, dataset saves and viewer refresh.
+It never updates policy observations with hypothetical frames.
+
+At the first active decision of every episode, replay candidate zero after
+the other branches and compare endpoint physics and the entire score curve.
+The default absolute tolerance is 1e-4. A mismatch aborts evaluation with a
+diagnostic, rather than allowing unverified restoration to affect the trial.
+This adds one extra branch to that decision in both experiment arms. CPU
+pack/unpack is not asserted to capture every hidden PhysX solver cache;
+the replay guard and predicted-versus-executed logs make drift observable.
+
+Both success and the normal episode action budget terminate a branch early.
+Its minimum uses only actually reached pre-action observations; no terminal
+self-loop or invented final score is added. `scored_steps` is logged because
+terminal branches can have unequal lengths. A single anomalous low score can
+dominate this minimum objective; inspect full curves alongside its minimum.
+
+Randomly changing lights and other tasks/action spaces are rejected. The
+existing action executor, evaluation frequency setting, task termination and
+policy adapter are retained. The sampler does not create an automatic HIL
+trigger. An opt-in interactive HIL entry point uses the existing `i` key and
+expert recovery flow to measure human-requested takeovers separately from
+the offline coverage comparison.
+
+## Run on Ubuntu
+
+Use an isolated checkout of this branch with access to the installed RoboTwin
+assets and existing Python environments. Do not switch an active evaluation
+checkout underneath its process. Run the following when a simulator/policy
+service is available for this experiment.
+
+Start a dedicated Pi0.5 policy service using the existing baseline config on
+an unused port, e.g. 18311 (run from the isolated checkout's `RoboTwin/`):
+The **service code** must come from this branch: `get_action_candidates` and
+the batch-aware image/output transforms run on the server. An older service
+fails explicitly; it cannot silently substitute N serial calls. Restart only
+the dedicated experiment service, not a separate active HIL service.
+
+```bash
+POLICY_PY=/hdd/robotwin-hil/RoboTwin/XPolicyLab/policy/Pi_05_RobotTwin/openpi/.venv/bin/python
+CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_MEM_FRACTION=0.3 \
+  "$POLICY_PY" XPolicyLab/setup_policy_server.py \
+  --config_path ../local_serving/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml \
+  --host 127.0.0.1 --port 18311
+```
+
+The config contains the existing baseline checkpoint's absolute path. Check
+that path and its `repo_id` norm-stats asset before starting the service.
+Both experiment arms must point at that same policy. For alternate
+checkpoints use their own serving config and record the actual checkpoint
+path in `ckpt_setting` below.
+
+From the same `RoboTwin/` directory, set local artifact paths and a **new**
+report root. The window 20..29 below is an example, not a measured handover
+window; replace it with the development-set window chosen for your experiment.
+
+```bash
+EVAL_PY=/hdd/miniconda3/envs/robotwin_hil/bin/python
+CRITIC=/path/to/alpha_1p0.pt
+ENCODER=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+SEEDS=/path/to/fixed_seed_manifest.json
+POLICY_CKPT=/path/to/the/served/baseline/9999
+REPORT_ROOT=../outputs/enhanced_sampling/paired_run_001
+
+for mode in vanilla enhanced; do
+  "$EVAL_PY" scripts/eval_policy_xpolicylab.py \
+    --bench_name RobotTwin --task_name handover_to_tray \
+    --env_cfg_type aloha_agilex --policy_name Pi_05_RobotTwin \
+    --host 127.0.0.1 --port 18311 --protocol ws --eval_batch false \
+    --root_dir "$PWD" --device_id 0 --seed 0 \
+    --task_config handover_to_tray_v2_promptfix --expert_check false --frequency 30 \
+    --seed_manifest "$SEEDS" --seed_split test \
+    --additional_info "ckpt_setting=$POLICY_CKPT,action_type=joint" \
+    --es-mode "$mode" --es-window-start 20 --es-window-end 29 \
+    --es-num-candidates 4 --es-horizon 10 --es-beta 10 --es-seed 42 \
+    --es-critic "$CRITIC" --es-encoder-weights "$ENCODER" --es-device cpu \
+    --es-log-dir "$REPORT_ROOT/$mode" || break
+done
+
+"$EVAL_PY" scripts/summarize_enhanced_sampling.py \
+  --vanilla-dir "$REPORT_ROOT/vanilla" --enhanced-dir "$REPORT_ROOT/enhanced" \
+  --output "$REPORT_ROOT/comparison.json"
+```
+
+Use the existing fixed seed manifest format. A seed manifest determines the
+episode count in this evaluator (it takes precedence over `--test_num`).
+For a short smoke run, provide a manifest with just the selected smoke seeds.
+The `frequency=30` field is retained exactly as in the baseline; it is sent
+to the policy adapter, and does not change TOPP physics execution into a new
+fixed-duration controller. The actual executor remains `take_action`.
+
+The first request for a new batch size can take longer while JAX compiles
+that shape. Batching reduces N policy inference requests to one, but the N
+simulator branch rollouts, critic/image scoring and live execution are still
+serial. It does not promise an N-fold improvement in total HIL latency. Keep
+N and the serving config fixed when comparing timings or experiment arms.
+On Ubuntu's 4090, a direct synthetic-observation smoke with the real `9999`
+checkpoint and H=10 measured about 0.069 s for one warmed inference versus
+0.184 s for one warmed N=4 batch (roughly 0.276 s for four warmed singles).
+The first N=4 call took about 11 s to compile. These timings exclude websocket,
+simulator branches, rendering and critic scoring; they are not end-to-end HIL
+measurements.
+
+## Recorded metrics and interpretation
+
+Each `episode_*.jsonl` records:
+
+- Artifact hashes/config, task seed, instruction and executor.
+- Each decision's window flag, all candidate action arrays, all simulated
+  coverage curves, J, averaging weights, blended chunk, effective sample
+  size, candidate-generation mode, policy request count, timing and replay
+  check errors. `selected` and `selected_score` are null for active blends;
+  the weighted candidate score is only a surrogate, not the blend's score.
+- Every actual executed action's pre-action coverage, action index, rollout
+  step and success flag. The actual score is recomputed from the real
+  observation. Predicted coverage and prediction error are null for blends,
+  because no candidate branch represents their future trajectory.
+- Episode completion/error, whether the window was reached, active-window
+  executed coverage minimum/mean and task outcome.
+
+To report low-coverage trajectory hit rates, pass the same preselected
+`--es-low-threshold` to both arms. Without a calibrated threshold these fields
+are null. The comparison script rejects unfinished/error logs, unmatched
+episode seed sets, critics, policy identifiers, instructions or configs. It
+reports all outcomes plus paired coverage differences among episodes that
+reach the window in both arms; missing-window episodes remain visible.
+
+A lower weighted candidate J is encouraged by construction and does not on its own
+prove useful deviation. Inspect actual execution curves and task outcomes.
+The comparison does not infer HIL labels or report unobserved interventions.
+There is no online performance claim from unit tests or synthetic-image smoke.
+
+## Human-requested takeover comparison
+
+### Interactive viewer performance
+
+The HIL launchers default to `HIL_VIEWER_BACKEND=preview`: an independent
+320×180 rasterized spectator camera presented in a 1600×900 SDL window.
+`HIL_VIEWER_RENDER_RESOLUTION` and `HIL_VIEWER_WINDOW_RESOLUTION` control these
+separately; resizing the display never reallocates the spectator framebuffer.
+`HIL_VIEWER_FULLSCREEN=0` preserves the large window; `1` uses SDL fullscreen.
+The preview retains `e/i/r/x/q`, right-drag camera rotation and wheel movement.
+It does not include SAPIEN's entity-inspection panels. Select
+`HIL_VIEWER_BACKEND=sapien` for that UI; its `HIL_VIEWER_RESOLUTION` is coupled
+to the OS window size, including subsequent resizing/fullscreen changes.
+
+Both launchers cap display at 30 fps by default; this can be overridden with
+`HIL_VIEWER_MAX_FPS`. The preview uses Pygame/SDL (2.1.3 is already installed on Ubuntu).
+GPU coverage scoring (`HIL_ES_DEVICE=cuda`) and four CPU preprocessing threads
+remain enabled. Policy cameras retain their original ray-tracing settings,
+image dimensions and RGB preprocessing.
+`HIL_VIEWER_MAX_FPS` is a cap, not a guarantee of the delivered frame rate.
+Set `HIL_DIAG_VIEWER=1` to log measured drawing rate and maximum draw gap.
+
+The HIL viewer draws during live physics substeps, so a long `take_action`
+need not jump straight from its start to its end. Lookahead still sets
+`render_freq=0` and never displays hypothetical branches. The drawing hook
+is rebound after each episode creates a new viewer.
+
+`HIL_CHUNK_OBSERVATIONS=1` skips redundant intermediate camera captures and
+`update_obs` calls only for Pi0.5's complete absolute-joint sampling chunks.
+The policy receives the latest observation before every new chunk request.
+Active coverage scoring still receives fresh pre-action observations and
+`_take_picture` retains its original recording schedule. Set this variable
+to `0` to restore the old per-action observation path.
+
+Launch the policy from this worktree with its shared OpenPI runtime and the
+existing checkpoint config; do not substitute the simulator's Python:
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+ROBOTWIN_HIL_ROOT="$PWD" \
+POLICY_CONFIG_PATH=/hdd/robotwin-hil/RoboTwin/XPolicyLab/pi05_robotwin_handover_to_tray_v2_promptfix_9999.yml \
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.3 \
+bash local_serving/start_local_policy_server.sh
+```
+
+This launcher imports the selected worktree's batch-aware adapter and OpenPI
+source, falling back to the installed main-worktree Python environment when
+the worktree has no `.venv`. `OPENPI_PYTHON` can override that interpreter.
+The memory fraction leaves GPU space for SAPIEN, remote desktop and the
+coverage encoder. Bypassing the launcher can reserve most of the GPU for JAX.
+
+The first requests for batch sizes 1 and 4 compile independently. Warm both
+before an interactive comparison. Even after warming, enhanced selection
+synchronously evaluates four 10-step branches and performs an additional
+replay at the first active decision of each episode. The live robot holds
+its current state during this computation; viewer improvements do not turn
+this algorithm into asynchronous control. Selection timings are recorded in
+each decision's `sampling_seconds` and `selection_seconds` fields.
+
+After the service is ready, the saved Ubuntu desktop preset is:
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+bash local_serving/run_hg_dagger_smooth.sh
+```
+
+This preset uses the alpha=1.0 critic and ResNet18 artifact
+paths, manual `e` activation, CUDA scoring, a 320×180 preview in a 1600×900
+window, a 30 fps display cap, and a fresh
+timestamped recording directory. Environment overrides above remain available.
+The display cap leaves time for physics between drawing calls; it is not a claim
+that the remote desktop delivers 30 fps. `i/r/x/q` retain their existing meanings.
+
+The optional desktop integration smoke opens one temporary preview window and
+checks framebuffer size after window enlargement, policy-camera dimensions,
+key edges and graceful close. It never connects to the policy service:
+
+```bash
+HIL_TEST_PREVIEW=1 bash ./enter_robotwin_hil.sh \
+  python scripts/tests/test_hil_preview.py
+```
+
+On Ubuntu's RTX 4090 (2026-09-29), a separate static `handover_to_tray` scene
+at seed 74912 was used for 20 warmed drawing calls per backend, without any
+policy requests or robot steps. Both display windows were 1600×900:
+
+| Viewer | Actual scene framebuffer | Mean draw time |
+|---|---|---|
+| Native SAPIEN | 1600×900 | 27.34 ms |
+| SDL preview | 320×180 | 18.21 ms |
+
+All observation-camera RGB shapes stayed at 240×320×3. Four warmed `get_obs`
+calls averaged 36.28 ms. These are component measurements under concurrent
+host load, not an end-to-end rollout speed claim. The 25× pixel reduction
+reduced drawing time by about one third; presentation, scene updates,
+observation rendering, inference and synchronous lookahead still cost time.
+
+The same sampler can now run inside the interactive HIL loop. The operator
+presses `i` to request a takeover; the existing scripted expert performs the
+recovery. `local_serving/run_hg_dagger_manual.sh` accepts `HIL_ES_MODE=off`,
+`vanilla`, or `enhanced`. `off` executes the original one-chunk policy path.
+The other two modes use the same frozen critic, candidate count, branch
+simulation and action executor as `eval_policy_xpolicylab.py`.
+
+### Press a key to start enhanced sampling at the stage you choose
+
+The interactive HIL launcher also supports `HIL_ES_ACTIVATION=manual` with
+`HIL_ES_MODE=enhanced`. The policy runs with ordinary one-chunk sampling until
+you press **e** in the SAPIEN viewer or its launching terminal. From the next
+policy decision, the sampler draws four candidates in one Pi0.5 batch,
+simulates and scores their full chunks, then executes their weighted mean. It
+stays active for
+`HIL_ES_MANUAL_DURATION` policy decisions (default 10); another **e** press
+within that window turns it off early. Once the window expires, pressing **e**
+starts a fresh one. If pressed during an action chunk, the remaining chunk is
+discarded and the new decision uses the current real observation. The `i`
+key still requests human/expert takeover, and `r` hands control back.
+
+This can be launched with the existing dedicated policy server on 18311:
+
+```bash
+cd /hdd/robotwin-hil-enhanced-manual
+export HIL_TAKEOVER_EVAL=1 HIL_ES_MODE=enhanced HIL_ES_ACTIVATION=manual
+export HIL_ES_MANUAL_DURATION=10 MANUAL_POLICY_PORT=18311
+export HIL_ES_CRITIC=/hdd/robotwin-hil/outputs/sft_policy_eval_100/coverage_v2_alpha_ablation_step10000_20260924/inference_checkpoints/alpha_1p0.pt
+export HIL_ES_ENCODER_WEIGHTS=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+export HIL_ES_DEVICE=cpu
+export MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/manual_001/enhanced"
+bash local_serving/run_hg_dagger_manual.sh
+```
+
+The terminal prints the decision range when `e` arms the sampler. Every
+activation or cancellation is saved in the episode sampling JSONL and the HIL
+rollout record. Before `e`, ordinary policy steps do not run the critic, and
+their coverage field is null. This manual timing depends on operator judgment. To compare
+takeover probabilities across Off, Vanilla and Enhanced as a controlled
+experiment, use the fixed-window protocol below with the same window for all
+arms, or define a stage trigger that fires identically for every arm.
+
+Run each arm separately from the **isolated branch checkout** in a desktop
+session with a visible SAPIEN viewer and one dedicated policy server. The
+wrapper now derives the code root from its own location and passes it through
+`enter_robotwin_hil.sh`; it does not start the policy server. Keep the same
+server/checkpoint, operator instructions, task config, sequential seed range,
+sampling window, and candidate settings for all arms. Pick the decision window
+using development rollouts before testing. The following is a three-seed
+interface smoke. Its `20..29` window is only an example; replace it with your
+chosen indices before measuring takeover probabilities.
+
+```bash
+cd /hdd/robotwin-hil-enhanced-sampling
+export HIL_TAKEOVER_EVAL=1 MANUAL_POLICY_PORT=18311
+export MANUAL_SEED_START=40000 MANUAL_MAX_ROLLOUTS=3
+export HIL_ES_WINDOW_START=20 HIL_ES_WINDOW_END=29
+export HIL_ES_CRITIC=/path/to/alpha_1p0.pt
+export HIL_ES_ENCODER_WEIGHTS=/home/ruio/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+export HIL_ES_DEVICE=cuda:0
+
+HIL_ES_MODE=off MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/pilot01/off" \
+  bash local_serving/run_hg_dagger_manual.sh
+HIL_ES_MODE=vanilla MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/pilot01/vanilla" \
+  bash local_serving/run_hg_dagger_manual.sh
+HIL_ES_MODE=enhanced MANUAL_OUTPUT_DIR="$PWD/outputs/enhanced_sampling/human_takeover/pilot01/enhanced" \
+  bash local_serving/run_hg_dagger_manual.sh
+```
+
+Set `MANUAL_CKPT_NAME` to the checkpoint label served on `MANUAL_POLICY_PORT`
+if it differs from `v2_promptfix_9999`. A run in takeover-evaluation mode
+continues for `MANUAL_MAX_ROLLOUTS` rather than stopping when enough HIL
+episodes have been saved. It defaults to no trajectory saving and no save
+prompt. Pressing `x` aborts that rollout and records it; pressing `q` stops the
+session, which the comparison script rejects as incomplete. Use a new output
+directory for each run because candidate logs refuse to overwrite old logs.
+
+Each `session_*.json` contains `takeover_measurement`. Its primary numerator
+is the number of valid started rollouts with at least one **real `i` key
+request**; its denominator includes completed and operator-aborted rollouts
+that executed a policy action or received an `i` request. An `i` request still
+counts if stage confirmation is cancelled. Accepted expert recoveries have a
+separate rate. The per-rollout JSONL and candidate logs let you inspect the
+first request step and the executed blended actions. Hypothetical branch actions never
+count as interventions. During a long lookahead branch the viewer may pause;
+pending keys are processed after the real scene is restored, before the next
+live action.
+
+After all three sessions finish, compare their saved session paths:
+
+```bash
+python RoboTwin/scripts/summarize_hil_takeover.py \
+  --off /path/to/off/session_YYYYMMDD_HHMMSS.json \
+  --vanilla /path/to/vanilla/session_YYYYMMDD_HHMMSS.json \
+  --enhanced /path/to/enhanced/session_YYYYMMDD_HHMMSS.json \
+  --output outputs/enhanced_sampling/human_takeover/pilot01/comparison.json
+```
+
+The comparison checks seed order, policy label, task setup, window, critic and
+candidate settings. It reports the paired `Enhanced - Off` and
+`Enhanced - Vanilla` differences in human request probability. To reduce
+operator expectation effects in the main experiment, randomize the arm order
+and keep the arm label and critic scores off the supervisor's display.
+
+## Verification
+
+```bash
+python -m unittest discover -s RoboTwin/scripts/tests -p 'test_coverage_sampling*.py' -v
+python -m unittest discover -s RoboTwin/scripts/tests -p 'test_tail_value.py' -v
+```
+
+The SAPIEN test skips when SAPIEN is unavailable. It constructs a real CPU
+articulation pushing a box and compares branch replay under contact. A blended
+action is not one of those replayed candidate branches, so its future curve
+cannot be claimed as a prediction. The test needs no renderer, robot assets
+or policy service.
+
+Historical validation of the earlier categorical sampler on 2026-09-24:
+
+- Local Python 3.11: 45 tests passed (18 new sampler/integration/report tests
+  and all 27 existing tail tests). The optional SAPIEN test was skipped on
+  macOS and run separately on Ubuntu.
+- Ubuntu Python 3.10 / SAPIEN 3.0.0b1: real CPU articulation/contact snapshot,
+  replay and selected-execution test passed without a renderer or policy call.
+- The alpha=0.1 / step10000 critic loaded successfully. On synthetic RGB,
+  `OnlineCoverage` equaled a direct call using the training preprocessing and
+  model exactly: both returned `40.34922790527344`. This is an interface
+  check, not an evaluated task trajectory or a performance result.
+- Source compilation and `git diff --check` passed. The existing Ubuntu
+  evaluation process and its policy service were not modified or restarted.
+
+The weighted-mean sampler and alpha=1.0 preset require a fresh online smoke
+after the current HIL process is restarted. Inspect branch replay checks,
+the logged blended chunk, and the real executed coverage curve before
+expanding the experiment. Previous categorical-sampler results are not
+results for this revised action aggregation.
+
+Local weighted-mean verification: 24 CPU sampling tests passed, one optional
+SAPIEN test skipped, and two takeover-summary tests passed. The evaluator
+integration test confirmed that distinct candidate chunks produce real
+executed blended actions and no borrowed branch prediction. The Ubuntu HIL
+Python environment loaded the alpha=1.0 artifact above and produced a finite
+score (`39.99695587158203`) for a synthetic three-camera/14D input. This is
+an interface smoke, not an online success measurement.

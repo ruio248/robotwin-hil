@@ -125,6 +125,53 @@ class Model(ModelTemplate):
         action_list = self.get_action_batch(env_idx_list=[self._latest_env_idx_list[0]], **kwargs)
         return action_list[0]
 
+    def candidate_sampling_info(self):
+        try:
+            memory_fraction = float(os.environ.get("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.30"))
+        except ValueError:
+            memory_fraction = 0.30
+        shared_prefix = os.environ.get("OPENPI_SHARED_PREFIX_CANDIDATES", "0").lower() in {"1", "true", "yes"}
+        # The isolated 4090 benchmark verified shared-prefix K=32 at fraction
+        # 0.30. The legacy repeated-prefix path still needs K<=8 there.
+        safe_batch = 32 if shared_prefix else (8 if memory_fraction <= 0.30 else 32)
+        return {"api": "same_observation_batch_v2", "max_batch_size": safe_batch,
+                "model_calls_per_request": 1, "memory_fraction": memory_fraction,
+                "shared_prefix_enabled": shared_prefix}
+
+    def get_action_candidates(self, num_candidates):
+        """Sample K independent chunks for the *same* latest observation in one model call.
+
+        This is deliberately separate from get_action_batch, which handles
+        different environment observations and currently loops over them.
+        Pi0.5 draws independent flow noise for each batch row.
+        """
+        if (isinstance(num_candidates, bool) or not isinstance(num_candidates, int)
+                or not 2 <= num_candidates <= self.candidate_sampling_info()["max_batch_size"]):
+            raise ValueError("num_candidates exceeds the safe same-observation batch size for this server")
+        if self.observation_window is None:
+            raise AssertionError("update_obs first!")
+        if len(self._latest_env_idx_list) != 1 or self.observation_window["state"].shape[0] != 1:
+            raise ValueError("get_action_candidates requires exactly one current observation")
+
+        single_observation = slice_stacked_obs(self.observation_window, 0)
+        if self.candidate_sampling_info()["shared_prefix_enabled"]:
+            if not hasattr(self.policy, "infer_candidates"):
+                raise RuntimeError("shared-prefix candidates require a compatible OpenPI policy")
+            actions = np.asarray(self.policy.infer_candidates(single_observation, num_candidates)["actions"])
+        else:
+            batched_observation = stack_obs([single_observation] * num_candidates)
+            actions = np.asarray(self.policy.infer(batched_observation)["actions"])
+        if (actions.ndim != 3 or actions.shape[0] != num_candidates
+                or actions.shape[1] < 1 or actions.shape[2] != 14
+                or not np.isfinite(actions).all()):
+            raise ValueError("batched policy must return finite [K, horizon, 14] actions")
+        if self.robot_action_dim_info is None:
+            return [actions[index] for index in range(num_candidates)]
+        return [
+            unpack_robot_state(actions[index], self.action_type, self.robot_action_dim_info, source_type="obs")
+            for index in range(num_candidates)
+        ]
+
     def get_action_batch(self, env_idx_list=None, **kwargs):
         if self.observation_window is None:
             raise AssertionError("update_obs or update_obs_batch first!")

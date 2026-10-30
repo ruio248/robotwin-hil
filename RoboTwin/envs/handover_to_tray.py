@@ -805,7 +805,8 @@ class handover_to_tray(Base_Task):
         self._record_stage(stage_id)
         return bool(self.plan_success)
 
-    def play_once(self):
+    def play_prefix_until_placement(self):
+        """Run the native scripted expert through stage 5, without placing."""
         self._run_stage(
             1,
             self.grasp_actor(
@@ -848,6 +849,10 @@ class handover_to_tray(Base_Task):
             self.move(self.open_gripper(self.source_arm_tag))
             self.move(self.move_by_displacement(self.source_arm_tag, z=0.10, move_axis="arm"))
         self._record_stage(5)
+        return bool(self.plan_success)
+
+    def play_once(self):
+        self.play_prefix_until_placement()
         # Keep the native handover_block synchronization: the source arm
         # retreats while the receiver places the bar, preventing a transient
         # one-arm hold from disturbing the object during the final transfer.
