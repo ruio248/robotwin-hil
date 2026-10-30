@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# Interactive HIL rollout. Set HIL_TAKEOVER_EVAL=1 for matched-seed off/vanilla/enhanced trials.
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export ROBOTWIN_HIL_ROOT="$repo_root"
+runtime_root="${ROBOTWIN_ROOT:-$repo_root/outputs/robotwin_hil_runtime/RoboTwin}"
+[[ -f "$runtime_root/scripts/hg_dagger_handover.py" ]] || {
+  echo "HIL runtime missing: run python3 -m robotwin_hil.prepare_runtime in $repo_root" >&2
+  exit 1
+}
+cd "$runtime_root"
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY no_proxy NO_PROXY
+
+export HIL_VIEWER_BACKEND="${HIL_VIEWER_BACKEND:-preview}"
+export HIL_VIEWER_RENDER_RESOLUTION="${HIL_VIEWER_RENDER_RESOLUTION:-320x180}"
+export HIL_VIEWER_WINDOW_RESOLUTION="${HIL_VIEWER_WINDOW_RESOLUTION:-1600x900}"
+export HIL_VIEWER_RESOLUTION="${HIL_VIEWER_RESOLUTION:-1600x900}"
+export HIL_VIEWER_FULLSCREEN="${HIL_VIEWER_FULLSCREEN:-0}"
+export HIL_VIEWER_MAX_FPS="${HIL_VIEWER_MAX_FPS:-30}"
+export HIL_CHUNK_OBSERVATIONS="${HIL_CHUNK_OBSERVATIONS:-1}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
+
+sampling_mode="${HIL_ES_MODE:-off}"
+case "$sampling_mode" in off|vanilla|enhanced|gaussian) ;; *) echo "Invalid HIL_ES_MODE=$sampling_mode" >&2; exit 2 ;; esac
+activation="${HIL_ES_ACTIVATION:-fixed}"
+case "$activation" in fixed|manual) ;; *) echo "Invalid HIL_ES_ACTIVATION=$activation" >&2; exit 2 ;; esac
+duration="${HIL_ES_MANUAL_DURATION:-10}"
+if [[ "$activation" == manual ]]; then
+  [[ "$sampling_mode" != off ]] || { echo "Manual activation requires vanilla, enhanced or gaussian sampling" >&2; exit 2; }
+  [[ "$duration" =~ ^[1-9][0-9]*$ ]] || { echo "HIL_ES_MANUAL_DURATION must be a positive integer" >&2; exit 2; }
+fi
+takeover_eval="${HIL_TAKEOVER_EVAL:-0}"
+case "$takeover_eval" in 0|1) ;; *) echo "HIL_TAKEOVER_EVAL must be 0 or 1" >&2; exit 2 ;; esac
+one_stage="${HIL_ONE_STAGE:-0}"
+case "$one_stage" in 0|1) ;; *) echo "HIL_ONE_STAGE must be 0 or 1" >&2; exit 2 ;; esac
+
+if [[ "$takeover_eval" == 1 ]]; then
+  seed_mode="${MANUAL_SEED_MODE:-sequential}"
+  save_data="${MANUAL_SAVE_DATA:-false}"
+  auto_save="${MANUAL_AUTO_SAVE:-false}"
+  episodes="${MANUAL_MAX_ROLLOUTS:-20}"
+  default_output="$repo_root/outputs/enhanced_sampling/human_takeover/$sampling_mode"
+else
+  seed_mode="${MANUAL_SEED_MODE:-random}"
+  save_data="${MANUAL_SAVE_DATA:-true}"
+  auto_save="${MANUAL_AUTO_SAVE:-none}"
+  episodes="${MANUAL_MAX_ROLLOUTS:-200}"
+  default_output="$repo_root/outputs/hg_dagger_collection_r1"
+fi
+output_dir="${MANUAL_OUTPUT_DIR:-$default_output}"
+resume_collection="${HIL_RESUME:-0}"
+case "$resume_collection" in 0|1) ;; *) echo "HIL_RESUME must be 0 or 1" >&2; exit 2 ;; esac
+
+sampling_args=(--es-mode "$sampling_mode" --es-activation "$activation" --es-manual-duration "$duration")
+if [[ "$activation" == manual ]]; then
+  sampling_args+=(--es-window-start 0 --es-window-end "$((duration - 1))")
+elif [[ "$takeover_eval" == 1 ]]; then
+  : "${HIL_ES_WINDOW_START:?Set the same zero-based decision window for all three arms}"
+  : "${HIL_ES_WINDOW_END:?Set the same zero-based decision window for all three arms}"
+  sampling_args+=(--es-window-start "$HIL_ES_WINDOW_START" --es-window-end "$HIL_ES_WINDOW_END")
+fi
+if [[ "$sampling_mode" != off ]]; then
+  if [[ "$takeover_eval" != 1 && "$activation" == fixed ]]; then
+    : "${HIL_ES_WINDOW_START:?Set the active decision window}"
+    : "${HIL_ES_WINDOW_END:?Set the active decision window}"
+    sampling_args+=(--es-window-start "$HIL_ES_WINDOW_START" --es-window-end "$HIL_ES_WINDOW_END")
+  fi
+  sampling_args+=(
+    --es-num-candidates "${HIL_ES_NUM_CANDIDATES:-4}"
+    --es-policy-microbatch "${HIL_ES_POLICY_MICROBATCH:-4}"
+    --es-horizon "${HIL_ES_HORIZON:-10}"
+    --es-seed "${HIL_ES_SEED:-42}"
+    --es-log-dir "${HIL_ES_LOG_DIR:-$output_dir/sampling}"
+  )
+  if [[ "$sampling_mode" == gaussian ]]; then
+    : "${HIL_ES_GAUSSIAN_SIGMA:?Set the calibrated output-space sigma in radians}"
+    sampling_args+=(--es-gaussian-sigma "$HIL_ES_GAUSSIAN_SIGMA")
+  else
+    : "${HIL_ES_CRITIC:?Set the frozen coverage critic checkpoint}"
+    : "${HIL_ES_ENCODER_WEIGHTS:?Set the local ResNet18 weights}"
+    sampling_args+=(
+      --es-scorer "${HIL_ES_SCORER:-td_first_action}"
+      --es-critic "$HIL_ES_CRITIC"
+      --es-encoder-weights "$HIL_ES_ENCODER_WEIGHTS"
+      --es-device "${HIL_ES_DEVICE:-cuda}"
+    )
+    # Omission loads the discriminator's frozen calibration beta (legacy TD: 10).
+    if [[ -n "${HIL_ES_BETA:-}" ]]; then
+      sampling_args+=(--es-beta "$HIL_ES_BETA")
+    fi
+    if [[ -n "${HIL_ES_CALIBRATION:-}" ]]; then
+      sampling_args+=(--es-calibration "$HIL_ES_CALIBRATION"
+                      --es-calibration-key "${HIL_ES_CALIBRATION_KEY:-disc_s42}")
+    fi
+  fi
+fi
+
+run_args=(
+  python -u scripts/hg_dagger_handover.py
+  --host 127.0.0.1
+  --port "${MANUAL_POLICY_PORT:-18300}"
+  --policy-name "${MANUAL_POLICY_NAME:-Pi_05_RobotTwin}"
+  --ckpt-name "${MANUAL_CKPT_NAME:-v2_promptfix_9999}"
+  --task-config "${MANUAL_TASK_CONFIG:-handover_to_tray_v2_promptfix}"
+  --seed-start "${MANUAL_SEED_START:-40000}"
+  --seed-mode "$seed_mode"
+  --seed-min "${MANUAL_SEED_MIN:-40000}"
+  --seed-max "${MANUAL_SEED_MAX:-99999}"
+  --episodes "$episodes"
+  --target-saved "${MANUAL_TARGET_SAVED:-50}"
+  --target-mode "${MANUAL_TARGET_MODE:-hil}"
+  --render-freq "${MANUAL_RENDER_FREQ:-10}"
+  --frequency "${MANUAL_FREQUENCY:-30}"
+  --save-data "$save_data"
+  --auto-save "$auto_save"
+  --output-dir "$output_dir"
+  "${sampling_args[@]}"
+)
+case "${MANUAL_SAVE_POLICY_ROLLOUTS:-0}" in
+  0) ;;
+  1) run_args+=(--save-policy-rollouts) ;;
+  *) echo "MANUAL_SAVE_POLICY_ROLLOUTS must be 0 or 1" >&2; exit 2 ;;
+esac
+if [[ "$one_stage" == 1 ]]; then
+  [[ "$seed_mode" == sequential && "$activation" == fixed && "$takeover_eval" == 0 ]] || {
+    echo "One-stage requires sequential seeds, fixed sampling and no takeover-eval mode" >&2; exit 2;
+  }
+  run_args+=(--one-stage)
+  if [[ -n "${HIL_ONE_STAGE_PAIRED_REPORT:-}" ]]; then
+    run_args+=(--paired-baseline-report "$HIL_ONE_STAGE_PAIRED_REPORT")
+  fi
+fi
+if [[ "$resume_collection" == 1 ]]; then
+  run_args+=(--resume)
+fi
+if [[ "$takeover_eval" == 1 ]]; then
+  run_args+=(--takeover-eval)
+fi
+
+if [[ "${HIL_DRY_RUN:-0}" == 1 ]]; then
+  printf 'bash %q' "$repo_root/robotwin_hil/enter_ubuntu.sh"
+  printf ' %q' "${run_args[@]}"
+  printf '\n'
+  exit 0
+fi
+
+# Remote desktop reconnects can move the X11 session (for example :1 -> :10).
+# Prefer a working inherited display, then discover the active graphical session.
+display_auth="${XAUTHORITY:-$HOME/.Xauthority}"
+display_works() {
+  DISPLAY="$1" XAUTHORITY="$2" xwininfo -root >/dev/null 2>&1
+}
+if ! command -v xwininfo >/dev/null 2>&1; then
+  echo "Missing xwininfo; install x11-utils to check the desktop display." >&2
+  exit 1
+fi
+if [[ -z "${DISPLAY:-}" ]] || ! display_works "$DISPLAY" "$display_auth"; then
+  found_display=""
+  if command -v loginctl >/dev/null 2>&1; then
+    while read -r session_id session_uid session_user _; do
+      [[ "$session_user" == "$(id -un)" ]] || continue
+      [[ "$(loginctl show-session "$session_id" -p Type --value 2>/dev/null)" == "x11" ]] || continue
+      [[ "$(loginctl show-session "$session_id" -p Active --value 2>/dev/null)" == "yes" ]] || continue
+      candidate="$(loginctl show-session "$session_id" -p Display --value 2>/dev/null)"
+      if [[ -n "$candidate" ]] && display_works "$candidate" "$display_auth"; then
+        found_display="$candidate"
+        break
+      fi
+    done < <(loginctl list-sessions --no-legend 2>/dev/null)
+  fi
+  if [[ -z "$found_display" ]]; then
+    echo "No accessible X11 desktop. DISPLAY=${DISPLAY:-<unset>} XAUTHORITY=$display_auth" >&2
+    echo "Open a terminal inside the active Ubuntu remote desktop, or reconnect it, then retry." >&2
+    exit 1
+  fi
+  echo "[HIL-VIEWER] using active desktop DISPLAY=$found_display (previous: ${DISPLAY:-<unset>})"
+  export DISPLAY="$found_display"
+fi
+export XAUTHORITY="$display_auth"
+if [[ "${HIL_DISPLAY_CHECK_ONLY:-0}" == 1 ]]; then
+  echo "[HIL-VIEWER] desktop connection ready: DISPLAY=$DISPLAY"
+  exit 0
+fi
+
+log="/tmp/hg_dagger_${sampling_mode}_$(date +%Y%m%d_%H%M%S).log"
+set +e
+bash "$repo_root/robotwin_hil/enter_ubuntu.sh" "${run_args[@]}" 2>&1 | tee "$log"
+run_status=${PIPESTATUS[0]}
+set -e
+echo "log=$log"
+if [[ -t 0 ]]; then
+  echo "DONE. Press Enter to close."
+  read -r _
+fi
+exit "$run_status"
