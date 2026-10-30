@@ -16,7 +16,7 @@
 | place_empty_cup | new_power_3 | 21:06:23 | 50（训练 40／留出 10） | 1249 | 23 成功／27 失败 |
 | open_microwave | ubuntu | 21:23:26 | 50（训练 40／留出 10） | 7055 | 42 成功／8 失败 |
 
-本报告的精确数字、95% 区间、训练及留出场景清单、测试完整性计数、checkpoint 哈希和远端来源哈希见 [机器证据快照](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/docs/evidence/expert_support_function_20261028.json)。完整测试逐场景记录仍在该快照注明的远端 evaluation_path 下。下表及正文的数字仅作显示舍入。
+本报告的精确数字、95% 区间、训练及留出场景清单、测试完整性计数、checkpoint 哈希和远端来源哈希见 [机器证据快照](evidence/expert_support_function_20261028.json)。完整测试逐场景记录仍在该快照注明的远端 evaluation_path 下。下表及正文的数字仅作显示舍入。
 
 ## 专家支撑函数的定义
 
@@ -301,7 +301,7 @@ K1 与 K4 主结论相近，未显示“仅因补了三个候选，才出现反�
 
 因此准确说法是“沿用历史判别器主干和来源 BCE 目标，并对齐绘图横轴原则”，不是所有训练、输入、温度与评分口径都完全复刻。原始 logit 可以达到 ±10 或更大，不等于数值本身错误；Sigmoid 概率与 logit 的逐点排序相同，但先变换再跨候选／时间平均，可能改变 episode 的排序，不能默认它们有相同轨迹 AUC。
 
-历史训练与图形定义见 [原 disc_s42 拟合代码](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/RoboTwin/scripts/coverage_benchmark/fit.py)、[历史绘图与统计代码](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/RoboTwin/scripts/coverage_benchmark/report.py)、[HIL 完整 chunk 判别器接入说明](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/docs/HIL_CHUNK_DISCRIMINATOR_20261012.md)。自训 stack_blocks_three 的 ZOH 诊断作为独立对照保留在 [原生动作与 ZOH 诊断](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/outputs/own_stack_blocks_three_d_verification_20261028/DIAGNOSIS_20261028.md)，其数值不混入本轮三任务表。
+历史训练与图形定义见 [原 disc_s42 拟合代码](../../robotwin_hil/overlay/scripts/coverage_benchmark/fit.py)、[历史绘图与统计代码](../../robotwin_hil/overlay/scripts/coverage_benchmark/report.py)、[HIL 完整 chunk 判别器接入说明](../sampling/HIL_CHUNK_DISCRIMINATOR_20261012.md)。自训 stack_blocks_three 的 ZOH 诊断作为独立对照保留在 [原生动作与 ZOH 诊断](../../outputs/own_stack_blocks_three_d_verification_20261028/DIAGNOSIS_20261028.md)，其数值不混入本轮三任务表。
 
 ## 原因分析与下一步判定
 
@@ -329,15 +329,15 @@ K1 与 K4 主结论相近，未显示“仅因补了三个候选，才出现反�
 
 ### 本机项目文件
 
-- 本报告：[EXPERT_SUPPORT_FUNCTION_REPORT_20261028_ZH.md](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/docs/EXPERT_SUPPORT_FUNCTION_REPORT_20261028_ZH.md)
-- 本报告证据快照：[expert_support_function_20261028.json](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/docs/evidence/expert_support_function_20261028.json)
-- 任务配置与初始启动清单：[launch_manifest.json](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/outputs/three_task_native_h50_d_retrain_20261028/launch_manifest.json)
-- 原生数据采集：[collect_native_h50.py](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/outputs/three_task_native_h50_d_retrain_20261028/code/collect_native_h50.py)
-- D 训练与来源验证：[train_native_h50.py](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/outputs/three_task_native_h50_d_retrain_20261028/code/train_native_h50.py)
-- 轨迹评分与口径：[evaluate_support.py](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/outputs/three_task_native_h50_d_retrain_20261028/code/evaluate_support.py)
-- AUC 与 bootstrap 实现：[score_outcome_h50.py](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/outputs/three_task_native_h50_d_retrain_20261028/code/score_outcome_h50.py)
-- 绘图：[plot_results.py](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/outputs/three_task_native_h50_d_retrain_20261028/code/plot_results.py)
-- 主干结构：[ChunkCoverageCritic](/Users/liaoruihao/Desktop/ruihao/robotwin-hil-enhanced-sampling/RoboTwin/scripts/tail_value/chunk.py)
+- 本报告：[EXPERT_SUPPORT_FUNCTION_REPORT_20261028_ZH.md](EXPERT_SUPPORT_FUNCTION_REPORT_20261028_ZH.md)
+- 本报告证据快照：[expert_support_function_20261028.json](evidence/expert_support_function_20261028.json)
+- 任务配置与初始启动清单：[launch_manifest.json](../../outputs/three_task_native_h50_d_retrain_20261028/launch_manifest.json)
+- 原生数据采集：[collect_native_h50.py](../../outputs/three_task_native_h50_d_retrain_20261028/code/collect_native_h50.py)
+- D 训练与来源验证：[train_native_h50.py](../../outputs/three_task_native_h50_d_retrain_20261028/code/train_native_h50.py)
+- 轨迹评分与口径：[evaluate_support.py](../../outputs/three_task_native_h50_d_retrain_20261028/code/evaluate_support.py)
+- AUC 与 bootstrap 实现：[score_outcome_h50.py](../../outputs/three_task_native_h50_d_retrain_20261028/code/score_outcome_h50.py)
+- 绘图：[plot_results.py](../../outputs/three_task_native_h50_d_retrain_20261028/code/plot_results.py)
+- 主干结构：[ChunkCoverageCritic](../../robotwin_hil/overlay/scripts/tail_value/chunk.py)
 
 启动清单是启动时快照，其中 running_data_collection 不代表当前状态。当前完成结论来自远端 state.json、models/protocol.json、results/aggregate.json 及逐场景记录核验，相关值和哈希已放入本报告证据快照。没有为写报告而修改旧清单。
 

@@ -13,7 +13,7 @@ RoboTwin 上的 HIL / HG-DAgger、增强采样、专家支撑函数 D 与策略�
 | [`docs/`](docs/) | 方法、测评协议、实验结果和迁移说明。 |
 | [`README.md`](README.md) | 版本、结构、入口与基本复现步骤。 |
 
-上游源码与自定义实验的边界是刻意的：**普通 RoboTwin 使用 `RoboTwin/`；HIL 实验使用生成的兼容运行目录**。历史脚本依赖 `envs.*`、`scripts/*`、`XPolicyLab/*` 等原路径，因此 `robotwin_hil.prepare_runtime` 会将固定上游版本与本项目的 overlay 组装到被 Git 忽略的 `outputs/robotwin_hil_runtime/RoboTwin/`。它不会改写 `RoboTwin/`，也不会把生成目录提交到 Git。这是为维持既有实验行为的兼容层，不应误称为已完全解耦的插件接口。迁移细节见 [`docs/UPSTREAM_ISOLATION.md`](docs/UPSTREAM_ISOLATION.md)。
+上游源码与自定义实验的边界是刻意的：**普通 RoboTwin 使用 `RoboTwin/`；HIL 实验使用生成的兼容运行目录**。历史脚本依赖 `envs.*`、`scripts/*`、`XPolicyLab/*` 等原路径，因此 `robotwin_hil.prepare_runtime` 会将固定上游版本与本项目的 overlay 组装到被 Git 忽略的 `outputs/robotwin_hil_runtime/RoboTwin/`。它不会改写 `RoboTwin/`，也不会把生成目录提交到 Git。这是为维持既有实验行为的兼容层，不应误称为已完全解耦的插件接口。迁移细节见 [`docs/project/UPSTREAM_ISOLATION.md`](docs/project/UPSTREAM_ISOLATION.md)。
 
 ## 获取源码与构建 HIL 运行目录
 
@@ -40,7 +40,9 @@ python scripts/eval_policy_xpolicylab.py --help
 python -m unittest discover -s scripts/tests -p 'test_*.py'
 ```
 
-`robotwin_hil/overlay/envs/handover_to_tray.py` 与对应 `env_cfg/`、指令文件定义自定义任务；`overlay/scripts/` 包含 HIL/DAgger、增强采样、D 训练和评测入口；`compat/XPolicyLab/policy/Pi_05_RobotTwin/` 是 Pi0.5 适配器。具体实验参数、checkpoint 和 seed 必须使用相应实验文档，不要从上述通用示例推断。参见 [`docs/HANDOVER_TO_TRAY_FULL_PIPELINE.md`](docs/HANDOVER_TO_TRAY_FULL_PIPELINE.md)、[`docs/ONE_STAGE_DAGGER_PROTOCOL_20261013.md`](docs/ONE_STAGE_DAGGER_PROTOCOL_20261013.md) 与 [`docs/ROBOTWIN_DAGGER_TASK_SCREENING_20261024.md`](docs/ROBOTWIN_DAGGER_TASK_SCREENING_20261024.md)。
+`robotwin_hil/overlay/envs/handover_to_tray.py` 与对应 `env_cfg/`、指令文件定义自定义任务；`overlay/scripts/` 包含 HIL/DAgger、增强采样、D 训练和评测入口；`compat/XPolicyLab/policy/Pi_05_RobotTwin/` 是 Pi0.5 适配器。具体实验参数、checkpoint 和 seed 必须使用相应实验文档，不要从上述通用示例推断。参见 [`docs/tasks/HANDOVER_TO_TRAY_FULL_PIPELINE.md`](docs/tasks/HANDOVER_TO_TRAY_FULL_PIPELINE.md)、[`docs/hg_dagger/ONE_STAGE_DAGGER_PROTOCOL_20261013.md`](docs/hg_dagger/ONE_STAGE_DAGGER_PROTOCOL_20261013.md) 与 [`docs/tasks/ROBOTWIN_DAGGER_TASK_SCREENING_20261024.md`](docs/tasks/ROBOTWIN_DAGGER_TASK_SCREENING_20261024.md)。
+
+文档已按 SFT、专家支撑函数 D、HG-DAgger、采样方法、任务、历史 Coverage 实验和项目协议分类；入口见 [`docs/README.md`](docs/README.md)。其中 11 篇流程说明只给出操作与指标口径，带日期的历史记录另行归档，不把某次结果写成通用结论。
 
 ## 数据与复现边界
 

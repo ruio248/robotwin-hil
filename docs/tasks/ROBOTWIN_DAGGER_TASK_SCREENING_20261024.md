@@ -345,7 +345,7 @@ Ubuntu `/media/ruio/hdd` 已核实挂载为 `/dev/sda1`，发布 manifest 包含
 
 用户本轮选定 handover_block、move_can_pot、stack_blocks_two；已将旧测评的25/22/18个失败场景冻结为65条诊断清单。A800 GPU4/18474与GPU7/18475分别运行前两项，Ubuntu GPU0/18482运行叠两块。每场景先无接管复跑并保存完整动作，再比较实际失败终态救回与固定提前点（150/50/100步）的动作前缀重放救回。旧结果未存动作，不能称严格复刻旧轨迹；失败未复现必须单列。提前分支要求逐chunk状态对齐，所有成功还需物理/关节及稳定后检查。全部diagnostic_only=true、accepted_for_training=false，不生成正式HIL数据。
 
-最新状态：用户收窄到单阶段问题后，A800 的 handover_block/move_can_pot 固定步数队列已停止，不能称65场景全部完成。2026-10-26复核 Ubuntu 的 stack_blocks_two 最终报告为18/18唯一场景完成、18条动作前缀匹配；13条自主失败复现，终态救回1/13，固定第100步提前救回9/13，另5条自主成功不计救回分母。此结果只支持部分中间态可恢复，不证明在线安全窗口检测或接近100%救回。完整协议、单阶段诊断、路径与分母规则见 [三任务失败重放诊断](THREE_TASK_FAILURE_RECOVERY_REPLAY_20261025.md)。本轮新增6项标准库逻辑测试、既有15项任务恢复单测和11项handover/move函数测试通过，py_compile及diff检查通过。
+最新状态：用户收窄到单阶段问题后，A800 的 handover_block/move_can_pot 固定步数队列已停止，不能称65场景全部完成。2026-10-26复核 Ubuntu 的 stack_blocks_two 最终报告为18/18唯一场景完成、18条动作前缀匹配；13条自主失败复现，终态救回1/13，固定第100步提前救回9/13，另5条自主成功不计救回分母。此结果只支持部分中间态可恢复，不证明在线安全窗口检测或接近100%救回。完整协议、单阶段诊断、路径与分母规则见 [三任务失败重放诊断](../hg_dagger/THREE_TASK_FAILURE_RECOVERY_REPLAY_20261025.md)。本轮新增6项标准库逻辑测试、既有15项任务恢复单测和11项handover/move函数测试通过，py_compile及diff检查通过。
 
 ### 2026-10-26 15:24 CST：独立 seed1 数据实时核验
 

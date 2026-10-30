@@ -22,7 +22,7 @@
 
 TD的中位分差很小，但最大分差108.759：少量极端观测与典型观测截然不同。因此不能用一个最大值代替典型分辨率，更不能把跨状态的总体评分分布当作同观测动作差异。
 
-机器可读来源：`outputs/coverage_benchmark_v1_20261009/offline_internal/internal_validation_metrics.json`，同目录PNG/PDF已生成。完整HIL/历史rollout离线诊断现已完成，详细离线结论见 `docs/COVERAGE_CHUNK_OFFLINE_RESULTS_20261009.md`；尚无方法执行效果结论。
+机器可读来源：`outputs/coverage_benchmark_v1_20261009/offline_internal/internal_validation_metrics.json`，同目录PNG/PDF已生成。完整HIL/历史rollout离线诊断现已完成，详细离线结论见 `docs/experiments/coverage/COVERAGE_CHUNK_OFFLINE_RESULTS_20261009.md`；尚无方法执行效果结论。
 
 ## 第二层门槛失败证据
 

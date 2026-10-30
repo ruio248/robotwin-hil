@@ -342,9 +342,9 @@ P_{\mathrm{hit}}=1-(1-p)^N.
 本文以本地及 Ubuntu 工作区的 `codex/coverage-enhanced-sampling` 分支、代码提交 `25593d3` 为语义依据，结合实际采集日志和加载出的 checkpoint 配置核验。已有 `ENHANCED_SAMPLING.md` 的部分段落仍描述旧版仿真分支评分，当前首动作评分以代码和日志中的 `current_observation_first_action` 为准。
 
 - [训练公式及配置](TAIL_VALUE_V2_ABLATION.md)：策略 bootstrap、四组 alpha 消融、数据划分。
-- [critic 与 TD 损失实现](../robotwin_hil/overlay/scripts/tail_value/model.py)：`critic_loss`、`loss_from_scores`、`POLICY_BOOTSTRAP`。
-- [在线权重与动作聚合](../robotwin_hil/overlay/scripts/coverage_sampling/core.py)：`coverage_weights`、`DecisionSampler.select`。
-- [当前桌面启动预设](../robotwin_hil/local_serving/run_hg_dagger_smooth.sh)：alpha 1.0 critic 路径及手动增强配置。
+- [critic 与 TD 损失实现](../../../robotwin_hil/overlay/scripts/tail_value/model.py)：`critic_loss`、`loss_from_scores`、`POLICY_BOOTSTRAP`。
+- [在线权重与动作聚合](../../../robotwin_hil/overlay/scripts/coverage_sampling/core.py)：`coverage_weights`、`DecisionSampler.select`。
+- [当前桌面启动预设](../../../robotwin_hil/local_serving/run_hg_dagger_smooth.sh)：alpha 1.0 critic 路径及手动增强配置。
 
 实际加载的 inference checkpoint 位于 Ubuntu：
 

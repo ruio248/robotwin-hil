@@ -31,7 +31,7 @@ m_n\approx100-99[1-0.005(1-0.99)]^n,
 \qquad m_{10000}\approx39.95.
 $$
 
-这与实际 10k 验证均值 40.458 接近。神经网络的参数 EMA 不严格等于输出 EMA，因此 39.95 不是对真实训练曲线的精确预测；它说明“每步 TD 误差很小”与“整体分数仍远未到固定点”可以同时发生。[损失与终点分支代码](../robotwin_hil/overlay/scripts/tail_value/model.py)和[EMA 更新代码](../robotwin_hil/overlay/scripts/tail_value/model.py)可用于核对目标的实际定义。
+这与实际 10k 验证均值 40.458 接近。神经网络的参数 EMA 不严格等于输出 EMA，因此 39.95 不是对真实训练曲线的精确预测；它说明“每步 TD 误差很小”与“整体分数仍远未到固定点”可以同时发生。[损失与终点分支代码](../../../robotwin_hil/overlay/scripts/tail_value/model.py)和[EMA 更新代码](../../../robotwin_hil/overlay/scripts/tail_value/model.py)可用于核对目标的实际定义。
 
 ## 训练曲线和固定观测检查
 

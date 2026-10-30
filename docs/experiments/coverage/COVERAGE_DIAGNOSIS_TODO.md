@@ -154,9 +154,9 @@ m_n\approx100-99(1-0.005\times0.01)^n,
 
 本地保存了原始诊断结果和本次执行的只读脚本：
 
-- [固定观测诊断结果](../outputs/coverage_diagnosis_20261003/fixed_observation_metrics.json)
-- [固定观测诊断脚本](../outputs/coverage_diagnosis_20261003/diagnose_fixed_observations.py)
-- [同候选 beta 对照结果](../outputs/coverage_diagnosis_20261003/beta_sweep_metrics.json)
-- [同候选 beta 对照脚本](../outputs/coverage_diagnosis_20261003/diagnose_recorded_weights.py)
+- [固定观测诊断结果](../../../outputs/coverage_diagnosis_20261003/fixed_observation_metrics.json)
+- [固定观测诊断脚本](../../../outputs/coverage_diagnosis_20261003/diagnose_fixed_observations.py)
+- [同候选 beta 对照结果](../../../outputs/coverage_diagnosis_20261003/beta_sweep_metrics.json)
+- [同候选 beta 对照脚本](../../../outputs/coverage_diagnosis_20261003/diagnose_recorded_weights.py)
 
 脚本使用各自服务器已存在的代码与数据绝对路径。敏感性脚本还记录了跨观测动作置换作为辅助检查；该置换随机池在不同 alpha 间并非配对，本文不使用它作 alpha 对比结论。训练与线上采集配置未改动。
