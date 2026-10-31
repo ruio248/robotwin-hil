@@ -8,6 +8,8 @@ SFT 使用**脚本专家成功演示**，不是策略 rollout，也不是 HIL �
 
 其他任务（如 `turn_switch`、`dump_bin_bigbin`、`stack_blocks_three`）使用其各自的干净专家演示，不能与 `handover_to_tray` 的轨迹混成单任务数据。`demo_clean`、随机化场景、发布方专家筛选场景也是不同数据域。
 
+`handover_block` 的旧版官方指令模板存在部分目标缺项：本项目 2026-10-29 的 50 条 SFT 演示虽然全部通过完整任务的专家成功检查，其中 27 条语言标注只描述部分动作。官方修复合并于 2026-09-22，但旧采集环境仍使用修复前模板。旧批分布、源码/数据证据，以及不覆盖旧数据的 50 条修复版指令复采协议，见 [handover_block 指令审计与复采](HANDOVER_BLOCK_INSTRUCTION_AUDIT_20261031.md)。
+
 ## 收集与验收顺序
 
 1. 在仓库根目录执行 `python3 -m robotwin_hil.prepare_runtime`，随后 `source robotwin_hil/activate.sh`；在生成的 `$ROBOTWIN_ROOT` 内运行对应任务的专家收集入口。先用少量 seed 冒烟，确认三相机、状态维度、提示词和任务成功判定。
