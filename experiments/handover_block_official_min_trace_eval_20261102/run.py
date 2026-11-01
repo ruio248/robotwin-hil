@@ -19,9 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-ROOT = Path("/media/ruio/hdd/handover_block_official_min_trace_eval_20261102")
+SOURCE_ROOT = Path("/media/ruio/hdd/handover_block_official_min_trace_eval_20261102")
+ROOT = Path("/media/ruio/hdd/handover_block_official_min_trace_eval_20261102_retry1")
 REPOSITORY = Path("/media/ruio/hdd/robotwin-hil-github")
-ROBOTWIN = ROOT / "official_runtime"
+ROBOTWIN = SOURCE_ROOT / "official_runtime"
 PRIOR_SERVER = Path("/media/ruio/hdd/handover_block_official_sft_5000_20261101/official_eval_20261101")
 PRIOR_ROBOTWIN = Path("/media/ruio/hdd/handover_block_official_collect_pr510_20261031/runtime_robotwin")
 CHECKPOINT = Path("/media/ruio/hdd/handover_block_official_sft_5000_20261101/checkpoint/4999")
@@ -31,7 +32,7 @@ PORT = 18496
 MODEL_MANIFEST_SHA256 = "e62227471473a1b7bb0b81c2a641453b99223b72440c967c56b7c96421b4b645"
 INSTRUCTION_SHA256 = "c67350f7684c5d39cf7458c9775e087670e4f03828cea94536f1a7a7d203edd2"
 REPO_ID = "handover_block_pr510_official50_v30_20261101"
-RUN_ID = "hb_official_min_trace_20261102"
+RUN_ID = "hb_official_min_trace_20261102_retry1"
 
 
 def sha256(path: Path) -> str:
@@ -86,6 +87,9 @@ def preflight() -> None:
             raise RuntimeError(f"policy server source mismatch: {relative}")
     if sha256(ROBOTWIN / "description/task_instruction/handover_block.json") != INSTRUCTION_SHA256:
         raise RuntimeError("PR #510 instruction mismatch")
+    asset_list = Path("assets/objects/objaverse/list.json")
+    if sha256(ROBOTWIN / asset_list) != sha256(PRIOR_ROBOTWIN / asset_list):
+        raise RuntimeError("official Objaverse asset list mismatch")
     if sha256(CHECKPOINT / "params/manifest.ocdbt") != MODEL_MANIFEST_SHA256:
         raise RuntimeError("checkpoint params manifest mismatch")
     norm_stats = CHECKPOINT / "assets" / REPO_ID / "norm_stats.json"
