@@ -1,8 +1,8 @@
 # SFT 官方控制逻辑的最小逐查询记录版
 
-新 SFT 正式测评统一运行 `robotwin_hil/overlay/scripts/eval_policy_xpolicylab_official_trace.py`。它以本仓库固定的 `RoboTwin/scripts/eval_policy_xpolicylab.py`（提交 `4c5c753d66c54c3f6ce855ddf426bcaf3e327250`）为基础，仅增加被动记录；官方 `RoboTwin/` 源码不改。隔离运行副本由 `python robotwin_hil/prepare_runtime.py --output /absolute/path/to/new-runtime` 生成，脚本及 `official_policy_trace.py` 位于副本的 `scripts/`。旧综合扩展 `eval_policy_xpolicylab.py` 的评测实现已经退役；同名文件只保留供旧 HIL/DAgger 脚本导入的工具函数，直接运行会报错。
+新 SFT 正式测评统一运行 `robotwin_hil/overlay/scripts/eval_policy_xpolicylab_official_trace.py`。它以本仓库固定的 `RoboTwin/scripts/eval_policy_xpolicylab.py`（提交 `4c5c753d66c54c3f6ce855ddf426bcaf3e327250`）为基础，仅增加被动记录；官方 `RoboTwin/` 源码不改。**SFT 官方对齐测评不要用 `prepare_runtime.py` 的完整 HIL overlay**：其中 `_base_task.py` 与官方文件不同。应从固定的 `RoboTwin/` 复制一个全新的隔离副本，仅将 `eval_policy_xpolicylab_official_trace.py` 和 `official_policy_trace.py` 放入该副本的 `scripts/`，先核验原任务、`_base_task.py`、指令与官方源文件逐文件一致。旧综合扩展 `eval_policy_xpolicylab.py` 的测评实现已经退役；同名文件只保留供旧 HIL/DAgger 脚本导入的工具函数，直接运行会报错。
 
-在策略 websocket 服务启动且核实 checkpoint、H 和 `norm_stats` 后，在隔离副本根目录运行：
+在策略 websocket 服务启动且核实 checkpoint、H 和 `norm_stats` 后，在该仅加两份记录文件的隔离副本根目录运行：
 
 ```bash
 python scripts/eval_policy_xpolicylab_official_trace.py \

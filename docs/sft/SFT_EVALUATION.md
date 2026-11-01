@@ -4,7 +4,7 @@
 
 新 SFT 正式测评**统一使用最小记录版官方入口** `scripts/eval_policy_xpolicylab_official_trace.py`，一次运行同时得到成功率与后续冻结 D 评价所需轨迹，不再为 D 重测。它保留固定版官方场景/指令/策略控制逻辑，仅新增被动记录；应称为“官方控制逻辑加被动记录”，不能称为完全未修改的官方脚本。历史 `policy_eval_record.py` 与旧综合扩展 `eval_policy_xpolicylab.py` 均不是新入口；后者测评逻辑已移除，同名文件只保留旧 HIL/DAgger 的导入兼容函数。运行前冻结 RoboTwin 提交、任务/指令文件、`demo_clean` 配置、策略服务加载的 checkpoint、训练配置与 `norm_stats`；`--ckpt_setting` 只是结果目录标识，不能证明服务实际加载的权重。
 
-在 `prepare_runtime.py` 生成的隔离运行副本根目录、策略服务已启动后，`handover_block` 的单进程 **50 集接口示例**是：
+在由固定版 `RoboTwin/` 复制、**仅增加两份记录文件而不叠加 HIL `_base_task.py`** 的隔离运行副本根目录、策略服务已启动后，`handover_block` 的单进程 **50 集接口示例**是（副本准备和逐文件核验见[记录说明](OFFICIAL_INTERFACE_TRACE.md)）：
 
 ```bash
 python scripts/eval_policy_xpolicylab_official_trace.py \
