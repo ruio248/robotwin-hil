@@ -1,5 +1,7 @@
 # Fixed-window coverage-guided enhanced sampling
 
+> 历史实验说明：旧综合 `eval_policy_xpolicylab.py` 测评实现已从当前 overlay 移除；本页旧命令不再可直接运行。新 SFT 正式测评统一使用 [最小记录版官方入口](../sft/OFFICIAL_INTERFACE_TRACE.md)，其中**不启用**增强采样。需要复现本页历史实验时应使用对应历史提交及归档环境，不能把新入口改成增强采样模式。
+
 Based on `tail-coverage-value-v2` (`74af6f1`). Entry point:
 `RoboTwin/scripts/eval_policy_xpolicylab.py`, opt in with `--es-mode enhanced`.
 Default `off` preserves the existing single-policy-call evaluation path.

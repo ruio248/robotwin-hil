@@ -7,7 +7,7 @@ RoboTwin 上的 HIL / HG-DAgger、增强采样、专家支撑函数 D 与策略�
 
 | 路径 | 用途 |
 | --- | --- |
-| [`RoboTwin/`](RoboTwin/) | **原样保留**的官方 RoboTwin Git submodule，固定在 [`6dde57155eaf`](https://github.com/RoboTwin-Platform/RoboTwin/commit/6dde57155eafa3e4ebf6ad1f93a7cf7d5d41a755)；其中官方 `XPolicyLab` submodule 固定在 `fa431ecd893ee706883e64fe5fe1464ec8cd928d`。不要直接在此目录修改实验代码。 |
+| [`RoboTwin/`](RoboTwin/) | **原样保留**的官方 RoboTwin Git submodule，固定在 [`4c5c753d66c5`](https://github.com/RoboTwin-Platform/RoboTwin/commit/4c5c753d66c54c3f6ce855ddf426bcaf3e327250)，包含 PR #510 的 `handover_block` 指令修复；其中官方 `XPolicyLab` submodule 仍固定在 `fa431ecd893ee706883e64fe5fe1464ec8cd928d`。不要直接在此目录修改实验代码。 |
 | [`robotwin_hil/`](robotwin_hil/) | 本项目的自定义任务、HIL/DAgger、采样、D、策略适配和评测代码。`overlay/` 按 RoboTwin 的相对路径存放历史扩展，`compat/XPolicyLab/` 保留当时使用的策略适配源码，`local_serving/` 和 `eval/` 为额外入口。 |
 | [`experiments/`](experiments/) | 每次实验专属配置、运行和统计脚本；实验协议不得与其他实验静默混用。 |
 | [`docs/`](docs/) | 方法、测评协议、实验结果和迁移说明。 |
@@ -36,7 +36,7 @@ Ubuntu 的 `/hdd` 环境可在仓库根目录运行 `bash robotwin_hil/enter_ubu
 
 ```bash
 python scripts/hg_dagger_handover.py --help
-python scripts/eval_policy_xpolicylab.py --help
+python scripts/eval_policy_xpolicylab_official_trace.py --help
 python -m unittest discover -s scripts/tests -p 'test_*.py'
 ```
 

@@ -18,7 +18,7 @@ import tempfile
 from datetime import datetime, timezone
 
 
-UPSTREAM_COMMIT = "6dde57155eafa3e4ebf6ad1f93a7cf7d5d41a755"
+UPSTREAM_COMMIT = "4c5c753d66c54c3f6ce855ddf426bcaf3e327250"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE = REPO_ROOT / "RoboTwin"
 OVERLAY = REPO_ROOT / "robotwin_hil" / "overlay"

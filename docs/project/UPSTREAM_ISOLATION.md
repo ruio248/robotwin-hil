@@ -2,7 +2,7 @@
 
 ## 版本边界
 
-- 官方 RoboTwin 固定为 `6dde57155eafa3e4ebf6ad1f93a7cf7d5d41a755`（2026-09-14，早于本项目初次导入）。它以 `RoboTwin/` Git submodule 形式存在，不能承载本项目的修改。
+- 官方 RoboTwin 现固定为 `4c5c753d66c54c3f6ce855ddf426bcaf3e327250`（PR #510 合并提交）；原固定版本为 `6dde57155eafa3e4ebf6ad1f93a7cf7d5d41a755`。两版之间仅 `handover_block` 和 `rotate_qrcode` 的指令 JSON 发生变化。它以 `RoboTwin/` Git submodule 形式存在，不能承载本项目的修改。
 - 该版本内部的官方 XPolicyLab Git submodule 固定为 `fa431ecd893ee706883e64fe5fe1464ec8cd928d`。
 - 迁移前的本地 `RoboTwin/` 相对此官方提交有 246 个新增文件、9 个修改文件，以及一份展开并含 Pi0.5 定制代码的 XPolicyLab。新增与修改的 RoboTwin 相对路径已迁至 `robotwin_hil/overlay/`；历史 XPolicyLab 版本保留在 `robotwin_hil/compat/XPolicyLab/`。
 

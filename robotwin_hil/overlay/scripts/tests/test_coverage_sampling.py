@@ -545,6 +545,7 @@ class RolloutTests(unittest.TestCase):
             self.assertEqual(records[-1]["active_executed_scores"], 0)
 
 
+@unittest.skip("Retired combined evaluator; new SFT tests target official_trace")
 class EvaluatorIntegrationTests(unittest.TestCase):
     """Run the actual evaluator function, with the simulator/server injected.
 
