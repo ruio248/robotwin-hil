@@ -198,7 +198,8 @@ class SamplingTests(unittest.TestCase):
             ManualSamplingWindow(0)
 
     def test_viewer_sampling_key_is_edge_triggered(self):
-        source = Path(__file__).resolve().parents[1] / "hg_dagger_handover.py"
+        from dagger import takeover
+        source = Path(takeover.__file__)
         tree = ast.parse(source.read_text())
         tree.body = [node for node in tree.body if isinstance(node, ast.ClassDef)
                      and node.name == "HumanInterventionInput"]
@@ -251,7 +252,8 @@ class SamplingTests(unittest.TestCase):
         self.assertEqual(vanilla_record["weights"], [.25] * 4)
 
     def test_live_substeps_draw_but_lookahead_never_reaches_viewer(self):
-        source = Path(__file__).resolve().parents[1] / "hg_dagger_handover.py"
+        from dagger import viewer
+        source = Path(viewer.__file__)
         tree = ast.parse(source.read_text())
         tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef)
                      and node.name == "install_viewer_frame_limit"]
@@ -403,10 +405,16 @@ class SamplingTests(unittest.TestCase):
             "HIL_ONE_STAGE_PAIRED_REPORT": "/tmp/baseline-session.json",
             "HIL_ES_GAUSSIAN_SIGMA": "0.0115",
         })
-        command = subprocess.check_output(
-            ["bash", str(repo / "local_serving/run_one_stage_dagger.sh")],
-            env=env, text=True,
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = Path(tmp)
+            (runtime / "dagger").mkdir()
+            (runtime / "dagger/runner.py").write_text("# dry-run fixture\n")
+            env["ROBOTWIN_ROOT"] = str(runtime)
+            command = subprocess.check_output(
+                ["bash", str(repo / "local_serving/run_one_stage_dagger.sh")],
+                env=env, text=True,
+            )
+        self.assertIn("-m dagger.runner --task handover_to_tray", command)
         for part in ("--es-mode gaussian", "--es-num-candidates 32",
                      "--es-policy-microbatch 32", "--es-horizon 10",
                      "--es-gaussian-sigma 0.0115", "--frequency 30"):

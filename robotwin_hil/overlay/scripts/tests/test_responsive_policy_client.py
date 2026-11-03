@@ -15,6 +15,12 @@ import unittest
 
 def client_class():
     source = Path(__file__).resolve().parents[2] / "XPolicyLab/client_server/ws/model_client.py"
+    if not source.is_file():
+        source = next(
+            parent / "robotwin_hil/compat/XPolicyLab/client_server/ws/model_client.py"
+            for parent in Path(__file__).resolve().parents
+            if (parent / "robotwin_hil/compat/XPolicyLab/client_server/ws/model_client.py").is_file()
+        )
     tree = ast.parse(source.read_text())
     tree.body = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "WsModelClient"]
     namespace = dict(globals())
@@ -85,7 +91,8 @@ class ResponsiveClientTests(unittest.TestCase):
         self.assertIsNone(client._wait_callback)
 
     def test_hil_sampling_functions_actually_enable_responsive_wait(self):
-        source = Path(__file__).resolve().parents[1] / "hg_dagger_handover.py"
+        from dagger import runner
+        source = Path(runner.__file__)
         tree = ast.parse(source.read_text())
         functions = {n.name: n for n in ast.walk(tree)
                      if isinstance(n, ast.FunctionDef) and n.name in {"sample_chunk", "sample_candidates"}}

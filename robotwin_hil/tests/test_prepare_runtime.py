@@ -18,8 +18,14 @@ class PrepareRuntimeTest(unittest.TestCase):
             source = base / "RoboTwin"
             overlay = base / "overlay"
             policy = base / "compat" / "XPolicyLab"
+            dagger = base / "dagger"
             target = base / "outputs" / "RoboTwin"
             (source / "envs").mkdir(parents=True)
+            dagger.mkdir()
+            (dagger / "runner.py").write_text("runner\n")
+            (dagger / "__init__.py").write_text("")
+            (dagger / "__pycache__").mkdir()
+            (dagger / "__pycache__" / "runner.pyc").write_bytes(b"cache")
             (overlay / "envs").mkdir(parents=True)
             (policy / "policy" / "Pi_05_RobotTwin").mkdir(parents=True)
             (source / "envs" / "_base_task.py").write_text("official\n")
@@ -32,6 +38,7 @@ class PrepareRuntimeTest(unittest.TestCase):
             with mock.patch.object(prepare_runtime, "SOURCE", source), \
                  mock.patch.object(prepare_runtime, "OVERLAY", overlay), \
                  mock.patch.object(prepare_runtime, "POLICY_COMPAT", policy), \
+                 mock.patch.object(prepare_runtime, "DAGGER", dagger), \
                  mock.patch.object(prepare_runtime, "_git", side_effect=lambda *args: prepare_runtime.UPSTREAM_COMMIT if args[0] == "rev-parse" else ""):
                 prepare_runtime.build(target)
                 self.assertEqual((target / "envs" / "_base_task.py").read_text(), "extended\n")
@@ -40,12 +47,19 @@ class PrepareRuntimeTest(unittest.TestCase):
                 self.assertTrue((target / "XPolicyLab" / "policy" / "Pi_05_RobotTwin" / "adapter.py").is_file())
                 metadata = json.loads((target / prepare_runtime.METADATA_NAME).read_text())
                 self.assertEqual(metadata["overlay_files"], 2)
+                self.assertEqual((target / "dagger" / "runner.py").read_text(), "runner\n")
+                self.assertFalse((target / "dagger" / "__pycache__").exists())
+                (dagger / "__pycache__" / "runner.pyc").write_bytes(b"new cache")
                 prepare_runtime.build(target)  # idempotent
+                (dagger / "runner.py").write_text("updated runner\n")
+                with self.assertRaisesRegex(RuntimeError, "--rebuild"):
+                    prepare_runtime.build(target)
                 (overlay / "envs" / "_base_task.py").write_text("updated\n")
                 with self.assertRaisesRegex(RuntimeError, "--rebuild"):
                     prepare_runtime.build(target)
                 prepare_runtime.build(target, rebuild=True)
                 self.assertEqual((target / "envs" / "_base_task.py").read_text(), "updated\n")
+                self.assertEqual((target / "dagger" / "runner.py").read_text(), "updated runner\n")
                 self.assertEqual(len(list(target.parent.glob("RoboTwin.backup-*"))), 1)
 
 

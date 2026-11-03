@@ -22,6 +22,7 @@ UPSTREAM_COMMIT = "4c5c753d66c54c3f6ce855ddf426bcaf3e327250"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE = REPO_ROOT / "RoboTwin"
 OVERLAY = REPO_ROOT / "robotwin_hil" / "overlay"
+DAGGER = REPO_ROOT / "dagger"
 POLICY_COMPAT = REPO_ROOT / "robotwin_hil" / "compat" / "XPolicyLab"
 DEFAULT_TARGET = REPO_ROOT / "outputs" / "robotwin_hil_runtime" / "RoboTwin"
 METADATA_NAME = ".robotwin_hil_runtime.json"
@@ -40,15 +41,22 @@ def _check_upstream() -> None:
         raise RuntimeError("RoboTwin submodule is not initialized")
     if not (OVERLAY / "envs" / "handover_to_tray.py").is_file():
         raise RuntimeError("HIL overlay is incomplete")
+    if not (DAGGER / "runner.py").is_file():
+        raise RuntimeError("Top-level dagger package is incomplete")
     if not (POLICY_COMPAT / "policy" / "Pi_05_RobotTwin").is_dir():
         raise RuntimeError("HIL XPolicyLab compatibility source is incomplete")
 
 
 def _source_fingerprint() -> str:
     digest = hashlib.sha256()
-    for label, root in (("overlay", OVERLAY), ("policy_compat", POLICY_COMPAT)):
+    for label, root in (("overlay", OVERLAY), ("policy_compat", POLICY_COMPAT), ("dagger", DAGGER)):
         for path in sorted(p for p in root.rglob("*") if p.is_file() or p.is_symlink()):
             relative = path.relative_to(root).as_posix()
+            if label == "dagger" and (
+                "__pycache__" in path.relative_to(root).parts
+                or path.suffix in {".pyc", ".pyo"}
+            ):
+                continue
             digest.update(f"{label}/{relative}\0".encode())
             if path.is_symlink():
                 digest.update(f"link:{os.readlink(path)}".encode())
@@ -102,6 +110,10 @@ def build(target: Path = DEFAULT_TARGET, *, rebuild: bool = False) -> Path:
         )
         shutil.copytree(POLICY_COMPAT, staging / "XPolicyLab", symlinks=True)
         overlay_count = _copy_overlay(staging)
+        shutil.copytree(
+            DAGGER, staging / "dagger", symlinks=True,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+        )
         (staging / METADATA_NAME).write_text(
             json.dumps(
                 {
@@ -109,7 +121,7 @@ def build(target: Path = DEFAULT_TARGET, *, rebuild: bool = False) -> Path:
                     "extension_sha256": fingerprint,
                     "overlay_files": overlay_count,
                     "built_at_utc": datetime.now(timezone.utc).isoformat(),
-                    "source": "robotwin_hil/overlay + robotwin_hil/compat/XPolicyLab",
+                    "source": "robotwin_hil/overlay + robotwin_hil/compat/XPolicyLab + dagger",
                 },
                 indent=2,
             )

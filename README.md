@@ -9,6 +9,7 @@ RoboTwin 上的 HIL / HG-DAgger、增强采样、专家支撑函数 D 与策略�
 | --- | --- |
 | [`RoboTwin/`](RoboTwin/) | **原样保留**的官方 RoboTwin Git submodule，固定在 [`4c5c753d66c5`](https://github.com/RoboTwin-Platform/RoboTwin/commit/4c5c753d66c54c3f6ce855ddf426bcaf3e327250)，包含 PR #510 的 `handover_block` 指令修复；其中官方 `XPolicyLab` submodule 仍固定在 `fa431ecd893ee706883e64fe5fe1464ec8cd928d`。不要直接在此目录修改实验代码。 |
 | [`robotwin_hil/`](robotwin_hil/) | 本项目的自定义任务、HIL/DAgger、采样、D、策略适配和评测代码。`overlay/` 按 RoboTwin 的相对路径存放历史扩展，`compat/XPolicyLab/` 保留当时使用的策略适配源码，`local_serving/` 和 `eval/` 为额外入口。 |
+| [`dagger/`](dagger/README.md) | 交互式 DAgger 主循环、接管、记录、窗口与逐任务 adapter；新共享入口目前接入 `handover_to_tray`，旧多任务采集器保持各自协议。 |
 | [`experiments/`](experiments/) | 每次实验专属配置、运行和统计脚本；实验协议不得与其他实验静默混用。 |
 | [`docs/`](docs/) | 方法、测评协议、实验结果和迁移说明。 |
 | [`README.md`](README.md) | 版本、结构、入口与基本复现步骤。 |
@@ -36,11 +37,14 @@ Ubuntu 的 `/hdd` 环境可在仓库根目录运行 `bash robotwin_hil/enter_ubu
 
 ```bash
 python scripts/hg_dagger_handover.py --help
+python -m dagger.runner --help
 python scripts/eval_policy_xpolicylab_official_trace.py --help
 python -m unittest discover -s scripts/tests -p 'test_*.py'
 ```
 
 `robotwin_hil/overlay/envs/handover_to_tray.py` 与对应 `env_cfg/`、指令文件定义自定义任务；`overlay/scripts/` 包含 HIL/DAgger、增强采样、D 训练和评测入口；`compat/XPolicyLab/policy/Pi_05_RobotTwin/` 是 Pi0.5 适配器。具体实验参数、checkpoint 和 seed 必须使用相应实验文档，不要从上述通用示例推断。参见 [`docs/tasks/HANDOVER_TO_TRAY_FULL_PIPELINE.md`](docs/tasks/HANDOVER_TO_TRAY_FULL_PIPELINE.md)、[`docs/hg_dagger/ONE_STAGE_DAGGER_PROTOCOL_20261013.md`](docs/hg_dagger/ONE_STAGE_DAGGER_PROTOCOL_20261013.md) 与 [`docs/tasks/ROBOTWIN_DAGGER_TASK_SCREENING_20261024.md`](docs/tasks/ROBOTWIN_DAGGER_TASK_SCREENING_20261024.md)。
+
+`handover_to_tray` 的采集实现已迁至顶层 [`dagger/`](dagger/README.md)，旧脚本只保留兼容入口。运行目录构建器会复制该包并检查其指纹；窗口、阶段确认、raw 记录和任务恢复的代码位置与新启动示例见上述说明。
 
 文档已按 SFT、专家支撑函数 D、HG-DAgger、采样方法、任务、历史 Coverage 实验和项目协议分类；入口见 [`docs/README.md`](docs/README.md)。其中 11 篇流程说明只给出操作与指标口径，带日期的历史记录另行归档，不把某次结果写成通用结论。
 

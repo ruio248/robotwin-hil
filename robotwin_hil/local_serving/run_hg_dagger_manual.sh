@@ -5,7 +5,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export ROBOTWIN_HIL_ROOT="$repo_root"
 runtime_root="${ROBOTWIN_ROOT:-$repo_root/outputs/robotwin_hil_runtime/RoboTwin}"
-[[ -f "$runtime_root/scripts/hg_dagger_handover.py" ]] || {
+[[ -f "$runtime_root/dagger/runner.py" ]] || {
   echo "HIL runtime missing: run python3 -m robotwin_hil.prepare_runtime in $repo_root" >&2
   exit 1
 }
@@ -98,7 +98,8 @@ if [[ "$sampling_mode" != off ]]; then
 fi
 
 run_args=(
-  python -u scripts/hg_dagger_handover.py
+  python -u -m dagger.runner
+  --task handover_to_tray
   --host 127.0.0.1
   --port "${MANUAL_POLICY_PORT:-18300}"
   --policy-name "${MANUAL_POLICY_NAME:-Pi_05_RobotTwin}"
