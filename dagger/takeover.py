@@ -89,7 +89,22 @@ class HumanInterventionInput:
                 return event
         return None
 
+    def _pump_viewer(self) -> None:
+        """Service desktop events on the main thread without advancing physics."""
+        viewer = getattr(self.task_env, "viewer", None)
+        if viewer is None or getattr(viewer, "closed", False):
+            return
+        pump = getattr(viewer, "pump_events", None)
+        if callable(pump):
+            pump()
+        else:
+            # The native SAPIEN viewer processes input as part of rendering.
+            render = getattr(viewer, "render", None)
+            if callable(render):
+                render()
+
     def poll(self) -> str | None:
+        self._pump_viewer()
         return self._poll_viewer() or self._poll_terminal()
 
     def read_line(self, prompt: str) -> str:
@@ -105,7 +120,17 @@ class HumanInterventionInput:
         sys.stdout.flush()
         try:
             termios.tcsetattr(self._fd, termios.TCSADRAIN, self._term_attrs)
-            line = sys.stdin.readline()
+            while True:
+                self._pump_viewer()
+                if getattr(getattr(self.task_env, "viewer", None), "closed", False):
+                    raise OperatorInterrupt("quit")
+                readable, _, _ = select.select([self._fd], [], [], 0.02)
+                if readable:
+                    # Canonical TTY mode makes the fd readable after Enter.
+                    line = sys.stdin.readline()
+                    if not line:
+                        raise OperatorInterrupt("quit")
+                    break
         except (OSError, termios.error, ValueError):
             line = ""
         finally:
@@ -122,9 +147,11 @@ def prompt_choice(
 ) -> str:
     """Block until the supervisor emits one of the configured key events."""
     print(prompt, flush=True)
-    with HumanInterventionInput(task_env, choices) as poller:
+    with HumanInterventionInput(task_env, {**choices, "q": "quit"}) as poller:
         while True:
             event = poller.poll()
+            if event == "quit":
+                raise OperatorInterrupt("quit")
             if event in choices.values():
                 return event
             time.sleep(0.02)
@@ -150,13 +177,36 @@ def choose_recovery_stage(task_env, keyboard, adapter=None):
     choices = "/".join(str(stage) for stage in sorted(labels))
     while True:
         answer = keyboard.read_line(
-            f"\n阶段判断正确吗? [Y/Enter]=确认自动, 输入 {choices} 重选, q=取消本次接管: "
+            f"\n阶段判断正确吗? [Y/Enter]=确认自动, 输入 {choices} 重选, q/r=取消接管并交还策略: "
         ).strip().lower()
-        if answer in ("", "y", "yes"):
-            return adapter.recovery_stage_iterator(task_env), None
-        if answer == "q":
+        if answer in ("q", "r"):
             return None, None
-        if answer.isdigit() and int(answer) in labels:
+        if answer in ("", "y", "yes"):
+            chosen = None
+        elif answer.isdigit() and int(answer) in labels:
             chosen = int(answer)
-            return adapter.recovery_stage_iterator(task_env, start_stage_id=chosen), chosen
-        print(f"无效输入，请输入 Y / {choices} / q")
+        else:
+            print(f"无效输入，请输入 Y / {choices} / q / r")
+            continue
+        state = adapter.infer_recovery_state(task_env)
+        reason = adapter.recovery_stage_rejection(state, chosen)
+        if reason:
+            print(f"[HG-DAGGER] 阶段选择未执行：{reason}。本局未结束，现场保持不动。", flush=True)
+            print("请重选可执行阶段；q/r 取消本次接管。阶段编号不能覆盖抓持/支撑前置条件。", flush=True)
+            metadata = getattr(task_env, "episode_metadata", {})
+            metadata.setdefault("recovery_selection_rejections", []).append(
+                {"chosen_stage_id": chosen, "reason": reason, "state": state,
+                 "frame_idx": getattr(task_env, "FRAME_IDX", None)}
+            )
+            if isinstance(keyboard, HumanInterventionInput) and keyboard._fd is None:
+                # read_line returns empty without a TTY; do not spin forever or
+                # silently turn a rejected choice into an accepted intervention.
+                print("[HG-DAGGER] 无交互终端，取消被拒绝的接管。", flush=True)
+                return None, None
+            continue
+        kwargs = {"start_stage_id": chosen}
+        if state.get("clearance_candidate") is not None:
+            kwargs["confirmed_clearance"] = True
+        if state.get("partial_place_candidate") is not None:
+            kwargs["confirmed_partial_place"] = True
+        return adapter.recovery_stage_iterator(task_env, **kwargs), chosen

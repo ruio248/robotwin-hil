@@ -22,6 +22,39 @@ export HIL_CHUNK_OBSERVATIONS="${HIL_CHUNK_OBSERVATIONS:-1}"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
 
+task_name="${MANUAL_TASK_NAME:-handover_to_tray}"
+case "$task_name" in
+  handover_to_tray)
+    default_policy=Pi_05_RobotTwin
+    default_port=18300
+    default_checkpoint=v2_promptfix_9999
+    default_config=handover_to_tray_v2_promptfix
+    default_frequency=30
+    ;;
+  stack_blocks_three)
+    default_policy=Pi_05
+    default_port=18510
+    default_checkpoint=stack_blocks_three_official50_4999
+    default_config=demo_clean
+    default_frequency=50
+    ;;
+  rotate_qrcode|place_empty_cup|handover_block)
+    default_policy=Pi_05
+    default_config=demo_clean
+    default_frequency=50
+    default_checkpoint="${task_name}_official50_4999"
+    case "$task_name" in
+      rotate_qrcode) default_port=18511 ;;
+      place_empty_cup) default_port=18512 ;;
+      handover_block)
+        default_port=18513
+        default_checkpoint=handover_block_pr510_official50_4999
+        ;;
+    esac
+    ;;
+  *) echo "Unsupported MANUAL_TASK_NAME=$task_name" >&2; exit 2 ;;
+esac
+
 sampling_mode="${HIL_ES_MODE:-off}"
 case "$sampling_mode" in off|vanilla|enhanced|gaussian) ;; *) echo "Invalid HIL_ES_MODE=$sampling_mode" >&2; exit 2 ;; esac
 activation="${HIL_ES_ACTIVATION:-fixed}"
@@ -48,6 +81,9 @@ else
   auto_save="${MANUAL_AUTO_SAVE:-none}"
   episodes="${MANUAL_MAX_ROLLOUTS:-200}"
   default_output="$repo_root/outputs/hg_dagger_collection_r1"
+  if [[ "$task_name" != handover_to_tray ]]; then
+    default_output="$repo_root/outputs/dagger/$task_name/collection_r1"
+  fi
 fi
 output_dir="${MANUAL_OUTPUT_DIR:-$default_output}"
 resume_collection="${HIL_RESUME:-0}"
@@ -99,26 +135,29 @@ fi
 
 run_args=(
   python -u -m dagger.runner
-  --task handover_to_tray
+  --task "$task_name"
   --host 127.0.0.1
-  --port "${MANUAL_POLICY_PORT:-18300}"
-  --policy-name "${MANUAL_POLICY_NAME:-Pi_05_RobotTwin}"
-  --ckpt-name "${MANUAL_CKPT_NAME:-v2_promptfix_9999}"
-  --task-config "${MANUAL_TASK_CONFIG:-handover_to_tray_v2_promptfix}"
+  --port "${MANUAL_POLICY_PORT:-$default_port}"
+  --policy-name "${MANUAL_POLICY_NAME:-$default_policy}"
+  --ckpt-name "${MANUAL_CKPT_NAME:-$default_checkpoint}"
+  --task-config "${MANUAL_TASK_CONFIG:-$default_config}"
   --seed-start "${MANUAL_SEED_START:-40000}"
   --seed-mode "$seed_mode"
   --seed-min "${MANUAL_SEED_MIN:-40000}"
   --seed-max "${MANUAL_SEED_MAX:-99999}"
   --episodes "$episodes"
-  --target-saved "${MANUAL_TARGET_SAVED:-50}"
+  --target-saved "${MANUAL_TARGET_SAVED:-20}"
   --target-mode "${MANUAL_TARGET_MODE:-hil}"
   --render-freq "${MANUAL_RENDER_FREQ:-10}"
-  --frequency "${MANUAL_FREQUENCY:-30}"
+  --frequency "${MANUAL_FREQUENCY:-$default_frequency}"
   --save-data "$save_data"
   --auto-save "$auto_save"
   --output-dir "$output_dir"
   "${sampling_args[@]}"
 )
+if [[ -n "${MANUAL_MAX_SCENE_ATTEMPTS:-}" ]]; then
+  run_args+=(--max-scene-attempts "$MANUAL_MAX_SCENE_ATTEMPTS")
+fi
 case "${MANUAL_SAVE_POLICY_ROLLOUTS:-0}" in
   0) ;;
   1) run_args+=(--save-policy-rollouts) ;;
@@ -147,39 +186,15 @@ if [[ "${HIL_DRY_RUN:-0}" == 1 ]]; then
   exit 0
 fi
 
-# Remote desktop reconnects can move the X11 session (for example :1 -> :10).
-# Prefer a working inherited display, then discover the active graphical session.
-display_auth="${XAUTHORITY:-$HOME/.Xauthority}"
-display_works() {
-  DISPLAY="$1" XAUTHORITY="$2" xwininfo -root >/dev/null 2>&1
-}
+# HIL_DESKTOP=local explicitly selects the physical monitor, even over SSH.
+# auto preserves an accessible inherited DISPLAY; otherwise it looks for local.
+# remote selects xrdp, which is a separate desktop and does not mirror seat0.
 if ! command -v xwininfo >/dev/null 2>&1; then
   echo "Missing xwininfo; install x11-utils to check the desktop display." >&2
   exit 1
 fi
-if [[ -z "${DISPLAY:-}" ]] || ! display_works "$DISPLAY" "$display_auth"; then
-  found_display=""
-  if command -v loginctl >/dev/null 2>&1; then
-    while read -r session_id session_uid session_user _; do
-      [[ "$session_user" == "$(id -un)" ]] || continue
-      [[ "$(loginctl show-session "$session_id" -p Type --value 2>/dev/null)" == "x11" ]] || continue
-      [[ "$(loginctl show-session "$session_id" -p Active --value 2>/dev/null)" == "yes" ]] || continue
-      candidate="$(loginctl show-session "$session_id" -p Display --value 2>/dev/null)"
-      if [[ -n "$candidate" ]] && display_works "$candidate" "$display_auth"; then
-        found_display="$candidate"
-        break
-      fi
-    done < <(loginctl list-sessions --no-legend 2>/dev/null)
-  fi
-  if [[ -z "$found_display" ]]; then
-    echo "No accessible X11 desktop. DISPLAY=${DISPLAY:-<unset>} XAUTHORITY=$display_auth" >&2
-    echo "Open a terminal inside the active Ubuntu remote desktop, or reconnect it, then retry." >&2
-    exit 1
-  fi
-  echo "[HIL-VIEWER] using active desktop DISPLAY=$found_display (previous: ${DISPLAY:-<unset>})"
-  export DISPLAY="$found_display"
-fi
-export XAUTHORITY="$display_auth"
+display_settings="$(cd "$repo_root" && PYTHONPATH="$repo_root${PYTHONPATH:+:$PYTHONPATH}" python3 -m dagger.desktop --target "${HIL_DESKTOP:-auto}")"
+eval "$display_settings"
 if [[ "${HIL_DISPLAY_CHECK_ONLY:-0}" == 1 ]]; then
   echo "[HIL-VIEWER] desktop connection ready: DISPLAY=$DISPLAY"
   exit 0

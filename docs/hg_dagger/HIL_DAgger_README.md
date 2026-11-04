@@ -90,8 +90,8 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 > 采集阶段不生成 MP4/HDF5，只落原始帧；视频和 LeRobot 转换在离线阶段用
 > `export_hg_dagger_dataset.py` 完成（见 4.1 节）。
 
-`--target-saved`（默认 10）是**有效 HIL 条数**的目标：程序会一直跑 rollout，
-直到累计保存了 10 条有效 episode 才停；`--episodes` 是 rollout 次数上限。
+这里的“默认 10”仅指本节历史 `scripts/hg_dagger_handover.py` 入口。当前顶层 `dagger.runner` 和普通启动器 `run_hg_dagger_manual.sh` 默认目标已是 **20**，并显示逐局进度条；参见 [当前执行说明](HG_DAGGER_EXECUTION.md#现场操作与记录)。`--target-saved` 是**有效 HIL 条数**的目标：程序会一直跑 rollout，
+上面的历史示例会在累计保存 10 条有效 episode 后停止；`--episodes` 是 rollout 次数上限。
 session 报告里会记录 `total_rollouts`、每个 rollout 的 `rollout_seconds`、
 `total_seconds` 和 `seconds_per_saved_episode`。
 

@@ -112,7 +112,8 @@ def inspect_collection(output_dir: Path, *, target_mode: str, expected: dict[str
     logs = list(_sampling_logs(output_dir))
     if not resume:
         unfinished = any((output_dir / ".cache").glob("episode*"))
-        if raw or saved_index or reports or logs or unfinished:
+        screening = output_dir / "scene_screening.jsonl"
+        if raw or saved_index or reports or logs or unfinished or (screening.exists() and screening.stat().st_size):
             raise ValueError(f"Collection data already exists in {output_dir}; use --resume")
         return CollectionProgress(0, 0, 0, 0, [], set(), 0.0, None)
     if not reports:
@@ -147,8 +148,9 @@ def inspect_collection(output_dir: Path, *, target_mode: str, expected: dict[str
         used_seeds.add(int(episode["seed"]))
         hil_frames = int(record.get("hil_frames") or sum(
             str(source).lower() == "hil" for source in episode.get("control_mask", [])))
-        if hil_frames > 0 and (target_mode != "expert" or
-                               bool((record.get("expert_result") or {}).get("success"))):
+        eligible = (record["accepted_for_training"] is True if "accepted_for_training" in record
+                    else target_mode != "expert" or bool((record.get("expert_result") or {}).get("success")))
+        if hil_frames > 0 and eligible:
             valid_hil += 1
 
     max_log_index = -1
@@ -165,7 +167,7 @@ def inspect_collection(output_dir: Path, *, target_mode: str, expected: dict[str
             }
     if int(report.get("saved_episodes", 0)) > len(raw):
         raise ValueError("Session report references saved episodes missing from raw data")
-    if int(report.get("saved_hil_episodes", 0)) > valid_hil:
+    if int(report.get("saved_valid_hil_episodes", report.get("saved_hil_episodes", 0))) > valid_hil:
         raise ValueError("Session report references valid HIL episodes missing from raw data")
     hdf5_indexes = [int(match.group(1)) for path in (output_dir / "data").glob("episode_*.hdf5")
                     if (match := RAW_NAME.fullmatch(path.stem))]

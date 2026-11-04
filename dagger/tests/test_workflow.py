@@ -1,7 +1,10 @@
 """CPU regressions for the migrated collector, without a simulator/server."""
 from __future__ import annotations
 
+import ast
 import importlib
+from collections.abc import Mapping, Sequence
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -30,14 +33,27 @@ class FakeEnv:
         self.expert_stages = 0
         self.recoveries = 0
         self.closed = False
+        self.viewer_refreshes = 0
+        self.expert_checks = 0
+        self.setups = []
+
+    def _render_viewer_if_available(self):
+        self.viewer_refreshes += 1
 
     def setup_demo(self, now_ep_num, seed, **args):
+        self.setups.append((seed, dict(args)))
+        self.closed = False
         self.episode_seed = seed
         self.eval_success = False
         self.plan_success = True
         self.episode_metadata = {"task": "handover_to_tray", "seed": seed}
         self.info = {}
         self.save_freq = args["save_freq"]
+
+    def play_once(self):
+        self.expert_checks += 1
+        self.eval_success = True
+        return {"info": {"{A}": "red block", "{B}": "green block", "{C}": "blue block"}}
 
     def set_instruction(self, instruction):
         self.instruction = instruction
@@ -90,11 +106,23 @@ class FakeClient:
         self.chunks = 0
         self.resets = 0
         self.closed = False
+        self.wait_callback = None
+        self.horizon = 3
+
+    @contextmanager
+    def responsive_wait(self, callback):
+        self.wait_callback = callback
+        try:
+            yield
+        finally:
+            self.wait_callback = None
 
     def call(self, func_name, **kwargs):
         if func_name == "get_action":
             self.chunks += 1
-            return np.full((3, 14), self.chunks)
+            if self.wait_callback:
+                self.wait_callback()
+            return np.full((self.horizon, 14), self.chunks)
         assert func_name == "update_obs"
 
 
@@ -126,8 +154,16 @@ class FakeKeyboard:
         return None
 
 
-def run_fake(monkeypatch, tmp_path, keyboard=FakeKeyboard):
+def run_fake(monkeypatch, tmp_path, keyboard=FakeKeyboard, auto_save="true", task="handover_to_tray",
+             client_override=None, helper_overrides=None, expect_session_error=False,
+             env_override=None, cli_extra=()):
     env, client = FakeEnv(), FakeClient()
+    if env_override is not None:
+        env = env_override
+    if task == "stack_blocks_three":
+        client.horizon = 50
+    if client_override is not None:
+        client = client_override
     helpers = dict(
         class_decorator=lambda task: env,
         build_policy_client=lambda args: client,
@@ -140,26 +176,133 @@ def run_fake(monkeypatch, tmp_path, keyboard=FakeKeyboard):
         robotwin_obs_to_xpolicylab=lambda obs, **kwargs: obs,
         xpolicylab_action_to_robotwin=lambda action, **kwargs: (action, "qpos"),
         safe_close_env=lambda e, **kwargs: setattr(e, "closed", True),
+        build_instruction=lambda args, info, split, count: f"official seen seed {env.episode_seed}",
     )
+    helpers.update(helper_overrides or {})
     for name, value in helpers.items():
         monkeypatch.setattr(runner, name, value, raising=False)
     monkeypatch.setattr(runner, "_load_runtime_helpers", lambda: None)
     monkeypatch.setattr(runner, "activate_runtime", lambda path: path)
     monkeypatch.setattr(runner, "ROBOTWIN_ROOT", tmp_path)
     monkeypatch.setattr(runner, "build_runtime_args", lambda cli: (
-        {"left_arm_dim": 6, "right_arm_dim": 6}, {"save_freq": cli.save_freq},
+        {"left_arm_dim": 6, "right_arm_dim": 6},
+        {"save_freq": cli.save_freq, "task_name": cli.task, "render_freq": cli.render_freq},
     ))
     monkeypatch.setattr(runner, "HumanInterventionInput", keyboard)
     for name in ("render_initial_frame", "setup_viewer_diagnostics", "install_viewer_frame_limit"):
         monkeypatch.setattr(runner, name, lambda env: None)
     result = runner.main([
+        "--task", task,
         "--runtime-root", str(tmp_path), "--output-dir", str(tmp_path / "session"),
         "--episodes", "1", "--target-saved", "1", "--seed-mode", "sequential",
-        "--save-freq", "1", "--auto-save", "true",
+        "--save-freq", "1", "--auto-save", auto_save,
+        *cli_extra,
     ])
     reports = list((tmp_path / "session").glob("session_*.json"))
-    assert len(reports) == 1
-    return result, env, client, json.loads(reports[0].read_text())
+    assert len(reports) == (0 if expect_session_error else 1)
+    return result, env, client, json.loads(reports[0].read_text()) if reports else None
+
+
+@pytest.fixture
+def action_wire_helpers():
+    # Run the real official converter without importing simulator/GPU modules.
+    source = Path(__file__).resolve().parents[2] / "robotwin_hil/overlay/scripts/eval_policy_xpolicylab_official_trace.py"
+    names = {"normalize_action_chunk", "xpolicylab_action_to_robotwin",
+             "normalize_robotwin_action_type", "action_array", "action_gripper",
+             "first_present", "current_joint_arm", "current_gripper", "current_ee_pose"}
+    tree = ast.parse(source.read_text())
+    tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    namespace = {"np": np, "Mapping": Mapping, "Sequence": Sequence, "Any": object}
+    exec(compile(tree, str(source), "exec"), namespace)
+    return {name: namespace[name] for name in ("normalize_action_chunk", "xpolicylab_action_to_robotwin")}
+
+
+class WireFormatClient(FakeClient):
+    def __init__(self, format_name, invalid=None):
+        super().__init__()
+        self.horizon = 50
+        self.format_name, self.invalid = format_name, invalid
+
+    def call(self, func_name, **kwargs):
+        values = super().call(func_name, **kwargs)
+        if func_name != "get_action":
+            return values
+        values = values.astype(np.float32)
+        if self.invalid == "short":
+            values = values[:10]
+        elif self.invalid == "nonfinite":
+            values[-1, -1] = np.nan
+        if self.format_name != "matrix":
+            values = [{"left_arm_joint_state": row[:6], "left_ee_joint_state": row[6:7],
+                       "right_arm_joint_state": row[7:13], "right_ee_joint_state": row[13:]}
+                      for row in values]
+        return {"actions": values} if self.format_name == "wrapped_dicts" else values
+
+
+def test_decoded_validation_preserves_joint_order_and_response(monkeypatch, action_wire_helpers):
+    from dagger.adapters.stack_blocks_three import StackBlocksThreeAdapter
+
+    expected = np.arange(50 * 14, dtype=np.float32).reshape(50, 14)
+    response = [{"left_arm_joint_state": row[:6].copy(), "left_ee_joint_state": row[6:7].copy(),
+                 "right_arm_joint_state": row[7:13].copy(), "right_ee_joint_state": row[13:].copy()}
+                for row in expected]
+    class Adapter(StackBlocksThreeAdapter):
+        def validate_action_chunk(self, chunk):
+            super().validate_action_chunk(chunk)
+            np.testing.assert_array_equal(chunk, expected)
+
+    monkeypatch.setattr(runner, "xpolicylab_action_to_robotwin",
+                        action_wire_helpers["xpolicylab_action_to_robotwin"], raising=False)
+    runner.validate_policy_action_chunk(Adapter(), response, {})
+    assert all(isinstance(action, dict) for action in response)
+    actual = [np.concatenate(list(action.values())) for action in response]
+    np.testing.assert_array_equal(actual, expected)
+
+
+@pytest.mark.parametrize("physical_ok", [False, True])
+@pytest.mark.parametrize("format_name", ["matrix", "dicts", "wrapped_dicts"])
+def test_stack_records_gate_and_resume_count_match(monkeypatch, tmp_path, physical_ok, format_name,
+                                                  action_wire_helpers):
+    from dagger.adapters.stack_blocks_three import StackBlocksThreeAdapter
+
+    class Adapter(StackBlocksThreeAdapter):
+        def infer_recovery_state(self, env):
+            return {**env.infer_recovery_state(), "reason": None}
+        def recovery_stage_iterator(self, env, start_stage_id=None):
+            return env.recovery_stage_iterator(start_stage_id)
+        def success_metrics(self, env):
+            return {"physical_quality_gate": physical_ok, "recovery_ok": True}
+
+    monkeypatch.setattr(runner, "get_adapter", lambda _: Adapter())
+    code, env, client, report = run_fake(
+        monkeypatch, tmp_path, task="stack_blocks_three",
+        client_override=WireFormatClient(format_name), helper_overrides=action_wire_helpers,
+    )
+    assert code == 0
+    assert env.actions == [1, 2]  # H50 still discards the suffix at each takeover.
+    assert client.chunks == 2  # Validation must not resample the policy.
+    row = report["records"][0]
+    assert row["task"] == "stack_blocks_three"
+    assert row["accepted_for_training"] is physical_ok
+    assert row["diagnostic_only"] is not physical_ok
+    assert not row["autonomous_success"]
+    assert report["saved_valid_hil_episodes"] == int(physical_ok)
+    resumed = runner.inspect_collection(tmp_path / "session", target_mode="hil", resume=True)
+    assert resumed.saved_valid_hil == int(physical_ok)
+
+
+@pytest.mark.parametrize("invalid", ["short", "nonfinite"])
+def test_stack_rejects_invalid_decoded_chunk_before_execution(monkeypatch, tmp_path, invalid,
+                                                             action_wire_helpers):
+    code, env, client, report = run_fake(
+        monkeypatch, tmp_path, task="stack_blocks_three",
+        client_override=WireFormatClient("dicts", invalid), helper_overrides=action_wire_helpers,
+        expect_session_error=True,
+    )
+    assert code != 0
+    assert env.actions == []
+    assert client.chunks == 1
+    assert report is None  # No completed/saved episode can be reported on this error.
 
 
 def test_takeover_handback_and_second_takeover_discard_old_chunk(monkeypatch, tmp_path):
@@ -194,6 +337,93 @@ def test_abort_and_quit_never_save_partial_episode(monkeypatch, tmp_path, event,
     assert client.closed and env.closed
     assert not list((tmp_path / "session").glob("raw/episode_*"))
     assert report["saved_episodes"] == 0
+
+
+def test_quit_at_save_prompt_preserves_unsaved_cache(monkeypatch, tmp_path):
+    def close_window(*args):
+        raise takeover.OperatorInterrupt("quit")
+
+    monkeypatch.setattr(runner, "prompt_choice", close_window)
+    code, env, client, report = run_fake(monkeypatch, tmp_path, auto_save="none")
+    assert code == 130
+    assert env.closed and client.closed
+    assert report["saved_episodes"] == 0
+    assert list((tmp_path / "session/cache").glob("*.pkl"))
+
+
+def test_plain_policy_rpc_services_quit_and_never_executes_interrupted_chunk(monkeypatch, tmp_path):
+    class QuitDuringRPC(FakeKeyboard):
+        def poll(self):
+            return "quit" if self.env.viewer_refreshes else None
+
+    code, env, client, report = run_fake(monkeypatch, tmp_path, QuitDuringRPC)
+    assert code == 130
+    assert client.chunks == 1
+    assert env.viewer_refreshes > 0
+    assert env.actions == []
+    assert report["saved_episodes"] == 0
+
+
+@pytest.mark.parametrize("response", ["handback", "retry", "abort", "quit"])
+def test_failed_expert_waits_for_operator_instead_of_ending_episode(monkeypatch, tmp_path, response):
+    from dagger.adapters.stack_blocks_three import StackBlocksThreeAdapter
+
+    class Adapter(StackBlocksThreeAdapter):
+        def infer_recovery_state(self, env):
+            return {**env.infer_recovery_state(), "reason": None}
+        def recovery_stage_iterator(self, env, start_stage_id=None):
+            env.recoveries += 1
+            if env.recoveries == 1:
+                env._take_picture()
+                yield {"phase": "done", "result": {"success": False, "plan_success": False,
+                                                   "reason": "ambiguous_or_partial_grasp"}}
+            else:
+                env._take_picture()
+                env.eval_success = True
+                yield {"phase": "done", "result": {"success": True, "plan_success": True}}
+        def success_metrics(self, env):
+            # The first failed recovery is retained, never silently made valid.
+            return {"physical_quality_gate": env.eval_success, "recovery_ok": False}
+
+    class Keyboard(FakeKeyboard):
+        def poll(self):
+            if len(self.env.actions) in (1, 2) and len(self.env.actions) not in self.sent:
+                self.sent.add(len(self.env.actions))
+                return "intervene"
+            return None
+
+    prompts = []
+    def decide(env, choices, prompt):
+        assert "本局暂停" in prompt  # Not the trajectory-save/end prompt.
+        assert env.actions == [1] and env.recoveries == 1 and not env.closed
+        assert env.episode_seed == 40000
+        prompts.append(prompt)
+        if response == "quit":
+            raise takeover.OperatorInterrupt("quit")
+        return response
+
+    monkeypatch.setattr(runner, "get_adapter", lambda _: Adapter())
+    monkeypatch.setattr(runner, "prompt_choice", decide)
+    code, env, client, report = run_fake(monkeypatch, tmp_path, keyboard=Keyboard, task="stack_blocks_three")
+    assert len(prompts) == 1
+    assert code == (130 if response == "quit" else 0)
+    assert report["saved_valid_hil_episodes"] == 0
+    if response == "quit":
+        assert list((tmp_path / "session/cache").glob("*.pkl"))
+    elif response == "abort":
+        assert report["records"][0]["rollout_status"] == "aborted"
+        assert env.actions == [1]
+    else:
+        record = report["records"][0]
+        assert env.eval_success and record["diagnostic_only"]
+        assert record["interventions"][0]["recovery_failures"][0]["reason"] == "ambiguous_or_partial_grasp"
+        assert client.chunks == (2 if response == "handback" else 1)
+        assert env.actions == ([1, 2] if response == "handback" else [1])
+        if response == "handback":
+            assert client.resets == 2
+            assert not record["interventions"][0]["expert_done"]
+        else:
+            assert record["interventions"][0]["recovery_retries"]
 
 
 @pytest.mark.parametrize("answers,chosen", [(["y"], None), (["6"], 6), (["invalid", "4"], 4), (["q"], "cancel")])
@@ -241,11 +471,28 @@ def test_compatibility_entry_reexports_same_implementation():
 
 
 def test_unmigrated_task_is_not_silently_routed_to_handover():
-    assert registered_tasks() == ("handover_to_tray",)
+    assert registered_tasks() == ("handover_block", "handover_to_tray", "place_empty_cup", "rotate_qrcode", "stack_blocks_three")
     with pytest.raises(ValueError, match="No shared-runner adapter"):
-        get_adapter("stack_blocks_three")
+        get_adapter("open_microwave")
     with pytest.raises(SystemExit):
-        runner.parse_args(["--task", "handover_block"])
+        runner.parse_args(["--task", "open_microwave"])
+
+
+def test_stack_defaults_and_task_specific_seed_guard():
+    cli = runner.parse_args(["--task", "stack_blocks_three", "--seed-mode", "sequential"])
+    assert (cli.task_config, cli.frequency, cli.policy_name) == ("demo_clean", 50, "Pi_05")
+    assert cli.ckpt_name == "stack_blocks_three_official50_4999"
+    assert cli.instruction is None and cli.episode_protocol == "official-seen"
+    assert cli.instruction_pool_size == 50
+    assert runner.reserved_seed_label(0, cli.task)
+    assert runner.reserved_seed_label(100056, cli.task)
+    assert runner.reserved_seed_label(40000, cli.task) is None
+    cli.seed_start = 50
+    with pytest.raises(ValueError, match="reserved seed"):
+        next(runner.build_seed_stream(cli))
+    for options in (["--one-stage"], ["--es-mode", "enhanced"]):
+        with pytest.raises(SystemExit):
+            runner.parse_args(["--task", "stack_blocks_three", *options])
 
 
 def test_explicit_runtime_sets_cwd_and_missing_runtime_fails_before_chdir(monkeypatch, tmp_path):

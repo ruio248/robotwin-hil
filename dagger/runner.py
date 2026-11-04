@@ -28,6 +28,7 @@ import numpy as np
 
 from dagger.runtime import activate_runtime, configure_imports, runtime_root
 from dagger.adapters import get_adapter, registered_tasks
+from dagger.episode_protocol import SCREEN_LOG, prepare_screened_scene, screening_history
 from dagger.recording import (
     read_json_object, write_json, append_jsonl, append_segment,
     finalize_episode, discard_recovery_cache,
@@ -38,6 +39,7 @@ from dagger.takeover import (
 )
 from dagger.viewer import (
     render_initial_frame, setup_viewer_diagnostics, install_viewer_frame_limit,
+    configure_spectator_camera,
 )
 from dagger.adapters.handover_to_tray import PROMPT, STAGE_LABELS, RESERVED_SEED_RANGES
 
@@ -68,7 +70,7 @@ def _load_runtime_helpers():
     import importlib
     helpers = importlib.import_module("eval_policy_xpolicylab")
     for name in (
-        "build_policy_client", "class_decorator", "close_policy_client",
+        "build_instruction", "build_policy_client", "class_decorator", "close_policy_client",
         "is_episode_end", "load_task_args", "normalize_action_chunk",
         "notify_trial_end", "prepare_policy_case", "reset_policy",
         "robotwin_obs_to_xpolicylab", "safe_close_env",
@@ -78,18 +80,43 @@ def _load_runtime_helpers():
         globals()[name] = getattr(helpers, name)
 
 
-def reserved_seed_label(seed: int) -> str | None:
-    for low, high, label in RESERVED_SEED_RANGES:
+def reserved_seed_label(seed: int, task: str = "handover_to_tray") -> str | None:
+    ranges = RESERVED_SEED_RANGES if task == "handover_to_tray" else get_adapter(task).reserved_seed_ranges
+    for low, high, label in ranges:
         if low <= seed <= high:
             return label
     return None
 
 
+def format_collection_progress(records: list[dict[str, Any]], saved_hil: int,
+                               target: int, max_rollouts: int) -> str:
+    """Display saved-data progress and episode-level takeover rates."""
+    width = 20
+    filled = min(width, width * min(saved_hil, target) // target)
+    bar = "#" * filled + "-" * (width - filled)
+    valid = [row for row in records if int(row.get("policy_steps", 0)) > 0
+             or int(row.get("manual_takeover_requests", 0)) > 0]
+    requests = sum(int(row.get("manual_takeover_requests", 0)) > 0 for row in valid)
+    triggered = sum(int(row.get("intervention_count", 0)) > 0 for row in valid)
+    denominator = len(valid)
+    prefix = (f"[PROGRESS] [{bar}] {saved_hil}/{target} valid saved HIL "
+              f"({100 * min(saved_hil, target) / target:.0f}%); "
+              f"rollouts={len(records)}/{max_rollouts}; ")
+    if not denominator:
+        return prefix + "takeover rate=n/a (no valid rollout)"
+    return (prefix + f"takeover requested={requests}/{denominator} "
+            f"({100 * requests / denominator:.1f}%) "
+            f"triggered={triggered}/{denominator} "
+            f"({100 * triggered / denominator:.1f}%)")
+
+
 def build_seed_stream(cli: argparse.Namespace):
     """Yield collection seeds: sequential from --seed-start, or random in range."""
+    task = getattr(cli, "task", "handover_to_tray")
     if cli.seed_mode == "sequential":
-        for seed in range(int(cli.seed_start), int(cli.seed_start) + int(cli.episodes)):
-            label = reserved_seed_label(seed)
+        count = cli.max_scene_attempts if getattr(cli, "episode_protocol", None) == "official-seen" else cli.episodes
+        for seed in range(int(cli.seed_start), int(cli.seed_start) + int(count)):
+            label = reserved_seed_label(seed, task)
             if label:
                 raise ValueError(
                     f"Refusing to collect DAgger data on reserved seed {seed} ({label}). "
@@ -103,9 +130,11 @@ def build_seed_stream(cli: argparse.Namespace):
     low, high = int(cli.seed_min), int(cli.seed_max)
     if low > high:
         raise ValueError("--seed-min must be <= --seed-max")
-    while True:
+    # A finite pool must terminate instead of spinning when it is exhausted.
+    available = sum(reserved_seed_label(seed, task) is None for seed in range(low, high + 1))
+    while len(used) < available:
         seed = rng.randint(low, high)
-        if seed in used or reserved_seed_label(seed):
+        if seed in used or reserved_seed_label(seed, task):
             continue
         used.add(seed)
         yield seed
@@ -133,6 +162,24 @@ def apply_action_bias(action: np.ndarray, dims: list[int], magnitude: float) -> 
     return biased
 
 
+def validate_policy_action_chunk(adapter, action_chunk, observation) -> None:
+    """Check decoded actions, not the wire format's list of action dictionaries.
+
+    Use the same converter as execution without mutating the response or making
+    another policy query. Keep per-step conversion in the execution loop so its
+    observation-dependent fallbacks and takeover boundaries remain unchanged.
+    """
+    decoded = []
+    for action in action_chunk:
+        flat_action, kind = xpolicylab_action_to_robotwin(
+            action, action_type="joint", current_observation=observation,
+        )
+        if kind != "qpos":
+            raise ValueError(f"{adapter.name} requires absolute joint actions, got {kind}")
+        decoded.append(flat_action)
+    adapter.validate_action_chunk(decoded)
+
+
 def build_runtime_args(cli: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any]]:
     user_args: dict[str, Any] = {
         "task_name": cli.task,
@@ -145,9 +192,9 @@ def build_runtime_args(cli: argparse.Namespace) -> tuple[dict[str, Any], dict[st
         "ckpt_name": cli.ckpt_name,
         "ckpt_setting": cli.ckpt_name,
         "action_type": "joint",
-        "evaluation_id": f"hg-dagger-handover-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
-        "trial_id": "hg-dagger-handover",
-        "action_case_id": "hg-dagger-handover-v2",
+        "evaluation_id": f"hg-dagger-{cli.task}-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+        "trial_id": f"hg-dagger-{cli.task}",
+        "action_case_id": f"hg-dagger-{cli.task}",
     }
     args, _ = load_task_args(user_args)
     args["eval_instruction"] = "seen"
@@ -160,6 +207,7 @@ def build_runtime_args(cli: argparse.Namespace) -> tuple[dict[str, Any], dict[st
     args["save_freq"] = int(cli.save_freq)
     args["render_max_num_materials"] = int(cli.render_max_num_materials)
     args["render_max_num_textures"] = int(cli.render_max_num_textures)
+    configure_spectator_camera(args, os.environ.get("HIL_VIEWER_CAMERA_PRESET", "official"))
     user_args["left_arm_dim"] = len(args["left_embodiment_config"]["arm_joints_name"][0])
     user_args["right_arm_dim"] = len(args["right_embodiment_config"]["arm_joints_name"][1])
     return user_args, args
@@ -179,6 +227,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--runtime-root", type=Path, default=ROBOTWIN_ROOT,
                         help="Generated RoboTwin HIL runtime (or ROBOTWIN_ROOT)")
     parser.add_argument("--instruction", help="Exact instruction for this session")
+    parser.add_argument("--episode-protocol", choices=("official-seen", "legacy-fixed"),
+                        help="official-seen: initial expert check + per-episode official seen prompt")
+    parser.add_argument("--instruction-pool-size", type=int, default=50,
+                        help="Official description pool size (SFT test_num=50); not the rollout count")
+    parser.add_argument("--max-scene-attempts", type=int,
+                        help="Candidate seed budget for official-seen; default 10 times --episodes")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=18300)
     parser.add_argument("--policy-name", default="Pi_05")
@@ -227,12 +281,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--episodes",
         type=int,
         default=50,
-        help="Maximum number of policy rollouts to run (seed_start + index).",
+        help="Maximum policy rollouts; rejected expert-screen candidates do not count.",
     )
     parser.add_argument(
         "--target-saved",
         type=int,
-        default=10,
+        default=20,
         help="Stop once this many valid (saved) HIL episodes have been collected.",
     )
     parser.add_argument("--frequency", type=int, default=None)
@@ -359,14 +413,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     cli.task_config = cli.task_config or adapter.default_task_config
     cli.ckpt_name = cli.ckpt_name or adapter.default_checkpoint_name
     cli.frequency = cli.frequency if cli.frequency is not None else adapter.default_frequency
-    cli.instruction = cli.instruction if cli.instruction is not None else adapter.prompt
-    if not cli.instruction or not cli.instruction.strip():
-        parser.error("--instruction must not be empty")
+    cli.episode_protocol = cli.episode_protocol or adapter.default_episode_protocol
+    if cli.episode_protocol == "official-seen":
+        if cli.instruction is not None:
+            parser.error("official-seen generates each episode's prompt; --instruction is incompatible")
+        if cli.one_stage or cli.takeover_eval:
+            parser.error("official-seen is not the legacy one-stage/matched takeover protocol")
+    else:
+        cli.instruction = cli.instruction if cli.instruction is not None else adapter.prompt
+        if not cli.instruction or not cli.instruction.strip():
+            parser.error("--instruction must not be empty")
+    if cli.max_scene_attempts is None:
+        cli.max_scene_attempts = 10 * cli.episodes
+    if cli.max_scene_attempts < 1 or cli.instruction_pool_size < 1:
+        parser.error("max-scene-attempts and instruction-pool-size must be positive")
     cli.output_dir = cli.output_dir or (
         cli.runtime_root / "data" / f"{cli.task}_hg_dagger_r1" / cli.task / "aloha_agilex"
     )
     if cli.one_stage and not adapter.supports_one_stage:
         parser.error(f"{cli.task} does not support --one-stage")
+    if cli.es_mode != "off" and not adapter.supports_sampling:
+        parser.error(f"{cli.task}: task-matched full-horizon sampling is not validated; use --es-mode off")
     if min(cli.episodes, cli.target_saved, cli.frequency, cli.save_freq) < 1:
         parser.error("episodes, target-saved, frequency and save-freq must be positive")
     return cli
@@ -466,12 +533,20 @@ def main(argv: list[str] | None = None) -> int:
         "seed_mode": cli.seed_mode,
         "critic_sha256": scorer.metadata["critic_sha256"] if scorer is not None else None,
     }
+    if cli.episode_protocol == "official-seen":
+        expected_resume.update(episode_protocol=cli.episode_protocol,
+                               instruction_pool_size=cli.instruction_pool_size)
+    if adapter.requires_training_gate:
+        expected_resume.update(task=cli.task, adapter=adapter.name)
     if cli.save_policy_rollouts:
         expected_resume["save_policy_rollouts"] = True
     if cli.one_stage:
         expected_resume.update(one_stage=True, paired_baseline_sha256=paired_report_sha)
     progress = inspect_collection(cli.output_dir, target_mode=cli.target_mode,
                                   expected=expected_resume, resume=cli.resume)
+    screen_history = screening_history(cli.output_dir)
+    if screen_history and cli.episode_protocol != "official-seen":
+        raise ValueError("Cannot resume a screened collection with legacy-fixed protocol")
     if cli.resume:
         previous_range = read_json_object(Path(progress.source_report)).get("seed_range")
         expected_start = [int(cli.seed_min), int(cli.seed_max)] if cli.seed_mode == "random" else None
@@ -510,6 +585,9 @@ def main(argv: list[str] | None = None) -> int:
     data_episode_index = progress.next_episode_index
     records: list[dict[str, Any]] = list(progress.records)
     used_seeds = set(progress.used_seeds)
+    used_seeds.update(screen_history)
+    scene_attempts = len(screen_history)
+    scene_budget_exhausted = False
     aborted = False
     sampling_log = None
 
@@ -523,7 +601,8 @@ def main(argv: list[str] | None = None) -> int:
     if cli.es_activation == "manual":
         print(f"Press e during policy control to toggle {cli.es_manual_duration} sampled decisions.")
     print("After each episode: s/f=success/failure, y/n=save/discard.")
-    print(f"Prompt: {instruction}")
+    print(f"Prompt: {instruction or 'official seen, generated and frozen separately per accepted scene'}")
+    print(f"Episode protocol: {cli.episode_protocol}")
     print(f"Sampling: {cli.es_mode}; takeover evaluation: {cli.takeover_eval}")
     print(f"Output: {cli.output_dir}")
     print("=" * 72 + "\n")
@@ -547,24 +626,51 @@ def main(argv: list[str] | None = None) -> int:
         saved_hil_count = progress.saved_valid_hil
         aborted_rollouts = progress.aborted_rollouts
         session_started = time.time()
+        print(format_collection_progress(records, saved_hil_count,
+                                         int(cli.target_saved), int(cli.episodes)), flush=True)
         while (
             rollout_index < int(cli.episodes)
             and (cli.takeover_eval or paired_seeds is not None or saved_hil_count < int(cli.target_saved))
         ):
-            seed = next(seed_iter)
-            while seed in used_seeds:
-                seed = next(seed_iter)
+            if cli.episode_protocol == "official-seen" and scene_attempts >= cli.max_scene_attempts:
+                scene_budget_exhausted = True
+                print("[EXPERT-SCREEN] Candidate budget exhausted; no unchecked scenes will run.")
+                break
+            seed = next(seed_iter, None)
+            while seed is not None and seed in used_seeds:
+                seed = next(seed_iter, None)
+            if seed is None:
+                scene_budget_exhausted = True
+                print("[SEEDS] Candidate pool exhausted; ending collection without reusing seeds.")
+                break
             used_seeds.add(seed)
             rollout_started = time.time()
             args["save_data"] = False
             args["need_plan"] = True
             args["eval_mode"] = True
-            task_env.setup_demo(
-                now_ep_num=data_episode_index,
-                seed=seed,
-                is_test=False,
-                **args,
-            )
+            initial_scene_screening = None
+            if cli.episode_protocol == "official-seen":
+                scene_attempts += 1
+                print(f"[EXPERT-SCREEN] candidate={scene_attempts}/{cli.max_scene_attempts} seed={seed}; no training frames", flush=True)
+                initial_scene_screening = prepare_screened_scene(
+                    task_env, args, seed=seed, episode_index=data_episode_index,
+                    adapter=adapter, build_instruction=build_instruction,
+                    instruction_pool_size=cli.instruction_pool_size,
+                    close_env=safe_close_env, output_dir=cli.output_dir,
+                )
+                if initial_scene_screening is None:
+                    print(f"[EXPERT-SCREEN] rejected seed={seed}; not a policy failure", flush=True)
+                    continue
+                instruction = initial_scene_screening["instruction"]
+                print(f"[EXPERT-SCREEN] accepted seed={seed}; prompt={instruction}", flush=True)
+            else:
+                task_env.setup_demo(
+                    now_ep_num=data_episode_index,
+                    seed=seed,
+                    is_test=False,
+                    **args,
+                )
+                adapter.initialize_episode(task_env)
             if cli.step_limit is not None:
                 task_env.step_lim = int(cli.step_limit)
             task_env.set_instruction(instruction)
@@ -688,6 +794,15 @@ def main(argv: list[str] | None = None) -> int:
             with HumanInterventionInput(task_env, key_map=key_map) as keyboard:
                 sampler = None
                 manual_window = None
+
+                def poll_live_control() -> None:
+                    # Draw and poll on the main thread; never step physics here.
+                    task_env._render_viewer_if_available()
+                    pending = keyboard.poll()
+                    if pending in {"intervene", "abort", "quit", "sampling_toggle"}:
+                        print(f"\n[CONTROL] {pending} requested; waiting for policy RPC to drain.", flush=True)
+                        raise OperatorInterrupt(pending)
+
                 if sampling_config is not None:
                     from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow
 
@@ -707,14 +822,6 @@ def main(argv: list[str] | None = None) -> int:
                         status = (f"ON for decisions {decision_step}–{decision_step + cli.es_manual_duration - 1}"
                                   if enabled else "OFF")
                         print(f"\n[SAMPLING] {status}; policy remains in control.", flush=True)
-
-                    def poll_live_control() -> None:
-                        # Draw and poll on the main thread; never step physics here.
-                        task_env._render_viewer_if_available()
-                        pending = keyboard.poll()
-                        if pending in {"intervene", "abort", "quit", "sampling_toggle"}:
-                            print(f"\n[CONTROL] {pending} requested; waiting for policy RPC to drain.", flush=True)
-                            raise OperatorInterrupt(pending)
 
                     sampler = DecisionSampler(sampling_config, None, seed)
                     log_dir = Path(cli.es_log_dir) if cli.es_log_dir else cli.output_dir / "sampling"
@@ -806,7 +913,12 @@ def main(argv: list[str] | None = None) -> int:
                             frequency=int(cli.frequency),
                             task_env=task_env,
                         )
-                        model_client.call(func_name="update_obs", obs=xpl_obs)
+                        responsive_wait = getattr(model_client, "responsive_wait", None)
+                        # Keep painting while uploading an observation. Control
+                        # keys remain queued until the action RPC below drains.
+                        with (responsive_wait(task_env._render_viewer_if_available)
+                              if responsive_wait else nullcontext()):
+                            model_client.call(func_name="update_obs", obs=xpl_obs)
                         chunk_interrupted = False
                         manual_trigger = True
                         selection = None
@@ -847,11 +959,22 @@ def main(argv: list[str] | None = None) -> int:
                             else:
                                 sampling_log.decision(selection)
                         else:
-                            action_chunk = normalize_action_chunk(
-                                model_client.call(func_name="get_action")
-                            )
+                            try:
+                                with (responsive_wait(poll_live_control) if responsive_wait else nullcontext()):
+                                    action_chunk = normalize_action_chunk(
+                                        model_client.call(func_name="get_action")
+                                    )
+                                poll_live_control()
+                            except OperatorInterrupt as interruption:
+                                event = interruption.event
+                                action_chunk = []
+                                chunk_interrupted = True
+                                if event == "quit":
+                                    quit_requested = True
                         if len(action_chunk) == 0 and not chunk_interrupted:
                             raise RuntimeError("Policy returned an empty action chunk.")
+                        if not chunk_interrupted:
+                            validate_policy_action_chunk(adapter, action_chunk, observation)
                         if not chunk_interrupted:
                             decision_step += 1
 
@@ -1034,13 +1157,58 @@ def main(argv: list[str] | None = None) -> int:
                         step = next(recovery_iter, None)
                         expert_stage_count += 1
                         if step is None:
-                            break
+                            step = {"phase": "done", "result": {
+                                "success": False, "plan_success": False,
+                                "reason": "expert_iterator_ended_without_result",
+                            }}
                         if step.get("phase") == "done":
-                            if interventions:
-                                interventions[-1]["expert_done"] = True
-                                interventions[-1]["end_step"] = int(task_env.FRAME_IDX)
                             last_expert_result = step.get("result") or {}
-                            break
+                            if interventions:
+                                interventions[-1]["expert_done"] = bool(last_expert_result.get("success"))
+                                interventions[-1]["end_step"] = int(task_env.FRAME_IDX)
+                                interventions[-1]["expert_result"] = last_expert_result
+                            if last_expert_result.get("success"):
+                                break
+                            reason = last_expert_result.get("reason") or "expert_recovery_failed"
+                            print(f"[HG-DAGGER] 专家恢复未完成：{reason}", flush=True)
+                            if cli.one_stage or cli.acceptance or cli.auto_intervene_step >= 0:
+                                # Noninteractive diagnostics retain their finite fail result.
+                                break
+                            # A failed iterator is not a terminal environment outcome.
+                            # Hold the scene, keep pumping the viewer, and let the
+                            # operator retry, hand back, abort, or quit explicitly.
+                            if interventions:
+                                interventions[-1].setdefault("recovery_failures", []).append(last_expert_result)
+                            while True:
+                                response = prompt_choice(
+                                    task_env, {"i": "retry", "r": "handback", "x": "abort"},
+                                    "[HG-DAGGER] 本局暂停（未结束）：i=重新选择阶段，r=交还策略，x=作废本局，q=退出并保留缓存",
+                                )
+                                if response != "retry":
+                                    break
+                                retry_iter, chosen_stage = choose_recovery_stage(task_env, keyboard, adapter)
+                                if retry_iter is None:
+                                    print("[HG-DAGGER] 已取消重选，仍保持暂停；请明确交还或退出。", flush=True)
+                                    continue
+                                recovery_iter = retry_iter
+                                expert_stage_count = 0
+                                if interventions:
+                                    interventions[-1].setdefault("recovery_retries", []).append(
+                                        {"chosen_stage_id": chosen_stage, "frame_idx": int(task_env.FRAME_IDX)})
+                                break
+                            if response == "abort":
+                                episode_aborted = True
+                                break
+                            if response == "handback":
+                                if interventions:
+                                    interventions[-1]["handback_step"] = int(task_env.FRAME_IDX)
+                                switch_source("policy")
+                                mode = "policy"
+                                reset_policy(model_client)
+                                if sampler is not None:
+                                    sampler.checked_replay = False
+                                print("[HG-DAGGER] Hand back to policy; requesting a fresh chunk.", flush=True)
+                            continue
                         last_expert_progress = step
 
             # Close the final open segment.
@@ -1084,6 +1252,8 @@ def main(argv: list[str] | None = None) -> int:
                     "intervention_count": intervention_count,
                     "interventions": interventions,
                     "autonomous_success": False, "save_decision": False,
+                    "instruction": instruction,
+                    "initial_scene_screening": initial_scene_screening,
                     "rollout_seconds": round(time.time() - rollout_started, 2),
                 }
                 records.append(aborted_record)
@@ -1091,6 +1261,8 @@ def main(argv: list[str] | None = None) -> int:
                     append_jsonl(cli.output_dir / "takeover_rollouts.jsonl", aborted_record)
                 safe_close_env(task_env)
                 rollout_index += 1
+                print(format_collection_progress(records, saved_hil_count,
+                                                 int(cli.target_saved), int(cli.episodes)), flush=True)
                 continue
 
             joints_legal, joint_absmax = task_env.planned_joints_legal()
@@ -1104,6 +1276,15 @@ def main(argv: list[str] | None = None) -> int:
                 expert_result=last_expert_result, final_success=bool(final_check_success),
                 joints_legal=bool(joints_legal),
             ) if cli.one_stage else False
+            if adapter.requires_training_gate:
+                diagnostic_run = bool(cli.auto_intervene_step >= 0 or cli.auto_handback_step >= 0
+                                      or cli.step_limit is not None or cli.render_freq <= 0 or cli.bias_magnitude)
+                if adapter.default_episode_protocol == "official-seen" and cli.episode_protocol != "official-seen":
+                    diagnostic_run = True
+                valid_hil = bool(not diagnostic_run and intervention_count > 0 and hil_frames > 0 and final_check_success
+                                 and joints_legal and final_success_metrics.get("physical_quality_gate")
+                                 and final_success_metrics.get("recovery_ok")
+                                 and (cli.target_mode != "expert" or (last_expert_result or {}).get("success")))
 
             if auto_label is not None:
                 supervisor_label = auto_label
@@ -1121,6 +1302,9 @@ def main(argv: list[str] | None = None) -> int:
                     {"s": "success", "f": "failure"},
                     "[TRAJECTORY] Mark trajectory: [s]uccess / [f]ailure",
                 )
+
+            if adapter.requires_training_gate:
+                valid_hil = bool(valid_hil and supervisor_label == "success")
 
             if auto_save == "valid_hil":
                 do_save = valid_hil
@@ -1147,6 +1331,7 @@ def main(argv: list[str] | None = None) -> int:
                 "episode_index": int(data_episode_index),
                 "seed": int(seed),
                 "instruction": instruction,
+                "initial_scene_screening": initial_scene_screening,
                 "policy_steps": int(policy_steps),
                 "policy_decisions": int(decision_step),
                 "manual_takeover_requests": manual_takeover_requests,
@@ -1158,7 +1343,7 @@ def main(argv: list[str] | None = None) -> int:
                 "control_mask": list(task_env.control_mask),
                 "autonomous_success": bool(
                     (final_check_success and intervention_count == 0)
-                    if cli.one_stage else task_env.eval_success
+                    if cli.one_stage or adapter.requires_training_gate else task_env.eval_success
                 ),
                 "final_check_success": bool(final_check_success),
                 "final_success_metrics": final_success_metrics,
@@ -1172,6 +1357,10 @@ def main(argv: list[str] | None = None) -> int:
                 "rollout_seconds": round(time.time() - rollout_started, 2),
                 "timestamp": datetime.now().isoformat(timespec="seconds"),
             }
+            if adapter.requires_training_gate:
+                episode_record.update(task=cli.task, adapter=adapter.name,
+                                      accepted_for_training=bool(do_save and valid_hil),
+                                      diagnostic_only=not valid_hil)
 
             if cli.save_policy_rollouts:
                 policy_cache = getattr(task_env, "folder_path", {}).get("cache")
@@ -1205,7 +1394,7 @@ def main(argv: list[str] | None = None) -> int:
                 data_episode_index += 1
                 expert_success = bool((last_expert_result or {}).get("success"))
                 if hil_frames > 0 and (
-                    (valid_hil if cli.one_stage else
+                    (valid_hil if cli.one_stage or adapter.requires_training_gate else
                      (cli.target_mode != "expert" or expert_success))
                 ):
                     saved_hil_count += 1
@@ -1223,6 +1412,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"[EPISODE] label={supervisor_label} save={do_save} "
                 f"interventions={intervention_count}"
             )
+            print(format_collection_progress(records, saved_hil_count,
+                                             int(cli.target_saved), int(cli.episodes)), flush=True)
             safe_close_env(task_env)
 
             if cli.acceptance:
@@ -1251,6 +1442,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"report={report_path}")
                 return 2
             rollout_index += 1
+    except OperatorInterrupt as exc:
+        if exc.event != "quit":
+            raise
+        aborted = True
+        finish_sampling_log("quit")
+        safe_close_env(task_env)
+        print("[EPISODE] Quit at operator prompt; unsaved raw cache retained.", flush=True)
     except Exception:
         print("\n\033[91mHG-DAgger session error:\033[0m")
         print(traceback.format_exc())
@@ -1265,6 +1463,7 @@ def main(argv: list[str] | None = None) -> int:
         close_policy_client(model_client)
         lock_handle.close()
 
+    screen_history = screening_history(cli.output_dir)
     session_report = {
         "task": cli.task,
         "adapter": adapter.name,
@@ -1286,7 +1485,16 @@ def main(argv: list[str] | None = None) -> int:
         "policy_port": int(cli.port),
         "checkpoint_name": cli.ckpt_name,
         "task_config": cli.task_config,
-        "instruction": instruction,
+        "instruction": cli.instruction,
+        "episode_protocol": cli.episode_protocol,
+        "instruction_pool_size": cli.instruction_pool_size if cli.episode_protocol == "official-seen" else None,
+        "scene_attempts": scene_attempts,
+        "max_scene_attempts": cli.max_scene_attempts,
+        "scene_budget_exhausted": scene_budget_exhausted,
+        "scene_screening_log": SCREEN_LOG if cli.episode_protocol == "official-seen" else None,
+        "expert_screen_rejected": sum(row["status"] == "expert_rejected" for row in screen_history.values()),
+        "expert_screen_passed": sum(row.get("plan_success") is True and row.get("check_success") is True
+                                    for row in screen_history.values()),
         "frequency": int(cli.frequency),
         "step_limit": cli.step_limit,
         "seed_mode": cli.seed_mode,
@@ -1294,7 +1502,8 @@ def main(argv: list[str] | None = None) -> int:
         "seed_range": (
             [int(cli.seed_min), int(cli.seed_max)]
             if cli.seed_mode == "random"
-            else [int(cli.seed_start), int(cli.seed_start) + int(cli.episodes) - 1]
+            else [int(cli.seed_start), int(cli.seed_start) + int(
+                cli.max_scene_attempts if cli.episode_protocol == "official-seen" else cli.episodes) - 1]
         ),
         "target_mode": cli.target_mode,
         "target_saved": int(cli.target_saved),
@@ -1313,7 +1522,7 @@ def main(argv: list[str] | None = None) -> int:
         "paired_prefix_exclusions": sum(
             item.get("rollout_status") == "paired_prefix_excluded" for item in records
         ) if cli.one_stage else None,
-        "valid_hil_events": sum(bool(item.get("valid_hil")) for item in records) if cli.one_stage else None,
+        "valid_hil_events": sum(bool(item.get("valid_hil")) for item in records) if cli.one_stage or adapter.requires_training_gate else None,
         "recovery_failures": sum(
             item.get("one_stage") and item.get("intervention_count", 0) > 0
             and not item.get("valid_hil") and item.get("rollout_status") == "completed"
@@ -1371,7 +1580,7 @@ def main(argv: list[str] | None = None) -> int:
     if cli.takeover_eval:
         print(f"[TAKEOVER] {requested}/{len(valid_records)} valid rollouts requested takeover "
               f"({session_report['takeover_measurement']['manual_request_probability']})")
-    return 130 if aborted else 0
+    return 130 if aborted else 4 if scene_budget_exhausted else 0
 
 
 if __name__ == "__main__":

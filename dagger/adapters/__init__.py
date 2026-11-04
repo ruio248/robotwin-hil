@@ -9,6 +9,10 @@ from .base import TaskAdapter
 
 _ADAPTERS = {
     "handover_to_tray": (".handover_to_tray", "HandoverToTrayAdapter"),
+    "stack_blocks_three": (".stack_blocks_three", "StackBlocksThreeAdapter"),
+    "rotate_qrcode": (".rotate_qrcode", "RotateQrcodeAdapter"),
+    "place_empty_cup": (".place_empty_cup", "PlaceEmptyCupAdapter"),
+    "handover_block": (".handover_block", "HandoverBlockAdapter"),
 }
 
 

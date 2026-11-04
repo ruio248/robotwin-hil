@@ -23,6 +23,28 @@ class TaskAdapter(ABC):
     default_checkpoint_name: str
     default_frequency: int
     supports_one_stage: bool = False
+    supports_sampling: bool = True
+    requires_training_gate: bool = False
+    default_episode_protocol: str = "legacy-fixed"
+    reserved_seed_ranges: tuple = ()
+
+    def initialize_episode(self, env: Any) -> None:
+        """Initialize adapter metadata after setup, without moving the scene."""
+
+    def validate_action_chunk(self, chunk: Any) -> None:
+        """Validate decoded absolute joint vectors before executing any action.
+
+        The runner converts the policy wire format using the execution adapter;
+        this hook never receives XPolicyLab's per-arm action dictionaries.
+        """
+
+    def recovery_stage_rejection(self, state: Mapping[str, Any], stage_id: int | None) -> str | None:
+        """Optional motion-free preflight reason; None permits confirmation.
+
+        Adapters must still recheck prerequisites when the iterator advances.
+        The default preserves adapters whose manual overrides have own logic.
+        """
+        return None
 
     @abstractmethod
     def infer_recovery_state(self, env: Any) -> dict[str, Any]:

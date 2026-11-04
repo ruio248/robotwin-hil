@@ -36,6 +36,8 @@ class PreviewIntegrationTest(unittest.TestCase):
         box = builder.build_static(name="preview_smoke_box")
         box.set_pose(sapien.Pose([0, 0, 0.1]))
         policy_camera = scene.add_camera("policy_camera", 64, 48, 1.0, 0.1, 10)
+        left_camera = scene.add_camera("left_camera", 64, 48, 1.0, 0.1, 10)
+        right_camera = scene.add_camera("right_camera", 64, 48, 1.0, 0.1, 10)
         viewer = module.LowResolutionViewer((320, 180), (1600, 900))
         try:
             viewer.set_scene(scene)
@@ -44,7 +46,9 @@ class PreviewIntegrationTest(unittest.TestCase):
             for _ in range(3):
                 viewer.render()
             self.assertEqual(viewer.last_image_shape[:2], (180, 320))
-            self.assertEqual(tuple(viewer.size), (1600, 900))
+            # xrdp/window managers may clamp the requested presentation size.
+            self.assertGreaterEqual(viewer.size[0], 320)
+            self.assertGreaterEqual(viewer.size[1], 180)
             image = viewer.camera.get_picture("Color")
             self.assertGreater(float(image[..., :3].std()), 0.01)
 
@@ -52,10 +56,29 @@ class PreviewIntegrationTest(unittest.TestCase):
             viewer.resize(1920, 1080)
             for _ in range(3):
                 viewer.render()
-            self.assertEqual(tuple(viewer.size), (1920, 1080))
+            self.assertGreaterEqual(viewer.size[0], 320)
+            self.assertGreaterEqual(viewer.size[1], 180)
             self.assertEqual(viewer.last_image_shape[:2], (180, 320))
             self.assertEqual((policy_camera.width, policy_camera.height), (64, 48))
+
+            viewer.set_display_cameras({"head_camera": policy_camera,
+                                        "left_camera": left_camera,
+                                        "right_camera": right_camera})
+            viewer.render()
+            self.assertEqual(viewer._display_camera_name, "head_wrist")
+            self.assertEqual(set(viewer.last_image_shapes),
+                             {"head_camera", "left_camera", "right_camera"})
+            self.assertTrue(all(shape[:2] == (48, 64)
+                                for shape in viewer.last_image_shapes.values()))
+            self.assertEqual((left_camera.width, left_camera.height), (64, 48))
+            self.assertEqual((right_camera.width, right_camera.height), (64, 48))
             viewer.resize(1600, 900)
+
+            # Display the existing task camera without moving or resizing it.
+            viewer.set_display_camera(policy_camera, "head_camera")
+            viewer.render()
+            self.assertEqual(viewer.last_image_shape[:2], (48, 64))
+            self.assertEqual((policy_camera.width, policy_camera.height), (64, 48))
 
             # Repeat KEYDOWN events cannot repeatedly toggle enhanced sampling.
             pg = viewer._pg

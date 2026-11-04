@@ -3,6 +3,27 @@ from __future__ import annotations
 
 import os
 import time
+import math
+
+
+def configure_spectator_camera(args: dict, preset: str) -> None:
+    """Set only the interactive spectator pose, never policy observations."""
+    if preset == "official":
+        return
+    if preset == "robot-front":
+        # Center the single spectator on the table's +y side, looking toward
+        # the two Aloha arms at y=-0.65. FPSCameraController applies -yaw.
+        args.update(camera_xyz_x=0.0, camera_xyz_y=0.35, camera_xyz_z=1.25,
+                    camera_rpy_r=0.0, camera_rpy_p=-0.50,
+                    camera_rpy_y=math.pi / 2)
+        return
+    if preset != "robot-rear":
+        raise ValueError(f"Unknown HIL_VIEWER_CAMERA_PRESET={preset!r}; use official, robot-front or robot-rear")
+    # Aloha bases are on y=-0.65. Put the viewer on their shared rear axis,
+    # facing +y toward the table center (SAPIEN FPS yaw rotates about -z).
+    args.update(camera_xyz_x=0.0, camera_xyz_y=-1.05, camera_xyz_z=1.55,
+                camera_rpy_r=0.0, camera_rpy_p=-0.65,
+                camera_rpy_y=-1.5707963267948966)
 
 
 def render_initial_frame(task_env) -> None:
@@ -17,6 +38,41 @@ def render_initial_frame(task_env) -> None:
             "Human-gated mode needs a SAPIEN viewer. Set --render-freq to a positive value "
             "and launch inside the 5090 desktop session."
         )
+    image_source = os.environ.get("HIL_VIEWER_IMAGE_SOURCE", "spectator").strip()
+    if image_source in ("head_camera", "head_wrist"):
+        cameras = getattr(task_env, "cameras", None)
+        names = getattr(cameras, "static_camera_name", ())
+        if "head_camera" not in names:
+            raise RuntimeError("head_camera viewer requires the preview backend and a loaded head_camera")
+        head = cameras.static_camera_list[names.index("head_camera")]
+        if image_source == "head_wrist":
+            if not hasattr(viewer, "set_display_cameras") or not all(
+                getattr(cameras, name, None) is not None for name in ("left_camera", "right_camera")
+            ):
+                raise RuntimeError("head_wrist viewer requires the preview backend and both wrist cameras")
+            viewer.set_display_cameras({
+                "head_camera": head,
+                "left_camera": cameras.left_camera,
+                "right_camera": cameras.right_camera,
+            })
+        else:
+            if not hasattr(viewer, "set_display_camera"):
+                raise RuntimeError("head_camera viewer requires the preview backend")
+            viewer.set_display_camera(head, "head_camera")
+    elif image_source == "spectator":
+        # _base_task._init calls setup_scene() without forwarding task kwargs.
+        # Apply the preset to the actual viewer after setup, before first draw.
+        preset = os.environ.get("HIL_VIEWER_CAMERA_PRESET", "official").strip()
+        camera_args = {}
+        configure_spectator_camera(camera_args, preset)
+        if camera_args:
+            xyz = tuple(camera_args[f"camera_xyz_{axis}"] for axis in "xyz")
+            rpy = tuple(camera_args[f"camera_rpy_{axis}"] for axis in "rpy")
+            viewer.set_camera_xyz(*xyz)
+            viewer.set_camera_rpy(*rpy)
+            print(f"[HIL-VIEWER] applied spectator preset={preset} xyz={xyz} rpy={rpy}", flush=True)
+    else:
+        raise ValueError(f"Unknown HIL_VIEWER_IMAGE_SOURCE={image_source!r}")
     task_env._update_render()
     viewer.render()
     # SAPIEN exposes resize but not a portable fullscreen API. Ask the active
