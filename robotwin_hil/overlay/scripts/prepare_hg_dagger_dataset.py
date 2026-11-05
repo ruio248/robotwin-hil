@@ -39,7 +39,7 @@ for ancestor in Path(__file__).resolve().parents:
         break
 else:
     raise ImportError("dagger.recording is required for the shared training eligibility gate")
-from dagger.recording import training_eligible
+from dagger.recording import MIN_HIL_SEGMENT_TRANSITIONS, training_eligible
 
 
 ACTION_DIM = 14
@@ -239,7 +239,7 @@ def extract_source(
     datasets: dict[str, Any],
     *,
     image_size: tuple[int, int],
-    min_segment_frames: int,
+    min_segment_transitions: int,
 ) -> dict[str, int]:
     counts = {"baseline": 0, "dagger": 0, "discarded_short_segments": 0, "skipped_policy_segments": 0, "episodes": 0}
     for episode in episodes:
@@ -250,7 +250,7 @@ def extract_source(
             if target not in datasets:
                 counts["skipped_policy_segments"] += 1
                 continue
-            if transition_count < min_segment_frames:
+            if transition_count < min_segment_transitions:
                 counts["discarded_short_segments"] += 1
                 continue
             dataset = datasets[target]
@@ -346,7 +346,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--assets-base-dir", type=Path)
     parser.add_argument("--action-horizon", type=int, default=10)
     parser.add_argument("--stats-frames-per-source", type=int, default=100_000)
-    parser.add_argument("--min-segment-frames", type=int, default=2)
+    parser.add_argument("--min-segment-transitions", "--min-segment-frames",
+                        dest="min_segment_transitions", type=int,
+                        default=MIN_HIL_SEGMENT_TRANSITIONS,
+                        help="Minimum adjacent action transitions per segment; --min-segment-frames is a legacy alias")
     parser.add_argument("--episode-limit", type=int)
     parser.add_argument("--image-size", default="240x320")
     parser.add_argument("--no-videos", action="store_true")
@@ -356,8 +359,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    if args.action_horizon <= 0 or args.stats_frames_per_source < 2 or args.min_segment_frames < 2:
-        raise ValueError("action horizon/stats budget must be positive and segments need at least two frames")
+    if args.action_horizon <= 0 or args.stats_frames_per_source < 2 or args.min_segment_transitions < 2:
+        raise ValueError("action horizon/stats budget must be positive and segments need at least two transitions")
     output = args.output_dir.expanduser().resolve()
     if output.exists() and any(output.iterdir()):
         if not args.overwrite:
@@ -380,7 +383,8 @@ def main() -> None:
             raise FileNotFoundError(f"baseline LeRobot root is missing meta/info.json: {baseline_root}")
         baseline_mode = "external_lerobot"
     datasets["dagger"] = _make_dataset(output, "dagger", image_size, not args.no_videos)
-    counts = extract_source(episodes, datasets, image_size=image_size, min_segment_frames=args.min_segment_frames)
+    counts = extract_source(episodes, datasets, image_size=image_size,
+                            min_segment_transitions=args.min_segment_transitions)
 
     # LeRobot 0.4 keeps parquet writers open until ``finalize``.  Close both
     # the frame and metadata writers before PyArrow scans the files for norm

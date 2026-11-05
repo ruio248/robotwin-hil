@@ -18,6 +18,14 @@ SPEC.loader.exec_module(MODULE)
 
 
 class PrepareHGDaggerDatasetTests(unittest.TestCase):
+    def test_default_minimum_means_transitions_and_old_flag_remains_alias(self):
+        required = ["prepare", "--raw-root", "/unused/raw", "--output-dir", "/unused/output"]
+        with patch.object(sys, "argv", required):
+            self.assertEqual(MODULE.parse_args().min_segment_transitions,
+                             MODULE.MIN_HIL_SEGMENT_TRANSITIONS)
+        with patch.object(sys, "argv", [*required, "--min-segment-frames", "3"]):
+            self.assertEqual(MODULE.parse_args().min_segment_transitions, 3)
+
     def test_two_hil_segments_create_two_episodes_without_cross_boundary_action(self):
         import tempfile
 
@@ -37,7 +45,7 @@ class PrepareHGDaggerDatasetTests(unittest.TestCase):
             episode = raw / "episode_0000007"
             frames = episode / "frames"
             frames.mkdir(parents=True)
-            mask = ["policy", "hil", "hil", "policy", "hil", "hil", "hil"]
+            mask = ["policy", "hil", "hil", "hil", "policy", "hil", "hil", "hil"]
             for index in range(len(mask)):
                 (frames / f"{index}.pkl").write_bytes(pickle.dumps({
                     "joint_action": {"vector": np.full(14, index, dtype=np.float32)},
@@ -50,10 +58,10 @@ class PrepareHGDaggerDatasetTests(unittest.TestCase):
             with patch.object(MODULE, "CAMERA_MAP", {}):
                 counts = MODULE.extract_source(MODULE.discover_episodes([raw], None),
                                                {"dagger": dataset}, image_size=(1, 1),
-                                               min_segment_frames=1)
+                                               min_segment_transitions=MODULE.MIN_HIL_SEGMENT_TRANSITIONS)
             self.assertEqual(dataset.saved, 2)
-            self.assertEqual([int(row["action"][0]) for row, _ in dataset.rows], [2, 5, 6])
-            self.assertEqual(counts["dagger"], 3)
+            self.assertEqual([int(row["action"][0]) for row, _ in dataset.rows], [2, 3, 6, 7])
+            self.assertEqual(counts["dagger"], 4)
 
     def test_discovery_uses_same_strict_training_gate_as_hdf5_export(self):
         import tempfile

@@ -204,6 +204,8 @@ def test_runner_rejects_illegal_expert_joints_without_consuming_rollout(monkeypa
     assert [seed for seed, _ in env.setups] == [40000, 40001, 40001]
     assert report["seeds"] == [40001] and report["rollouts"] == 1
     assert report["scene_attempts"] == 2 and client.chunks == 2
+    assert report["expert_screen_passed"] == 1
+    assert report["expert_screen_rejected"] == 1
     rejected = screening_history(tmp_path / "session")[40000]
     assert rejected["status"] == "expert_rejected"
     assert rejected["joints_legal"] is False and rejected["joint_absmax"] == 3.5

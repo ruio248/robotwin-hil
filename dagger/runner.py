@@ -1450,7 +1450,7 @@ def main(argv: list[str] | None = None) -> int:
         "scene_budget_exhausted": scene_budget_exhausted,
         "scene_screening_log": SCREEN_LOG if cli.episode_protocol == "official-seen" else None,
         "expert_screen_rejected": sum(row["status"] == "expert_rejected" for row in screen_history.values()),
-        "expert_screen_passed": sum(row.get("plan_success") is True and row.get("check_success") is True
+        "expert_screen_passed": sum(row.get("status") in {"expert_passed", "policy_ready"}
                                     for row in screen_history.values()),
         "frequency": int(cli.frequency),
         "step_limit": cli.step_limit,

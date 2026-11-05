@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 
+# Both offline HIL pipelines require two within-controller action transitions.
+MIN_HIL_SEGMENT_TRANSITIONS = 2
+
+
 def read_json_object(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}

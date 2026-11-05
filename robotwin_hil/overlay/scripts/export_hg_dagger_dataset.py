@@ -24,7 +24,7 @@ if str(ROBOTWIN_ROOT) not in sys.path:
     sys.path.insert(0, str(ROBOTWIN_ROOT))
 
 from envs.utils.pkl2hdf5 import process_folder_to_hdf5_video  # noqa: E402
-from dagger.recording import training_eligible  # noqa: E402
+from dagger.recording import MIN_HIL_SEGMENT_TRANSITIONS, training_eligible  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,13 +65,13 @@ def validated_frame_count(frames_dir: Path, control_mask: list[Any], *, require_
 
 
 def hil_runs(control_mask: list[Any]):
-    """Yield maximal contiguous HIL runs; never join across policy frames."""
+    """Yield HIL runs with enough within-run action transitions for training."""
     start = None
     for index, source in enumerate([*control_mask, "policy"]):
         if source == "hil" and start is None:
             start = index
         elif source != "hil" and start is not None:
-            if index - start >= 2:
+            if index - start - 1 >= MIN_HIL_SEGMENT_TRANSITIONS:
                 yield start, index
             start = None
 
@@ -123,7 +123,8 @@ def main() -> int:
         frame_count = validated_frame_count(frames_dir, control_mask, require_mask=cli.mode == "hil")
         runs = list(hil_runs([str(source).lower() for source in control_mask])) if cli.mode == "hil" else [(0, frame_count)]
         if not runs:
-            print(f"[EXPORT] episode={episode_index} mode=hil skipped (no two adjacent HIL frames)", flush=True)
+            print(f"[EXPORT] episode={episode_index} mode=hil skipped "
+                  f"(no segment with {MIN_HIL_SEGMENT_TRANSITIONS} transitions)", flush=True)
             continue
         for segment_index, (start, end) in enumerate(runs):
             suffix = "" if cli.mode == "full" else ("_hil" if len(runs) == 1 else f"_hil_s{segment_index:02d}")
@@ -135,27 +136,47 @@ def main() -> int:
                 raise FileExistsError(f"Refusing to overwrite an exported segment: {episode_name}")
             hdf5_path.parent.mkdir(parents=True, exist_ok=True)
             video_path.parent.mkdir(parents=True, exist_ok=True)
+            instruction_path.parent.mkdir(parents=True, exist_ok=True)
             segment_metadata = dict(meta.get("episode_metadata") or {})
             segment_metadata.update(source_episode_index=episode_index, source_seed=meta.get("seed"),
                                     source_frame_start=start, source_frame_end_exclusive=end,
                                     source_control_mask=control_mask,
                                     transition_count=end - start - 1)
             with tempfile.TemporaryDirectory(prefix=f"{episode_name}_", dir=cli.output_dir) as temporary:
+                temporary_dir = Path(temporary)
+                staged_hdf5 = temporary_dir / hdf5_path.name
+                staged_video = temporary_dir / video_path.name
+                staged_instruction = temporary_dir / instruction_path.name
                 merge_frames = (frames_dir if cli.mode == "full" else
-                                stage_frames(frames_dir, start, end, Path(temporary) / "frames"))
-                process_folder_to_hdf5_video(
-                    str(merge_frames), str(hdf5_path), str(video_path),
+                                stage_frames(frames_dir, start, end, temporary_dir / "frames"))
+                converted = process_folder_to_hdf5_video(
+                    str(merge_frames), str(staged_hdf5), str(staged_video),
                     instructions=[instruction], frequency=frequency,
                     episode_metadata=segment_metadata, save_video=save_video,
                 )
-            write_json(instruction_path, {
-                "episode_index": episode_index, "seed": meta.get("seed"),
-                "seen": [instruction], "unseen": [instruction],
-                "supervisor_label": meta.get("supervisor_label"),
-                "segments": meta.get("segments"), "control_mask": control_mask,
-                "source_frame_start": start, "source_frame_end_exclusive": end,
-                "transition_count": end - start - 1, "mode": cli.mode,
-            })
+                if converted != end - start - 1 or not staged_hdf5.is_file() or (save_video and not staged_video.is_file()):
+                    raise ValueError(f"Incomplete conversion for {episode_name}: transitions={converted}")
+                write_json(staged_instruction, {
+                    "episode_index": episode_index, "seed": meta.get("seed"),
+                    "seen": [instruction], "unseen": [instruction],
+                    "supervisor_label": meta.get("supervisor_label"),
+                    "segments": meta.get("segments"), "control_mask": control_mask,
+                    "source_frame_start": start, "source_frame_end_exclusive": end,
+                    "transition_count": end - start - 1, "mode": cli.mode,
+                })
+                published: list[Path] = []
+                outputs = [(staged_hdf5, hdf5_path)]
+                if save_video:
+                    outputs.append((staged_video, video_path))
+                outputs.append((staged_instruction, instruction_path))
+                try:
+                    for source, target in outputs:
+                        os.link(source, target)  # fails rather than replacing an existing result
+                        published.append(target)
+                except Exception:
+                    for path in reversed(published):
+                        path.unlink()
+                    raise
             manifest.append({
                 "episode_index": episode_index, "segment_index": segment_index,
                 "source_frame_start": start, "source_frame_end_exclusive": end,
