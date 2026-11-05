@@ -27,6 +27,20 @@ def append_jsonl(path: Path, value: Any) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(value, ensure_ascii=False) + "\n")
 
+
+def training_eligible(episode_dir: Path, meta: dict[str, Any]) -> bool:
+    """Preserve the existing strict episode gate in every offline exporter."""
+    if (episode_dir / "DIAGNOSTIC_ONLY.json").exists():
+        return False
+    for source in (meta, meta.get("episode_metadata") or {}, meta.get("record") or {}):
+        if str(source.get("diagnostic_only", False)).lower() in {"1", "true", "yes", "y", "on"}:
+            return False
+        if "accepted_for_training" in source and str(source["accepted_for_training"]).lower() not in {
+            "1", "true", "yes", "y", "on",
+        }:
+            return False
+    return True
+
 def append_segment(
     segments: list[dict[str, Any]],
     source: str,

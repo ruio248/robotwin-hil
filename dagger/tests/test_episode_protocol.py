@@ -14,8 +14,9 @@ from dagger.tests.test_workflow import FakeEnv, run_fake
 
 
 class Scene:
-    def __init__(self, *, plan=True, success=True, error=None):
-        self.plan, self.success, self.error = plan, success, error
+    def __init__(self, *, plan=True, success=True, legal=True, error=None, joint_error=None):
+        self.plan, self.success, self.legal = plan, success, legal
+        self.error, self.joint_error = error, joint_error
         self.events = []
         self.setups = 0
 
@@ -36,7 +37,14 @@ class Scene:
         return {"info": {"{a}": "left", "{b}": "right", "{c}": "left"}}
 
     def check_success(self):
+        self.events.append(("check_success", self.position))
         return self.success
+
+    def planned_joints_legal(self):
+        self.events.append(("planned_joints_legal", self.position))
+        if self.joint_error:
+            raise self.joint_error
+        return self.legal, 2.5 if self.legal else 3.5
 
 
 class Adapter:
@@ -64,16 +72,18 @@ def prepare(tmp_path, env, build=None):
 def test_expert_then_reset_then_official_prompt_without_recording(tmp_path):
     env = Scene()
     result = prepare(tmp_path, env)
-    assert [event[0] for event in env.events] == ["setup", "expert", "close", "setup", "prompt", "adapter"]
-    first, replay = env.events[0][1], env.events[3][1]
+    assert [event[0] for event in env.events] == [
+        "setup", "expert", "check_success", "planned_joints_legal", "close", "setup", "prompt", "adapter"]
+    first, replay = env.events[0][1], env.events[5][1]
     assert first["seed"] == replay["seed"] == 40001
     assert first["is_test"] is replay["is_test"] is True
     assert first["save_data"] is replay["save_data"] is False
     assert first["render_freq"] == 0 and replay["render_freq"] == 10
     assert first["save_video"] is False and first["eval_video_save_dir"] is None
-    assert env.events[4][1] == "initial"
-    assert env.events[4][3:] == ("seen", 50)
+    assert env.events[6][1] == "initial"
+    assert env.events[6][3:] == ("seen", 50)
     assert result["status"] == "policy_ready"
+    assert result["joints_legal"] is True and result["joint_absmax"] == 2.5
     assert env.episode_metadata["initial_scene_screening"]["instruction"] == result["instruction"]
     assert screening_history(tmp_path)[40001] == result
     assert not (tmp_path / "raw").exists()
@@ -87,6 +97,30 @@ def test_either_failed_expert_predicate_rejects_without_policy_setup(tmp_path, p
     row = screening_history(tmp_path)[40001]
     assert row["status"] == "expert_rejected"
     assert row["policy_steps"] == 0 and row["counted_as_policy_rollout"] is False
+    assert row["joints_legal"] is None and row["joint_absmax"] is None
+    assert not any(event[0] == "planned_joints_legal" for event in env.events)
+
+
+def test_joint_limit_failure_rejects_seed_before_policy_setup(tmp_path):
+    env = Scene(legal=False)
+    assert prepare(tmp_path, env) is None
+    assert env.setups == 1
+    row = screening_history(tmp_path)[40001]
+    assert row["status"] == "expert_rejected"
+    assert row["plan_success"] is True and row["check_success"] is True
+    assert row["joints_legal"] is False and row["joint_absmax"] == 3.5
+    assert row["policy_steps"] == 0 and row["counted_as_policy_rollout"] is False
+    assert [event[0] for event in env.events][-1] == "close"
+
+
+def test_joint_limit_check_error_stops_screening_as_technical_error(tmp_path):
+    env = Scene(joint_error=RuntimeError("joint path unreadable"))
+    with pytest.raises(RuntimeError, match="joint path unreadable"):
+        prepare(tmp_path, env)
+    row = screening_history(tmp_path)[40001]
+    assert row["status"] == "expert_error"
+    assert row["exception_type"] == "RuntimeError"
+    assert env.setups == 1 and env.events[-1][0] == "close"
 
 
 def test_expert_error_is_durable_and_not_a_policy_failure(tmp_path):
@@ -155,6 +189,24 @@ def test_runner_rejection_does_not_consume_rollout_or_save_expert_frames(monkeyp
     assert report["records"][0]["instruction"] == "official seen seed 40001"
     assert "expert_screen" not in report["records"][0]["control_mask"]
     assert client.chunks == 2
+
+
+def test_runner_rejects_illegal_expert_joints_without_consuming_rollout(monkeypatch, tmp_path):
+    class IllegalFirst(FakeEnv):
+        def planned_joints_legal(self):
+            return (self.episode_seed != 40000), (3.5 if self.episode_seed == 40000 else 2.5)
+
+    result, env, client, report = run_fake(
+        monkeypatch, tmp_path, env_override=IllegalFirst(),
+        cli_extra=("--episode-protocol", "official-seen", "--max-scene-attempts", "3"),
+    )
+    assert result == 0
+    assert [seed for seed, _ in env.setups] == [40000, 40001, 40001]
+    assert report["seeds"] == [40001] and report["rollouts"] == 1
+    assert report["scene_attempts"] == 2 and client.chunks == 2
+    rejected = screening_history(tmp_path / "session")[40000]
+    assert rejected["status"] == "expert_rejected"
+    assert rejected["joints_legal"] is False and rejected["joint_absmax"] == 3.5
 
 
 def test_candidate_budget_stops_without_policy_calls(monkeypatch, tmp_path):

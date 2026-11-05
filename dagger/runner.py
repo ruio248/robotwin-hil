@@ -803,6 +803,49 @@ def main(argv: list[str] | None = None) -> int:
                         print(f"\n[CONTROL] {pending} requested; waiting for policy RPC to drain.", flush=True)
                         raise OperatorInterrupt(pending)
 
+                def begin_takeover(*, manual: bool) -> bool:
+                    """Use the same request/selection/ownership boundary for both chunk paths."""
+                    nonlocal manual_takeover_requests, intervention_count, recovery_iter, mode
+                    request_event = None
+                    if manual:
+                        manual_takeover_requests += 1
+                        request_event = {
+                            "policy_steps": int(policy_steps), "decision": int(decision_step),
+                            "frame_idx": int(task_env.FRAME_IDX),
+                            "elapsed_seconds": round(time.time() - rollout_started, 2),
+                            "accepted": False,
+                        }
+                        takeover_request_events.append(request_event)
+                        if sampling_log is not None:
+                            sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
+                                                "decision": decision_step, "source": "human"})
+                    if cli.one_stage:
+                        recovery_iter = adapter.recovery_stage_iterator(task_env)
+                        chosen_stage = None
+                    else:
+                        recovery_iter, chosen_stage = choose_recovery_stage(task_env, keyboard, adapter)
+                    if recovery_iter is None:
+                        print("\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m")
+                        return False
+                    if request_event is not None:
+                        request_event["accepted"] = True
+                    switch_source("hil")
+                    intervention_count += 1
+                    interventions.append({
+                        "intervention_index": intervention_count,
+                        "policy_steps_before_intervention": int(policy_steps),
+                        "start_step": int(task_env.FRAME_IDX),
+                        "handback_step": None,
+                        "expert_done": False,
+                        "chosen_stage_id": chosen_stage,
+                    })
+                    mode = "expert"
+                    print("\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m")
+                    print("\033[93m[HG-DAGGER] Expert takeover; "
+                          + ("automatic recovery to completion." if cli.one_stage
+                             else "press r to hand back.") + "\033[0m")
+                    return True
+
                 if sampling_config is not None:
                     from coverage_sampling.core import DecisionSampler, EpisodeLog, ManualSamplingWindow
 
@@ -860,49 +903,7 @@ def main(argv: list[str] | None = None) -> int:
                             toggle_sampling()
                             continue
                         if event == "intervene":
-                            manual_takeover_requests += 1
-                            request_event = {
-                                "policy_steps": int(policy_steps), "decision": int(decision_step),
-                                "frame_idx": int(task_env.FRAME_IDX),
-                                "elapsed_seconds": round(time.time() - rollout_started, 2),
-                                "accepted": False,
-                            }
-                            takeover_request_events.append(request_event)
-                            if sampling_log is not None:
-                                sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
-                                                    "decision": decision_step, "source": "human"})
-                            if cli.one_stage:
-                                recovery_iter = adapter.recovery_stage_iterator(task_env)
-                                chosen_stage = None
-                            else:
-                                recovery_iter, chosen_stage = choose_recovery_stage(
-                                    task_env, keyboard, adapter
-                                )
-                            if recovery_iter is None:
-                                print(
-                                    "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
-                                )
-                                continue
-                            request_event["accepted"] = True
-                            switch_source("hil")
-                            intervention_count += 1
-                            interventions.append(
-                                {
-                                    "intervention_index": intervention_count,
-                                    "policy_steps_before_intervention": int(policy_steps),
-                                    "start_step": int(task_env.FRAME_IDX),
-                                    "handback_step": None,
-                                    "expert_done": False,
-                                    "chosen_stage_id": chosen_stage,
-                                }
-                            )
-                            mode = "expert"
-                            print(
-                                "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
-                            )
-                            print("\033[93m[HG-DAGGER] Expert takeover; "
-                                  + ("automatic recovery to completion." if cli.one_stage
-                                     else "press r to hand back.") + "\033[0m")
+                            begin_takeover(manual=True)
                             continue
 
                         observation = task_env.get_obs()
@@ -1089,51 +1090,7 @@ def main(argv: list[str] | None = None) -> int:
                             toggle_sampling()
                             continue
                         if chunk_interrupted and event == "intervene":
-                            if manual_trigger:
-                                manual_takeover_requests += 1
-                                request_event = {
-                                    "policy_steps": int(policy_steps), "decision": int(decision_step),
-                                    "frame_idx": int(task_env.FRAME_IDX),
-                                    "elapsed_seconds": round(time.time() - rollout_started, 2),
-                                    "accepted": False,
-                                }
-                                takeover_request_events.append(request_event)
-                                if sampling_log is not None:
-                                    sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
-                                                        "decision": decision_step, "source": "human"})
-                            if cli.one_stage:
-                                recovery_iter = adapter.recovery_stage_iterator(task_env)
-                                chosen_stage = None
-                            else:
-                                recovery_iter, chosen_stage = choose_recovery_stage(
-                                    task_env, keyboard, adapter
-                                )
-                            if recovery_iter is None:
-                                print(
-                                    "\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m"
-                                )
-                                continue
-                            if manual_trigger:
-                                request_event["accepted"] = True
-                            switch_source("hil")
-                            intervention_count += 1
-                            interventions.append(
-                                {
-                                    "intervention_index": intervention_count,
-                                    "policy_steps_before_intervention": int(policy_steps),
-                                    "start_step": int(task_env.FRAME_IDX),
-                                    "handback_step": None,
-                                    "expert_done": False,
-                                    "chosen_stage_id": chosen_stage,
-                                }
-                            )
-                            mode = "expert"
-                            print(
-                                "\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m"
-                            )
-                            print("\033[93m[HG-DAGGER] Expert takeover; "
-                                  + ("automatic recovery to completion." if cli.one_stage
-                                     else "press r to hand back.") + "\033[0m")
+                            begin_takeover(manual=manual_trigger)
                             continue
                     else:
                         # Expert mode. The supervisor can hand back at any

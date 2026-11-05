@@ -20,7 +20,7 @@
 当前 stack 默认通过共享 `dagger/episode_protocol.py` 执行以下顺序；其他 adapter 及历史 tray 的默认协议本次不变：
 
 1. 从 DAgger 专用 seed 池选候选，先执行现有保留 seed 检查。本任务禁止 `0–99` 与 `100000–100056`，分别覆盖已知 SFT/D test20/专家筛查及冻结评测候选；这不是对未知历史数据集的全局查重证明。
-2. 设置 `is_test=True, eval_mode=True, need_plan=True`，关闭窗口、训练帧与视频记录；调用原任务的完整 `play_once()`，不调用 DAgger 恢复 adapter。只有 `plan_success=True` **且** `check_success()=True` 才通过。正常专家失败记录为 `expert_rejected`，换下一个候选，不增加策略 rollout 数、不标成策略失败。
+2. 设置 `is_test=True, eval_mode=True, need_plan=True`，关闭窗口、训练帧与视频记录；调用原任务的完整 `play_once()`，不调用 DAgger 恢复 adapter。与官方 SFT 采集器同样按短路顺序检查：`plan_success=True`、`check_success()=True`、`planned_joints_legal()=True` 才通过；规划关节超过 ±π 的候选记为 `expert_rejected`，日志保存 `joints_legal=false` 和 `joint_absmax`，换下一个 seed，不增加策略 rollout 数、不标成策略失败。前两关失败时不调用关节检查；关节检查本身抛异常则记为技术错误并停止，不当作正常拒绝。
 3. 关闭预筛场景，用同一 seed **重新初始化初始场景**，再调用最小记录版导出的 `build_instruction(args, expert_episode_info, "seen", 50)`。不能从专家已经堆好的终局继续策略，不能把预筛轨迹写成 HIL 训练数据。
 4. 默认 `--instruction-pool-size 50` 对应正式 SFT 测评的 `test_num=50` 描述生成参数；它不是 DAgger 局数。即使这里只试采 5 局，也仍按 50 条描述候选的方式生成。随机选择发生在场景重建之后、adapter/viewer 初始化及策略 reset 之前。
 5. 本局 prompt 保存到 `scene_screening.jsonl`、episode 元数据和 session 的逐局 `records[].instruction`，之后设置策略、进行 `prepare_case/reset/update_obs/get_action`。整场 session 的 `instruction=null` 表示逐局生成，不表示策略收到空指令。

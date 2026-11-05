@@ -27,9 +27,19 @@ import os
 from pathlib import Path
 import pickle
 import shutil
+import sys
 from typing import Any, Iterable
 
 import numpy as np
+
+for ancestor in Path(__file__).resolve().parents:
+    if (ancestor / "dagger" / "recording.py").is_file():
+        if str(ancestor) not in sys.path:
+            sys.path.insert(0, str(ancestor))
+        break
+else:
+    raise ImportError("dagger.recording is required for the shared training eligibility gate")
+from dagger.recording import training_eligible
 
 
 ACTION_DIM = 14
@@ -109,9 +119,14 @@ def discover_episodes(raw_roots: Iterable[Path], limit: int | None) -> list[Epis
         if not paths:
             raise FileNotFoundError(f"No raw episodes under {raw_root}")
         for metadata_path in paths:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if not training_eligible(metadata_path.parent, metadata):
+                continue
             episodes.append(_read_episode(raw_root, metadata_path))
             if limit is not None and len(episodes) >= limit:
                 return episodes
+    if not episodes:
+        raise ValueError("No training-eligible raw episodes remain after diagnostic/acceptance filtering")
     return episodes
 
 

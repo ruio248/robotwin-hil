@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ if str(ROBOTWIN_ROOT) not in sys.path:
     sys.path.insert(0, str(ROBOTWIN_ROOT))
 
 from envs.utils.pkl2hdf5 import process_folder_to_hdf5_video  # noqa: E402
+from dagger.recording import training_eligible  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,33 +49,40 @@ def write_json(path: Path, value: Any) -> None:
 
 def is_diagnostic_episode(episode_dir: Path, meta: dict[str, Any]) -> bool:
     """Keep headless smoke and frozen test seeds out of training exports."""
-    if (episode_dir / "DIAGNOSTIC_ONLY.json").exists():
-        return True
-    nested = meta.get("episode_metadata") or {}
-    record = meta.get("record") or {}
-    for source in (meta, nested, record):
-        if parse_bool(source.get("diagnostic_only", False)):
-            return True
-        if "accepted_for_training" in source and not parse_bool(source["accepted_for_training"]):
-            return True
-    return False
+    return not training_eligible(episode_dir, meta)
 
 
-def stage_frames(frames_dir: Path, control_mask: list[Any], mode: str, staging_dir: Path) -> Path:
-    """Return the frame directory to merge (a renumbered copy for HIL-only)."""
-    if mode == "full":
-        return frames_dir
+def validated_frame_count(frames_dir: Path, control_mask: list[Any], *, require_mask: bool = True) -> int:
+    """Check contiguous frames; require aligned ownership labels for HIL export."""
+    files = sorted(int(path.stem) for path in frames_dir.glob("*.pkl") if path.stem.isdigit())
+    if not files or files != list(range(len(files))):
+        raise ValueError(f"Non-contiguous raw frames in {frames_dir}")
+    if require_mask and (len(control_mask) != len(files) or any(
+        str(source).lower() not in {"hil", "policy"} for source in control_mask
+    )):
+        raise ValueError(f"Invalid control_mask/frame alignment in {frames_dir}")
+    return len(files)
 
-    staging_dir.mkdir(parents=True, exist_ok=True)
-    selected = [
-        index
-        for index, source in enumerate(control_mask)
-        if str(source).lower() == "hil"
-    ]
-    for new_index, old_index in enumerate(selected):
+
+def hil_runs(control_mask: list[Any]):
+    """Yield maximal contiguous HIL runs; never join across policy frames."""
+    start = None
+    for index, source in enumerate([*control_mask, "policy"]):
+        if source == "hil" and start is None:
+            start = index
+        elif source != "hil" and start is not None:
+            if index - start >= 2:
+                yield start, index
+            start = None
+
+
+def stage_frames(frames_dir: Path, start: int, end: int, staging_dir: Path) -> Path:
+    """Renumber one contiguous run while retaining original raw files."""
+    staging_dir.mkdir(parents=True, exist_ok=False)
+    for new_index, old_index in enumerate(range(start, end)):
         source = frames_dir / f"{old_index}.pkl"
         if not source.is_file():
-            continue
+            raise FileNotFoundError(source)
         target = staging_dir / f"{new_index}.pkl"
         try:
             os.link(source, target)
@@ -111,63 +120,52 @@ def main() -> int:
         frequency = int(meta.get("save_freq", 15) or 15)
         control_mask = list(meta.get("control_mask", []))
 
-        staging = cli.output_dir / ".staging" / f"episode_{episode_index:07d}_{cli.mode}"
-        if staging.exists():
-            shutil.rmtree(staging)
-        merge_frames = stage_frames(frames_dir, control_mask, cli.mode, staging)
-        if cli.mode == "hil" and not any(merge_frames.glob("*.pkl")):
-            print(
-                f"[EXPORT] episode={episode_index} mode=hil skipped (no HIL frames)",
-                flush=True,
-            )
-            shutil.rmtree(staging, ignore_errors=True)
+        frame_count = validated_frame_count(frames_dir, control_mask, require_mask=cli.mode == "hil")
+        runs = list(hil_runs([str(source).lower() for source in control_mask])) if cli.mode == "hil" else [(0, frame_count)]
+        if not runs:
+            print(f"[EXPORT] episode={episode_index} mode=hil skipped (no two adjacent HIL frames)", flush=True)
             continue
-
-        suffix = "" if cli.mode == "full" else "_hil"
-        episode_name = f"episode_{episode_index:07d}{suffix}"
-        hdf5_path = cli.output_dir / "data" / f"{episode_name}.hdf5"
-        video_path = cli.output_dir / "video" / f"{episode_name}.mp4"
-        hdf5_path.parent.mkdir(parents=True, exist_ok=True)
-        video_path.parent.mkdir(parents=True, exist_ok=True)
-
-        process_folder_to_hdf5_video(
-            str(merge_frames),
-            str(hdf5_path),
-            str(video_path),
-            instructions=[instruction],
-            frequency=frequency,
-            episode_metadata=meta.get("episode_metadata"),
-            save_video=save_video,
-        )
-        if cli.mode == "hil":
-            shutil.rmtree(staging, ignore_errors=True)
-        write_json(
-            cli.output_dir / "instruction" / f"{episode_name}.json",
-            {
-                "episode_index": episode_index,
-                "seen": [instruction],
-                "unseen": [instruction],
+        for segment_index, (start, end) in enumerate(runs):
+            suffix = "" if cli.mode == "full" else ("_hil" if len(runs) == 1 else f"_hil_s{segment_index:02d}")
+            episode_name = f"episode_{episode_index:07d}{suffix}"
+            hdf5_path = cli.output_dir / "data" / f"{episode_name}.hdf5"
+            video_path = cli.output_dir / "video" / f"{episode_name}.mp4"
+            instruction_path = cli.output_dir / "instruction" / f"{episode_name}.json"
+            if hdf5_path.exists() or instruction_path.exists() or (save_video and video_path.exists()):
+                raise FileExistsError(f"Refusing to overwrite an exported segment: {episode_name}")
+            hdf5_path.parent.mkdir(parents=True, exist_ok=True)
+            video_path.parent.mkdir(parents=True, exist_ok=True)
+            segment_metadata = dict(meta.get("episode_metadata") or {})
+            segment_metadata.update(source_episode_index=episode_index, source_seed=meta.get("seed"),
+                                    source_frame_start=start, source_frame_end_exclusive=end,
+                                    source_control_mask=control_mask,
+                                    transition_count=end - start - 1)
+            with tempfile.TemporaryDirectory(prefix=f"{episode_name}_", dir=cli.output_dir) as temporary:
+                merge_frames = (frames_dir if cli.mode == "full" else
+                                stage_frames(frames_dir, start, end, Path(temporary) / "frames"))
+                process_folder_to_hdf5_video(
+                    str(merge_frames), str(hdf5_path), str(video_path),
+                    instructions=[instruction], frequency=frequency,
+                    episode_metadata=segment_metadata, save_video=save_video,
+                )
+            write_json(instruction_path, {
+                "episode_index": episode_index, "seed": meta.get("seed"),
+                "seen": [instruction], "unseen": [instruction],
                 "supervisor_label": meta.get("supervisor_label"),
-                "segments": meta.get("segments"),
-                "control_mask": control_mask,
-                "mode": cli.mode,
-            },
-        )
-        manifest.append(
-            {
-                "episode_index": episode_index,
-                "mode": cli.mode,
-                "seed": meta.get("seed"),
+                "segments": meta.get("segments"), "control_mask": control_mask,
+                "source_frame_start": start, "source_frame_end_exclusive": end,
+                "transition_count": end - start - 1, "mode": cli.mode,
+            })
+            manifest.append({
+                "episode_index": episode_index, "segment_index": segment_index,
+                "source_frame_start": start, "source_frame_end_exclusive": end,
+                "transition_count": end - start - 1, "mode": cli.mode,
+                "seed": meta.get("seed"), "instruction": instruction,
                 "supervisor_label": meta.get("supervisor_label"),
-                "hdf5": str(hdf5_path),
-                "video": str(video_path) if save_video else None,
-            }
-        )
-        print(
-            f"[EXPORT] episode={episode_index} mode={cli.mode} "
-            f"hdf5={hdf5_path.name} video={save_video}",
-            flush=True,
-        )
+                "hdf5": str(hdf5_path), "video": str(video_path) if save_video else None,
+            })
+            print(f"[EXPORT] episode={episode_index} segment={segment_index} mode={cli.mode} "
+                  f"hdf5={hdf5_path.name} video={save_video}", flush=True)
 
     write_json(
         cli.output_dir / f"manifest_{cli.mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",

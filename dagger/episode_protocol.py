@@ -32,7 +32,7 @@ def screening_history(output_dir: Path) -> dict[int, dict]:
 
 
 def screen_expert_scene(env, args, *, seed, episode_index, close_env, output_dir):
-    """Run official play_once; false success rejects, exceptions fail closed.
+    """Run the official expert's plan, success, and joint-limit gates.
 
     A technical error is not an ordinary rejected scene. Preserve its traceback
     and stop before querying the policy, rather than hiding it in a yield rate.
@@ -53,9 +53,16 @@ def screen_expert_scene(env, args, *, seed, episode_index, close_env, output_dir
         # Match the official short-circuit gate: do not inspect an unfinished
         # expert terminal state when planning already failed.
         succeeded = bool(env.check_success()) if planned else None
-        accepted = planned and succeeded
+        # The SFT collector checks planned_joints_legal() only after both
+        # planning and task success. Keep that order for the DAgger seed gate.
+        joints_legal, joint_absmax = (
+            env.planned_joints_legal() if planned and succeeded else (None, None)
+        )
+        accepted = bool(planned and succeeded and joints_legal)
         event.update(status="expert_passed" if accepted else "expert_rejected",
                      plan_success=planned, check_success=succeeded,
+                     joints_legal=bool(joints_legal) if joints_legal is not None else None,
+                     joint_absmax=float(joint_absmax) if joint_absmax is not None else None,
                      expert_episode_info=episode_info,
                      expert_stage_error=deepcopy(env.episode_metadata.get("expert_stage_error")),
                      seconds=round(time.monotonic() - started, 3))
