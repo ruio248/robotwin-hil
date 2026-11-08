@@ -1,0 +1,230 @@
+{
+  "formal": {
+    "count": 50,
+    "expert_rejected": 5,
+    "official_rate": 0.32,
+    "official_result": "/media/ruio/hdd/robotwin-hil-github/outputs/dagger_four_h50_5050_300_20261107/eval_runtime/eval_result/rotate_qrcode/Pi_05/demo_clean/dagger_rotate_qrcode_ubuntu1_300_20261107_formal/2026-11-08_21-29-43_263648/_result.txt",
+    "policy_failures": 34,
+    "scene_results": [
+      {
+        "scene_seed": 100000,
+        "success": true
+      },
+      {
+        "scene_seed": 100002,
+        "success": false
+      },
+      {
+        "scene_seed": 100003,
+        "success": false
+      },
+      {
+        "scene_seed": 100004,
+        "success": false
+      },
+      {
+        "scene_seed": 100005,
+        "success": false
+      },
+      {
+        "scene_seed": 100006,
+        "success": false
+      },
+      {
+        "scene_seed": 100008,
+        "success": true
+      },
+      {
+        "scene_seed": 100009,
+        "success": false
+      },
+      {
+        "scene_seed": 100010,
+        "success": false
+      },
+      {
+        "scene_seed": 100011,
+        "success": false
+      },
+      {
+        "scene_seed": 100012,
+        "success": false
+      },
+      {
+        "scene_seed": 100013,
+        "success": false
+      },
+      {
+        "scene_seed": 100014,
+        "success": false
+      },
+      {
+        "scene_seed": 100015,
+        "success": false
+      },
+      {
+        "scene_seed": 100016,
+        "success": true
+      },
+      {
+        "scene_seed": 100017,
+        "success": false
+      },
+      {
+        "scene_seed": 100018,
+        "success": true
+      },
+      {
+        "scene_seed": 100020,
+        "success": true
+      },
+      {
+        "scene_seed": 100021,
+        "success": true
+      },
+      {
+        "scene_seed": 100022,
+        "success": true
+      },
+      {
+        "scene_seed": 100023,
+        "success": false
+      },
+      {
+        "scene_seed": 100024,
+        "success": false
+      },
+      {
+        "scene_seed": 100025,
+        "success": true
+      },
+      {
+        "scene_seed": 100026,
+        "success": true
+      },
+      {
+        "scene_seed": 100027,
+        "success": true
+      },
+      {
+        "scene_seed": 100029,
+        "success": false
+      },
+      {
+        "scene_seed": 100030,
+        "success": false
+      },
+      {
+        "scene_seed": 100031,
+        "success": false
+      },
+      {
+        "scene_seed": 100032,
+        "success": false
+      },
+      {
+        "scene_seed": 100033,
+        "success": false
+      },
+      {
+        "scene_seed": 100034,
+        "success": true
+      },
+      {
+        "scene_seed": 100035,
+        "success": false
+      },
+      {
+        "scene_seed": 100036,
+        "success": false
+      },
+      {
+        "scene_seed": 100037,
+        "success": false
+      },
+      {
+        "scene_seed": 100038,
+        "success": false
+      },
+      {
+        "scene_seed": 100039,
+        "success": false
+      },
+      {
+        "scene_seed": 100040,
+        "success": false
+      },
+      {
+        "scene_seed": 100041,
+        "success": true
+      },
+      {
+        "scene_seed": 100042,
+        "success": true
+      },
+      {
+        "scene_seed": 100043,
+        "success": false
+      },
+      {
+        "scene_seed": 100044,
+        "success": false
+      },
+      {
+        "scene_seed": 100045,
+        "success": true
+      },
+      {
+        "scene_seed": 100046,
+        "success": true
+      },
+      {
+        "scene_seed": 100047,
+        "success": false
+      },
+      {
+        "scene_seed": 100048,
+        "success": false
+      },
+      {
+        "scene_seed": 100050,
+        "success": false
+      },
+      {
+        "scene_seed": 100051,
+        "success": true
+      },
+      {
+        "scene_seed": 100052,
+        "success": false
+      },
+      {
+        "scene_seed": 100053,
+        "success": false
+      },
+      {
+        "scene_seed": 100054,
+        "success": false
+      }
+    ],
+    "status": "complete",
+    "successes": 16,
+    "trace_manifest": "/media/ruio/hdd/robotwin-hil-github/outputs/dagger_four_h50_5050_300_20261107/evaluations/rotate_qrcode_ubuntu1/formal/trace/manifest.json"
+  },
+  "smoke": {
+    "count": 1,
+    "expert_rejected": 0,
+    "official_rate": 1.0,
+    "official_result": "/media/ruio/hdd/robotwin-hil-github/outputs/dagger_four_h50_5050_300_20261107/eval_runtime/eval_result/rotate_qrcode/Pi_05/demo_clean/dagger_rotate_qrcode_ubuntu1_300_20261107_smoke/2026-11-08_21-28-56_486467/_result.txt",
+    "policy_failures": 0,
+    "scene_results": [
+      {
+        "scene_seed": 100000,
+        "success": true
+      }
+    ],
+    "status": "complete",
+    "successes": 1,
+    "trace_manifest": "/media/ruio/hdd/robotwin-hil-github/outputs/dagger_four_h50_5050_300_20261107/evaluations/rotate_qrcode_ubuntu1/smoke/trace/manifest.json"
+  }
+}

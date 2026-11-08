@@ -1,7 +1,7 @@
 # 进度共识（与用户 2026-11-08 对齐）
 
-本页记录已口头确认的阶段叙事，以及交接快照里的精确状态。  
-未在本轮重新 SSH 验收 A800 测评终值时，标 `UNKNOWN` / `REPORTED`。
+本页记录已口头确认的阶段叙事，以及交接后的正式测评结论。  
+Ubuntu `ubuntu1` 终值已本地打开 summary，标 `VERIFIED`；A800 `handover_block` `retry1` 仍按交接快照标 `REPORTED`。
 
 ## 研究阶段（已确认）
 
@@ -18,39 +18,38 @@
    `handover_block`、`rotate_qrcode`、`place_empty_cup`、`stack_blocks_three`。  
    当前采集入口 **`--es-mode off`**（在线 RESample 未接回这四条路径）。
 
-## 当前工程进度（已确认方向，细节见快照）
+## 当前工程进度（2026-11-08 晚更新）
 
-| 事项 | 共识说法 | 快照细节 |
+| 事项 | 共识说法 | 细节 |
 | --- | --- | --- |
-| HIL 采集 | 四任务各约 15 条短纠偏段已用于本轮训练 | `REPORTED`/`VERIFIED` 见 `Resample_Agent.md` §B |
-| A800 训练 | 已训一波 DAgger（H50、`state=True`、SFT50+HIL15、300 step → `299`） | 实验名 `dagger_four_h50_5050_300_20261107` |
-| 正式测评 | **训练已完成；测评批次未全部收官** | 不是“完全没开始测” |
+| HIL 采集 | 四任务各约 15 条短纠偏段已用于本轮训练 | 见 `Resample_Agent.md` §B |
+| A800 训练 | 已训一波 DAgger（H50、`state=True`、SFT50+HIL15、300→299） | `dagger_four_h50_5050_300_20261107` |
+| 正式测评 | **已测任务相对 SFT 全面掉点；多任务 DAgger 科研闭环未走通** | 见 `02_FOUR_TASK_DAGGER_EVAL_NEGATIVE_20261108.md` |
 
-约 2026-11-07 13:07 CST 的 A800 `retry1` 快照（`REPORTED`，见 `Resample_Agent.md` §C）：
+### 正式成功率
 
-| 任务 | DAgger299 |
-| --- | --- |
-| `handover_block` | complete：**0/50** |
-| `rotate_qrcode` | 当时 running（快照非终值） |
-| `place_empty_cup` | 当时尚无 retry1 结果 |
-| `stack_blocks_three` | 当时尚无 retry1 结果 |
-
-2026-11-08 会话心跳仍在盯 A800；**此后 QR/cup/stack 是否跑完 = `UNKNOWN`（交接整理时未再验收）**。
+| 任务 | DAgger299 | 旧 SFT4999 参照 | 状态 |
+| --- | --- | --- | --- |
+| `handover_block` | **0/50** | ~24/50 | A800 `retry1`，`REPORTED` |
+| `rotate_qrcode` | **16/50** | ~39/50 | Ubuntu `ubuntu1`，`VERIFIED` |
+| `place_empty_cup` | **4/50** | ~32/50 | Ubuntu `ubuntu1`，`VERIFIED` |
+| `stack_blocks_three` | 未测 | ~21/50 | 本机缺 299 checkpoint |
 
 ## 口语 vs 精确说法
 
-- 口语：“A800 训了一波 DAgger，现在等测评”  
-- 精确：**训练完了；A800 正式测评进行中/未收齐（handover 已出 0/50，另三任务待确认）**；另有 Ubuntu 传 checkpoint / 对照测评线，完成度未验收。
+- 口语：“多任务 DAgger 没走通”  
+- 精确：**采集/训练能跑完，但已测三任务 DAgger299 自主成功率显著低于交接中的 SFT 参照；不能宣称流程科研成功，也不能在未对齐协议前把锅只扣成算法天生副作用。**
 
 ## 下一步（PROPOSED，未授权自动执行）
 
-1. 只读核对 A800 `evaluations/*_retry1` 是否已齐，做 NPZ/summary 终验。  
-2. 同机同协议对照旧 SFT4999 vs DAgger299；跨机器/`_base_task`/prompt 未对齐时不作因果结论。  
-3. 在未冻结资格与评测协议前，不要打开四任务 `--es-mode enhanced`。
+1. 拉取并补测 `stack_blocks_three` 299。  
+2. 同机同协议对照 SFT4999 vs DAgger299。  
+3. 用严格 accepted HIL 重导出/重训，隔离 `diagnostic_all` 例外。  
+4. 在未冻结资格与评测协议前，不要打开四任务 `--es-mode enhanced`。
 
 ## 不要做
 
 - 不要把 tray 历史结果与四任务 H50 混表。  
 - 不要把接管率上升当成最终成功指标。  
-- 不要重复启动已有 `retry1` runner。  
+- 不要把 A800 与 Ubuntu 局数合并。  
 - 不要擅自改 `supports_sampling`。

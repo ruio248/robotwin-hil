@@ -1,0 +1,212 @@
+{
+  "count": 50,
+  "expert_rejected": 12,
+  "official_rate": 0.08,
+  "official_result": "/media/ruio/hdd/robotwin-hil-github/outputs/dagger_four_h50_5050_300_20261107/eval_runtime/eval_result/place_empty_cup/Pi_05/demo_clean/dagger_place_empty_cup_ubuntu1_300_20261107_formal/2026-11-08_20-54-09_422132/_result.txt",
+  "policy_failures": 46,
+  "scene_results": [
+    {
+      "scene_seed": 100000,
+      "success": true
+    },
+    {
+      "scene_seed": 100001,
+      "success": false
+    },
+    {
+      "scene_seed": 100002,
+      "success": false
+    },
+    {
+      "scene_seed": 100004,
+      "success": false
+    },
+    {
+      "scene_seed": 100007,
+      "success": false
+    },
+    {
+      "scene_seed": 100008,
+      "success": false
+    },
+    {
+      "scene_seed": 100009,
+      "success": false
+    },
+    {
+      "scene_seed": 100010,
+      "success": false
+    },
+    {
+      "scene_seed": 100011,
+      "success": false
+    },
+    {
+      "scene_seed": 100012,
+      "success": false
+    },
+    {
+      "scene_seed": 100013,
+      "success": false
+    },
+    {
+      "scene_seed": 100014,
+      "success": false
+    },
+    {
+      "scene_seed": 100015,
+      "success": false
+    },
+    {
+      "scene_seed": 100016,
+      "success": false
+    },
+    {
+      "scene_seed": 100017,
+      "success": false
+    },
+    {
+      "scene_seed": 100018,
+      "success": false
+    },
+    {
+      "scene_seed": 100019,
+      "success": false
+    },
+    {
+      "scene_seed": 100020,
+      "success": false
+    },
+    {
+      "scene_seed": 100021,
+      "success": false
+    },
+    {
+      "scene_seed": 100023,
+      "success": false
+    },
+    {
+      "scene_seed": 100024,
+      "success": false
+    },
+    {
+      "scene_seed": 100025,
+      "success": false
+    },
+    {
+      "scene_seed": 100026,
+      "success": false
+    },
+    {
+      "scene_seed": 100028,
+      "success": false
+    },
+    {
+      "scene_seed": 100029,
+      "success": false
+    },
+    {
+      "scene_seed": 100030,
+      "success": false
+    },
+    {
+      "scene_seed": 100032,
+      "success": false
+    },
+    {
+      "scene_seed": 100033,
+      "success": false
+    },
+    {
+      "scene_seed": 100034,
+      "success": false
+    },
+    {
+      "scene_seed": 100035,
+      "success": false
+    },
+    {
+      "scene_seed": 100036,
+      "success": false
+    },
+    {
+      "scene_seed": 100037,
+      "success": false
+    },
+    {
+      "scene_seed": 100038,
+      "success": false
+    },
+    {
+      "scene_seed": 100040,
+      "success": false
+    },
+    {
+      "scene_seed": 100041,
+      "success": false
+    },
+    {
+      "scene_seed": 100042,
+      "success": false
+    },
+    {
+      "scene_seed": 100044,
+      "success": true
+    },
+    {
+      "scene_seed": 100046,
+      "success": false
+    },
+    {
+      "scene_seed": 100047,
+      "success": false
+    },
+    {
+      "scene_seed": 100049,
+      "success": false
+    },
+    {
+      "scene_seed": 100050,
+      "success": true
+    },
+    {
+      "scene_seed": 100051,
+      "success": false
+    },
+    {
+      "scene_seed": 100052,
+      "success": false
+    },
+    {
+      "scene_seed": 100054,
+      "success": false
+    },
+    {
+      "scene_seed": 100056,
+      "success": false
+    },
+    {
+      "scene_seed": 100057,
+      "success": false
+    },
+    {
+      "scene_seed": 100058,
+      "success": true
+    },
+    {
+      "scene_seed": 100059,
+      "success": false
+    },
+    {
+      "scene_seed": 100060,
+      "success": false
+    },
+    {
+      "scene_seed": 100061,
+      "success": false
+    }
+  ],
+  "status": "complete",
+  "successes": 4,
+  "trace_manifest": "/media/ruio/hdd/robotwin-hil-github/outputs/dagger_four_h50_5050_300_20261107/evaluations/place_empty_cup_ubuntu1/formal/trace/manifest.json"
+}

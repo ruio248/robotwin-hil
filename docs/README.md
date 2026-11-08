@@ -42,6 +42,7 @@
 
 - [resample_handoff_20261108/00_README.md](resample_handoff_20261108/00_README.md)
 - [进度共识](resample_handoff_20261108/01_PROGRESS_CONFIRMED.md)
+- [正式测评负结果：多任务 DAgger 未走通](resample_handoff_20261108/02_FOUR_TASK_DAGGER_EVAL_NEGATIVE_20261108.md)
 - [工程主交接 Resample_Agent.md](resample_handoff_20261108/docs/Resample_Agent.md)
 
 ## 项目与通用协议
