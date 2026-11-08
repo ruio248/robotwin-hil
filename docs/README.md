@@ -36,6 +36,15 @@
 - Coverage 离线与编码器消融：[离线结果](experiments/coverage/COVERAGE_CHUNK_OFFLINE_RESULTS_20261009.md)、[编码器消融](experiments/coverage/COVERAGE_ENCODER_ABLATION_20261009.md)、[判别器大指标](experiments/coverage/COVERAGE_ENCODER_DISCRIMINATOR_BIG_METRICS_20261010.md)、[KNN 消融](experiments/coverage/COVERAGE_ENCODER_KNN_ABLATION_20261010.md)、[分数 40 诊断](experiments/coverage/COVERAGE_SCORE_40_DEBUG_REPORT.md)
 - Tail / Value：[入口](experiments/coverage/TAIL_VALUE_README.md)、[V2 消融](experiments/coverage/TAIL_VALUE_V2_ABLATION.md)、[专家 bootstrap](experiments/coverage/TAIL_COVERAGE_EXPERT_BOOTSTRAP_REPORT.md)、[alpha 消融](experiments/coverage/TAIL_CHUNK_ALPHA_ABLATION_20261009.md)、[100 动作多样性](experiments/coverage/TAIL_COVERAGE_BASELINE_100_ACTION_DIVERSITY.md)、[候选多样性诊断](experiments/coverage/TAIL_COVERAGE_CANDIDATE_DIVERSITY_DIAGNOSIS.md)、[配对动作诊断](experiments/coverage/TAIL_COVERAGE_PAIRED_ACTION_DIAGNOSIS.md)、[终点奖励消融](experiments/coverage/TERMINAL_REWARD_ABLATION.md)
 
+## 交接快照（2026-11-08）
+
+四任务 HG-DAgger / RESample 进度与历史交接（只读，不授权重跑训练或停进程）：
+
+- [resample_handoff_20261108/00_README.md](resample_handoff_20261108/00_README.md)
+- [进度共识](resample_handoff_20261108/01_PROGRESS_CONFIRMED.md)
+- [工程主交接 Resample_Agent.md](resample_handoff_20261108/docs/Resample_Agent.md)
+
 ## 项目与通用协议
+
 
 [上游隔离与兼容运行目录](project/UPSTREAM_ISOLATION.md)；[历史测评协议备忘](project/测评协议.md)。遇到互相矛盾的历史命令时，以对应实验的 manifest、源码版本和逐 seed 原始记录为准。

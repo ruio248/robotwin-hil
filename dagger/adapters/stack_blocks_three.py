@@ -1,4 +1,4 @@
-"""Conservative RGB-stack recovery from the current live scene.
+"""Operator-selected RGB-stack recovery from the current live scene.
 
 Uses the official grasp/place primitives, never resets/teleports actors and
 never calls play_once. Contact tests use entity identity: all three official
@@ -6,7 +6,6 @@ actors are named 'box'. Privileged signals remain in expert diagnostics only.
 """
 from __future__ import annotations
 
-import copy
 from collections.abc import Iterator
 from typing import Any
 
@@ -29,6 +28,86 @@ STAGES = {
     9: "blue_place      放到绿块上、松爪并撤离",
 }
 EPS = np.array([0.025, 0.025, 0.012])  # Official relative-position tolerance.
+GRASP_RETRY_LIFT_M = 0.05
+GRASP_RETRY_MAX_LIFT_STEPS = 5
+
+
+def _preflight_grasp_candidates(env, actor, side):
+    """Rank live grasp paths without executing them or changing the scene.
+
+    The official primitive chooses a pose by orientation. For an off-policy
+    recovery, that pose can require a very large joint-space detour. Evaluate
+    each block contact point's pre-grasp and constrained approach separately.
+    """
+    robot = env.robot
+    if not hasattr(actor, "iter_contact_points") or not hasattr(robot, f"{side}_plan_path"):
+        return None  # Lightweight test doubles do not implement a planner.
+    from envs.utils import ArmTag
+
+    arm = ArmTag(side)
+    entity = getattr(robot, f"{side}_entity")
+    joint_names = [joint.get_name() for joint in entity.get_active_joints()]
+    active_names = list(getattr(robot, f"{side}_arm_joints_name"))
+    indices = [joint_names.index(name) for name in active_names]
+    # Preserve SAPIEN's float32 qpos: cuRobo constructs its start tensor from
+    # these scalars and rejects a float64 start against its float32 model.
+    start_qpos = np.asarray(entity.get_qpos()).copy()
+    planner = getattr(robot, f"{side}_plan_path")
+    diagnostics = []
+    accepted = []
+    prior_plan_success = env.plan_success
+    prior_error = env.episode_metadata.get("expert_stage_error")
+    try:
+        # Choose the shortest reachable expert grasp path from the live state.
+        for contact_id in [None, *(int(i) for i, _ in actor.iter_contact_points())]:
+            row = {"contact_point_id": "official" if contact_id is None else contact_id}
+            diagnostics.append(row)
+            env.plan_success = True
+            env.episode_metadata.pop("expert_stage_error", None)
+            try:
+                command = env.grasp_actor(actor, arm_tag=arm, pre_grasp_dis=0.09,
+                                          contact_point_id=contact_id)
+                actions = command[1]
+                if not env.plan_success or not actions:
+                    row["reason"] = "no_feasible_grasp_pose"
+                    continue
+                qpos = start_qpos.copy()
+                total_travel = 0.0
+                peak = 0.0
+                swing = 0.0
+                for leg, action in enumerate(a for a in actions if a.action == "move"):
+                    plan = planner(action.target_pose,
+                                   constraint_pose=action.args.get("constraint_pose"),
+                                   last_qpos=qpos)
+                    if plan.get("status") != "Success":
+                        row["reason"] = "pregrasp_plan_failed" if leg == 0 else "approach_plan_failed"
+                        break
+                    path = np.asarray(plan.get("position"), dtype=float)
+                    if path.ndim != 2 or path.shape[0] == 0 or path.shape[1] != len(indices) or not np.isfinite(path).all():
+                        row["reason"] = "invalid_planner_path"
+                        break
+                    peak = max(peak, float(np.max(np.abs(path))))
+                    swing = max(swing, float(np.max(np.abs(path - start_qpos[indices]))))
+                    total_travel += float(np.sum(np.abs(np.diff(np.vstack([qpos[indices], path]), axis=0))))
+                    qpos[indices] = path[-1]
+                else:
+                    row.update(peak_joint_abs=peak, max_joint_swing=swing,
+                               joint_travel=total_travel)
+                    if peak > np.pi:
+                        row["reason"] = "joint_limit_exceeded"
+                    else:
+                        row["reason"] = "accepted"
+                        accepted.append((total_travel, swing, -1 if contact_id is None else contact_id))
+            except (AttributeError, IndexError, KeyError, TypeError, ValueError) as error:
+                row["reason"] = f"preflight_error: {error}"
+    finally:
+        env.plan_success = prior_plan_success
+        if prior_error is None:
+            env.episode_metadata.pop("expert_stage_error", None)
+        else:
+            env.episode_metadata["expert_stage_error"] = prior_error
+    selected = min(accepted)[2] if accepted else None
+    return {"selected_contact_point_id": selected, "candidates": diagnostics}
 
 
 def _entity(actor):
@@ -117,21 +196,6 @@ def snapshot(env) -> dict[str, Any]:
     if target.shape != (7,) or not np.isfinite(target).all():
         raise ValueError("Invalid official base placement target")
     settled = [v <= 0.04 and w <= 0.5 for v, w in speeds]
-    # SAPIEN contact-solver velocity can oscillate even at a motionless stack.
-    # A recorded hold window can establish support stability, but never a
-    # proximity-only grasp. Invalidate on drift, support loss or policy control.
-    proof = getattr(env, "_stack_support_stability", None)
-    if proof is not None and getattr(env, "current_control_source", None) == "hil":
-        drift = np.linalg.norm(points - np.asarray(proof["positions"]), axis=1)
-        rotation = _orientation_change(_orientations(env), np.asarray(proof["orientations"]))
-        for i in range(3):
-            supported = table_contact[i] or (i > 0 and aligned[i-1] and block_contact[i][i-1])
-            if proof["stable"][i] and supported and drift[i] <= .002 and rotation[i] <= .02 and speeds[i][0] <= .15 and speeds[i][1] <= .8:
-                settled[i] = True
-            else:
-                proof["stable"][i] = False
-    elif proof is not None:
-        env._stack_support_stability = None
     return {
         "positions": points.tolist(), "speeds": speeds,
         "settled": settled,
@@ -144,128 +208,33 @@ def snapshot(env) -> dict[str, Any]:
     }
 
 
-def _partial_contact_clearance(state: dict[str, Any], side: str, touched: list[int]) -> dict[str, Any] | None:
-    """Recognize a supported, unheld next block without moving the robot."""
-    if len(touched) != 1 or any(any(state["gripper_contact"][other])
-                                for other in state["gripper_contact"] if other != side):
-        return None
-    index = touched[0]
-    # A hypothetical contact-free state must be safe to resume at this exact
-    # grasp stage. This also checks the earlier stack, workspace and settling.
-    hypothetical = copy.deepcopy(state)
-    hypothetical["gripper_contact"][side] = [False] * len(NAMES)
-    next_step = classify(hypothetical)
-    if (not next_step["recoverable"] or next_step["branch"] != "repair_stack"
-            or next_step["stage_id"] != index * 3 + 1
-            or next_step["held"][index] is not None):
-        return None
-    supported = state["table_contact"][index] or (
-        index > 0 and state["block_contact"][index][index-1] and next_step["ready"][index-1]
-    )
-    if not supported:
-        return None
-    return {"stage_id": index * 3 + 1, "block_index": index, "arm": side}
-
-
-def _partial_held_place(state: dict[str, Any], side: str, touched: list[int]) -> dict[str, Any] | None:
-    """Offer an explicitly chosen place for one elevated, partly closed contact."""
-    if len(touched) != 1 or any(any(state["gripper_contact"][other])
-                                for other in state["gripper_contact"] if other != side):
-        return None
-    index = touched[0]
-    points = np.asarray(state["positions"], dtype=float)
-    if state["table_contact"][index] or points[index, 2] < .80 + state["table_z_bias"]:
-        return None
-    # Official success is relative: a stable red base need not sit at the
-    # scripted center for an operator-confirmed green placement to be useful.
-    if index > 0 and not (state["table_contact"][0] and state["settled"][0]):
-        return None
-    if index > 1 and not (state["aligned"][0] and state["block_contact"][1][0]
-                          and state["settled"][1]):
-        return None
-    if any(state["block_contact"][j][index] and points[j, 2] > points[index, 2] + .02
-           for j in range(index + 1, 3)):
-        return None
-    return {"stage_id": index * 3 + 3, "block_index": index, "arm": side}
-
-
 def classify(state: dict[str, Any]) -> dict[str, Any]:
-    """Pure, side-effect-free decision. No proximity-only grasp inference."""
-    decision = {"recoverable": False, "stage_id": None, "branch": "reject",
-                "reason": None, "snapshot": state}
-
-    def reject(reason):
-        return {**decision, "reason": reason}
-
-    points = np.asarray(state["positions"])
-    for index, point in enumerate(points):
-        if not (-0.50 <= point[0] <= 0.50 and -0.30 <= point[1] <= 0.30 and
-                0.735 + state["table_z_bias"] <= point[2] <= 1.25 + state["table_z_bias"]):
-            return reject(f"{COLORS[index]}_outside_recovery_workspace")
+    """Suggest a suffix stage; never reject an operator's selected stage."""
+    points = np.asarray(state["positions"], dtype=float)
+    supported = [bool(state["table_contact"][0]), False, False]
+    for index in (1, 2):
+        supported[index] = bool(
+            supported[index - 1]
+            and state["aligned"][index - 1]
+            and state["block_contact"][index][index - 1]
+        )
     held = [None] * 3
     for side, grip in state["grippers"].items():
-        touched = [i for i, contact in enumerate(state["gripper_contact"][side]) if contact]
-        if not grip["open"] and touched:
-            if not grip["closed"] or len(touched) != 1 or held[touched[0]] is not None:
-                if not grip["closed"]:
-                    clearance = _partial_contact_clearance(state, side, touched)
-                    if clearance is not None:
-                        return {**decision, "reason": "ambiguous_or_partial_grasp",
-                                "clearance_candidate": clearance}
-                    place = _partial_held_place(state, side, touched)
-                    if place is not None:
-                        return {**decision, "reason": "ambiguous_or_partial_grasp",
-                                "partial_place_candidate": place}
-                return reject("ambiguous_or_partial_grasp")
-            held[touched[0]] = side
-    if sum(arm is not None for arm in held) > 1:
-        return reject("multiple_blocks_held")
-    for i in range(3):
-        if held[i] is None and not state["settled"][i]:
-            return reject(f"{COLORS[i]}_moving_wait_for_settle")
-        for j in range(3):
-            if (state["block_contact"][i][j] and points[i, 2] > points[j, 2] + 0.02
-                    and i != j + 1):
-                return reject("wrong_stack_order_requires_manual_unstack")
-
-    # Retain a correct supported prefix wherever it is: official success does
-    # NOT require the base at the scripted center target.
-    stacked = [state["aligned"][i-1] and state["block_contact"][i][i-1] for i in (1, 2)]
-    ready = [state["table_contact"][0] and (state["base_at_target"] or stacked[0]), False, False]
-    ready[1] = bool(ready[0] and stacked[0])
-    ready[2] = bool(ready[1] and stacked[1])
-    if all(ready) and all(g["open"] for g in state["grippers"].values()):
-        return {**decision, "recoverable": True, "stage_id": 9, "branch": "done",
-                "held": held, "ready": ready}
-
-    # Release a verified supported subgoal before building on top of it.
-    release = next((i for i in range(3) if ready[i] and held[i] is not None), None)
-    index = release if release is not None else next((i for i, done in enumerate(ready) if not done), None)
-    if index is None:
-        # Fully stacked with an empty closed gripper: opening it is safe.
-        return {**decision, "recoverable": True, "stage_id": 9, "branch": "release_empty",
-                "held": held, "ready": ready}
-    if any(arm is not None for i, arm in enumerate(held) if i != index):
-        return reject("later_block_held_before_support_ready")
-    if release is None:
-        if any(state["block_contact"][j][index] and points[j, 2] > points[index, 2] + 0.02
-               for j in range(3)):
-            return reject("target_block_supports_unfinished_stack")
-        supported = state["table_contact"][index] or (
-            index > 0 and state["block_contact"][index][index-1] and ready[index-1])
-        if held[index] is None and not supported:
-            return reject(f"{COLORS[index]}_unsupported")
-    arm = held[index] or ("left" if points[index, 0] < 0 else "right")
-    # An empty closed selected gripper will be opened before attempting grasp;
-    # no other object may be held according to the identity-based contacts.
-    target_height = (0.765 + state["table_z_bias"] if index == 0 else points[index-1, 2] + 0.05)
-    lifted = held[index] is not None and points[index, 2] >= target_height + 0.05
-    offset = 3 if release is not None or lifted else 2 if held[index] else 1
-    return {**decision, "recoverable": True, "branch": "release_supported" if release is not None else "repair_stack",
-            "stage_id": index * 3 + offset, "block_index": index, "arm": arm,
-            "held": held, "ready": ready}
-
-
+        if grip["open"]:
+            continue
+        for index, contact in enumerate(state["gripper_contact"][side]):
+            if contact:
+                held[index] = side
+    index = next((index for index, ready in enumerate(supported) if not ready), 2)
+    if held[index] is None:
+        offset = 1
+    else:
+        target_z = .765 + state["table_z_bias"] if index == 0 else points[index - 1, 2] + .05
+        offset = 3 if points[index, 2] >= target_z + .05 else 2
+    return {"recoverable": True, "stage_id": index * 3 + offset,
+            "branch": "suggested_suffix", "reason": None,
+            "block_index": index, "arm": held[index],
+            "held": held, "ready": supported, "snapshot": state}
 class StackBlocksThreeAdapter(TaskAdapter):
     name = "stack_blocks_three"
     prompt = PROMPT
@@ -304,59 +273,44 @@ class StackBlocksThreeAdapter(TaskAdapter):
                 f"建议阶段={state.get('stage_id')} branch={state['branch']} recoverable={state['recoverable']}",
                 f"已完成子目标={state.get('ready')} 抓持臂={state.get('held')}",
                 f"拒绝原因={state.get('reason')}"]
-        candidate = state.get("clearance_candidate")
-        if candidate is not None:
-            lines.append(f"可确认清除部分接触：仅输入阶段 {candidate['stage_id']}；"
-                         "先松爪，再最多上撤 5 cm，逐步复查支撑。直接回车不会执行。")
-        candidate = state.get("partial_place_candidate")
-        if candidate is not None:
-            lines.append(f"可确认部分抓持放置：仅输入阶段 {candidate['stage_id']}；"
-                         f"接触臂={candidate['arm']} 方块={COLORS[candidate['block_index']]}。"
-                         "放置后必须通过真实支撑验证；直接回车不会执行。")
-        if state.get("reason") == "ambiguous_or_partial_grasp" and "snapshot" in state:
+        lines.append("自动判定仅作建议；可手动选择任一阶段尝试专家动作。"
+                     "仅运动规划失败或关节路径非法会中止动作；最终结果以官方任务判据标记。")
+        if "snapshot" in state:
             live = state["snapshot"]
             lines.append(f"抓持诊断：夹爪={live['grippers']} 接触={live['gripper_contact']} "
                          f"桌面支撑={live['table_contact']}")
         return lines
 
     def recovery_stage_rejection(self, state, stage_id):
-        if not state["recoverable"]:
-            for key in ("clearance_candidate", "partial_place_candidate"):
-                candidate = state.get(key)
-                if candidate is not None and stage_id == candidate["stage_id"]:
-                    return None
-            return state.get("reason") or "unrecoverable_state"
-        if stage_id is None:
-            return None
-        expected = state["stage_id"]
-        compatible = stage_id == expected or (
-            state["branch"] == "repair_stack" and state["held"][state["block_index"]]
-            and stage_id == state["block_index"] * 3 + 2)
-        if stage_id not in STAGES or not compatible:
-            return f"stage_precondition_mismatch: selected={stage_id}, live={expected}"
-        return None
+        # The classifier is advice only. A human may pick any of the nine
+        # official stages; planning/legality, not contact heuristics, decides
+        # whether an attempted expert action can run.
+        chosen = state.get("stage_id") if stage_id is None else stage_id
+        return None if chosen in STAGES else "select_recovery_stage"
 
     def success_metrics(self, env):
+        official_success = bool(env.check_success())
         try:
             state = snapshot(env)
         except (AttributeError, TypeError, ValueError, IndexError) as error:
-            return {"official_task_success": bool(env.check_success()),
-                    "physical_quality_gate": False, "error": str(error)}
+            state = {"error": str(error)}
         return {
-            "official_task_success": state["official_success"],
-            "physical_quality_gate": bool(state["official_success"] and all(state["settled"])
-                                          and state["table_contact"][0]
-                                          and state["block_contact"][1][0]
-                                          and state["block_contact"][2][1]),
-            "recovery_ok": all(e.get("ok", False) and e.get("verified", False)
-                               for e in env.episode_metadata.get("stack_recovery_events", [])),
+            "official_task_success": official_success,
+            "physical_quality_gate": official_success,  # Compatibility alias; no extra gate.
             "snapshot": state,
         }
 
     def recovery_stage_iterator(self, env, start_stage_id=None,
-                                confirmed_clearance=False, confirmed_partial_place=False) -> Iterator[dict[str, Any]]:
-        # Generator construction and the confirmation UI have no side effects.
+                                confirmed_partial_place=False) -> Iterator[dict[str, Any]]:
+        """Run the operator-selected official suffix without contact/settling gates.
+
+        Construction is motion-free. Each advance performs one official expert
+        primitive. Only planner failure, illegal/nonfinite joint paths, or a
+        raised motion error interrupts the suffix. Terminal success is the
+        official task check, not an extra physical-quality classifier.
+        """
         initial = self.infer_recovery_state(env)
+        stage = initial.get("stage_id") if start_stage_id is None else start_stage_id
         result = {"success": False, "plan_success": False, "initial_state": initial,
                   "chosen_stage_id": start_stage_id, "executed_stage_ids": []}
         events = env.episode_metadata.setdefault("stack_recovery_events", [])
@@ -366,400 +320,160 @@ class StackBlocksThreeAdapter(TaskAdapter):
             events.append({"phase": "rejected", "ok": False, "reason": reason})
             return {"phase": "done", "result": dict(result)}
 
-        # The UI preflights the selection; check again in case live state changed.
-        rejection = self.recovery_stage_rejection(initial, start_stage_id)
-        if rejection:
-            yield stop(rejection)
+        if start_stage_id is None and env.check_success():
+            result.update(success=True, plan_success=True, metrics=self.success_metrics(env))
+            yield {"phase": "done", "result": dict(result)}
+            return
+        if stage not in STAGES:
+            yield stop("select_recovery_stage")
             return
 
         from envs.utils import ArmTag
 
-        def motion(stage, label, build, verify=None, pending=False):
+        def motion(stage_id, label, build):
             env.current_control_source = "hil"
-            env.current_stage_id = stage
+            env.current_stage_id = stage_id
             env.plan_success = True
             env.episode_metadata.pop("expert_stage_error", None)
-            event = {"phase": "stage", "stage_id": stage, "substage": label, "ok": False, "verified": False}
+            event = {"phase": "stage", "stage_id": stage_id, "substage": label,
+                     "ok": False, "verified": False}
             try:
+                path_lengths = {side: len(getattr(env, f"{side}_joint_path"))
+                                for side in ("left", "right")
+                                if hasattr(env, f"{side}_joint_path")}
                 command = build()
                 if env.plan_success:
                     env.move(command)
-                legal, peak = env.planned_joints_legal()
-                event.update(plan_success=bool(env.plan_success), joints_legal=bool(legal), joint_absmax=float(peak))
+                if len(path_lengths) == 2 and hasattr(env, "joint_path_absmax"):
+                    new_paths = {side: getattr(env, f"{side}_joint_path")[path_lengths[side]:]
+                                 for side in ("left", "right")}
+                    peak = max(env.joint_path_absmax(paths) for paths in new_paths.values())
+                    finite_paths = all(
+                        np.isfinite(np.asarray(path["position"], dtype=float)).all()
+                        for paths in new_paths.values() for path in paths
+                        if isinstance(path, dict) and path.get("position") is not None
+                    )
+                    legal = bool(finite_paths and np.isfinite(peak) and peak <= np.pi)
+                    event["new_plan_status"] = {side: [path.get("status") for path in paths]
+                                                for side, paths in new_paths.items()}
+                else:
+                    legal, peak = env.planned_joints_legal()
+                event.update(plan_success=bool(env.plan_success), joints_legal=bool(legal),
+                             joint_absmax=float(peak))
                 event["ok"] = bool(env.plan_success and legal)
+                event["verified"] = event["ok"]  # No separate contact/stability gate.
                 if not event["ok"]:
-                    event["error"] = env.episode_metadata.get("expert_stage_error", "motion_failed_or_illegal_joints")
-                if event["ok"] and verify is not None:
-                    verify(event)  # Physical postcondition BEFORE yielding/handback.
-                event["verified"] = bool(event["ok"] and not pending)
-                event["after"] = self.infer_recovery_state(env)
+                    event["error"] = env.episode_metadata.get(
+                        "expert_stage_error", "motion_failed_or_illegal_joints")
+                event["after"] = self.infer_recovery_state(env)  # Diagnostic only.
             except Exception as error:
                 env.plan_success = False
                 event.update(ok=False, verified=False, plan_success=False, error=repr(error))
-            result["executed_stage_ids"].append(stage)
+            result["executed_stage_ids"].append(stage_id)
             events.append(event)
             return event
 
-        clearance = initial.get("clearance_candidate")
-        if clearance is not None:
-            if not confirmed_clearance:
-                yield stop("partial_contact_requires_explicit_stage_confirmation")
-                return
-            index, side = clearance["block_index"], clearance["arm"]
-            stage, arm = clearance["stage_id"], ArmTag(side)
-            origin = np.asarray(initial["snapshot"]["positions"], dtype=float)
-            initial_ready = _partial_contact_clearance(initial["snapshot"], side, [index])
-            if initial_ready is None or start_stage_id != stage:
-                yield stop("partial_contact_clearance_precondition_changed")
-                return
+        arms = {}
 
-            def clearance_safe():
-                live = snapshot(env)
-                positions = np.asarray(live["positions"], dtype=float)
-                if np.any(np.linalg.norm(positions - origin, axis=1) > .005):
-                    return False, "block_moved_during_clearance", live
-                if any(any(live["gripper_contact"][other])
-                       for other in live["gripper_contact"] if other != side):
-                    return False, "other_arm_contact_during_clearance", live
-                supported = live["table_contact"][index] or (
-                    index > 0 and live["aligned"][index-1]
-                    and live["block_contact"][index][index-1]
-                )
-                if not supported:
-                    return False, "target_support_lost_during_clearance", live
-                if index and not live["table_contact"][0]:
-                    return False, "stack_prefix_lost_during_clearance", live
-                for prior in range(1, index):
-                    if not (live["aligned"][prior-1] and live["block_contact"][prior][prior-1]):
-                        return False, "stack_prefix_lost_during_clearance", live
-                return True, None, live
-
-            def verify_clearance_safety(event):
-                safe, reason, _ = clearance_safe()
-                if not safe:
-                    event.update(ok=False, error=reason)
-
-            clearance_events = []
-            event = motion(stage, "clear_partial_contact_open", lambda: env.open_gripper(arm),
-                           verify=verify_clearance_safety, pending=True)
-            clearance_events.append(event)
-            yield event
-            if not event["ok"]:
-                yield stop(event.get("error"))
-                return
-            for attempt in range(6):
-                safe, reason, live = clearance_safe()
-                if not safe:
-                    yield stop(reason)
-                    return
-                if not live["gripper_contact"][side][index]:
-                    break
-                if attempt == 5:
-                    yield stop("partial_contact_not_cleared_within_5cm")
-                    return
-                event = motion(stage, "clear_partial_contact_retreat_1cm",
-                               lambda: env.move_by_displacement(arm_tag=arm, z=.01),
-                               verify=verify_clearance_safety, pending=True)
-                clearance_events.append(event)
-                yield event
-                if not event["ok"]:
-                    yield stop(event.get("error"))
-                    return
-            refreshed = self.infer_recovery_state(env)
-            if not refreshed["recoverable"] or refreshed.get("stage_id") != stage:
-                yield stop("partial_contact_cleared_but_stage_not_ready")
-                return
-            for clearance_event in clearance_events:
-                clearance_event["verified"] = True
-
-        partial_place = initial.get("partial_place_candidate")
-        if partial_place is not None and (not confirmed_partial_place
-                                          or start_stage_id != partial_place["stage_id"]):
-            yield stop("partial_place_requires_explicit_stage_confirmation")
-            return
-
-        def require_held(index, side):
-            def check(event):
-                state = self.infer_recovery_state(env)
-                if not state["recoverable"] or state.get("held", [None]*3)[index] != side:
-                    event.update(ok=False, error="grasp_or_lift_not_verified")
-            return check
-
-        def verify_support(event, index):
-            """0.24 s physical hold through the normal recorded executor.
-
-            Six observation intervals, bounded position/orientation drift,
-            support contacts and finite velocity; not a task-success override.
-            Arm/gripper targets remain fixed; never reset/teleport actors.
-            """
-            env._stack_support_stability = None
-            start = snapshot(env)
-            if not all(g["open"] for g in start["grippers"].values()):
-                event.update(ok=False, error="settle_requires_open_grippers")
-                return
-            points = np.asarray(start["positions"])
-            rotations = _orientations(env)
-            stable = np.ones(3, dtype=bool)
-            dt = float(env.scene.get_timestep())
-            if not 0 < dt <= .02:
-                raise ValueError(f"Unsupported simulation timestep {dt}")
-            count = int(np.ceil(.04 / dt))
-            control = {"left_gripper": None, "right_gripper": None}
-            for side in ("left", "right"):
-                joints = np.asarray(getattr(env.robot, f"get_{side}_arm_jointState")()[:-1])
-                if not np.isfinite(joints).all() or np.max(np.abs(joints)) > np.pi:
-                    raise ValueError("Illegal hold joints")
-                control[f"{side}_arm"] = {"position": np.tile(joints, (count, 1)),
-                                          "velocity": np.zeros((count, len(joints)))}
-            samples = []
-            for _ in range(6):
-                env.take_dense_action(control)  # retains save_freq/render/source
-                current = snapshot(env)
-                drift = np.linalg.norm(np.asarray(current["positions"]) - points, axis=1)
-                angle = _orientation_change(_orientations(env), rotations)
-                supported = [current["table_contact"][i] or (i > 0 and current["aligned"][i-1]
-                             and current["block_contact"][i][i-1]) for i in range(3)]
-                stable &= ((drift <= .002) & (angle <= .02) & np.asarray(supported)
-                           & np.all(np.asarray(current["speeds"]) <= [.15, .8], axis=1))
-                samples.append({"positions": current["positions"], "drift": drift.tolist(),
-                                "angle": angle.tolist(), "supported": supported})
-            env._stack_support_stability = {"positions": current["positions"],
-                                            "orientations": _orientations(env).tolist(),
-                                            "stable": stable.tolist()}
-            checked = self.infer_recovery_state(env)
-            event["support_window"] = {"seconds": 6 * count * dt, "samples": samples, "stable": stable.tolist()}
-            if not all(stable[:index+1]) or not checked["recoverable"] or not checked.get("ready", [False]*3)[index]:
-                event.update(ok=False, error="placement_not_verified_after_settle")
-
-        forced_lift = start_stage_id is not None and start_stage_id % 3 == 2
-        if partial_place is not None:
-            index, side = partial_place["block_index"], partial_place["arm"]
-            place, arm = partial_place["stage_id"], ArmTag(side)
-            live = self.infer_recovery_state(env)
-            if live.get("partial_place_candidate") != partial_place:
-                yield stop("partial_place_precondition_changed")
-                return
-            other = "right" if side == "left" else "left"
-            if any(live["snapshot"]["gripper_contact"][other]):
-                yield stop("other_arm_contact_before_partial_place")
-                return
-            result["manual_partial_place"] = {
-                "arm": side, "block": COLORS[index], "initial_snapshot": live["snapshot"],
-            }
+        def arm_for(index):
+            if index in arms:
+                return arms[index]
             actor = getattr(env, NAMES[index])
-            target = list(env.block1_target_pose) if index == 0 else getattr(env, NAMES[index-1]).get_functional_point(1)
-            event = motion(place, "manual_partial_place_and_release", lambda: env.place_actor(
-                actor, arm_tag=arm, target_pose=target, functional_point_id=0,
-                pre_dis=0.05, dis=0.0, pre_dis_axis="fp"), pending=True)
-            yield event
-            if not event["ok"]:
-                yield stop(event.get("error"))
-                return
-            placement_event = event
-            event = motion(place, "manual_partial_place_retreat",
-                           lambda: env.move_by_displacement(arm_tag=arm, z=0.07),
-                           verify=lambda e: verify_support(e, index))
-            if event["ok"]:
-                placement_event["verified"] = True
-            yield event
-            if not event["ok"]:
-                yield stop(event.get("error"))
-                return
-            after = self.infer_recovery_state(env)
-            if not after["recoverable"] or not after.get("ready", [False]*3)[index]:
-                yield stop("manual_partial_place_not_verified")
-                return
-        # At most three block repairs plus supported releases. Never silently
-        # retry indefinitely after a failed plan, lost grasp or bad placement.
-        for _ in range(8):
-            current = self.infer_recovery_state(env)
-            if not current["recoverable"]:
-                yield stop(current["reason"])
-                return
-            if current["branch"] == "done":
-                metrics = self.success_metrics(env)
-                result.update(success=bool(metrics["physical_quality_gate"]), plan_success=True, metrics=metrics)
-                yield {"phase": "done", "result": dict(result)}
-                return
-            if current["branch"] == "release_empty":
-                for side, grip in current["snapshot"]["grippers"].items():
-                    if not grip["open"]:
-                        event = motion(9, f"open_empty_{side}", lambda side=side: env.open_gripper(ArmTag(side)))
-                        yield event
-                        if not event["ok"]:
-                            yield stop(event.get("error"))
-                            return
-                continue
-            index, side = current["block_index"], current["arm"]
-            actor, arm = getattr(env, NAMES[index]), ArmTag(side)
-            pick, lift, place = index * 3 + 1, index * 3 + 2, index * 3 + 3
-            # A previous iterator may have been closed immediately after a
-            # placement. Re-check the OTHER arm's live pose on every takeover,
-            # instead of depending on its old iterator reaching a park step.
-            other = "right" if side == "left" else "left"
-            pose = np.asarray(getattr(env.robot, f"get_{other}_ee_pose")(), dtype=float)
-            origin = np.asarray(getattr(env.robot, f"{other}_original_pose"), dtype=float)
-            if pose.shape != (7,) or origin.shape != (7,) or not np.isfinite([pose, origin]).all():
-                yield stop("unobservable_idle_arm_pose")
-                return
-            home = (np.linalg.norm(pose[:3] - origin[:3]) <= .01
-                    and min(np.linalg.norm(pose[3:] - origin[3:]),
-                            np.linalg.norm(pose[3:] + origin[3:])) <= .01)
-            if not home:
-                idle_contacts = [i for i, touching in enumerate(current["snapshot"]["gripper_contact"][other])
-                                 if touching]
-                idle_clearance_events = []
-                if idle_contacts:
-                    result["idle_arm_contact"] = {
-                        "arm": other, "blocks": [COLORS[i] for i in idle_contacts],
-                        "gripper": current["snapshot"]["grippers"][other],
-                        "table_contact": current["snapshot"]["table_contact"],
-                        "block_contact": current["snapshot"]["block_contact"],
-                        "stage_id": pick,
-                    }
-                    if (len(idle_contacts) != 1 or not current["snapshot"]["grippers"][other]["open"]
-                            or any(current["snapshot"]["gripper_contact"][side])):
-                        yield stop("idle_arm_contact_ambiguous_or_gripper_not_open")
-                        return
-                    touched = idle_contacts[0]
-                    start_points = np.asarray(current["snapshot"]["positions"], dtype=float)
+            try:
+                live = snapshot(env)
+                touching = [side for side in ("left", "right")
+                            if live["gripper_contact"][side][index]
+                            and not live["grippers"][side]["open"]]
+                if len(touching) == 1:
+                    side = touching[0]
+                else:
+                    closed = [side for side in ("left", "right")
+                              if live["grippers"][side]["closed"]]
+                    side = closed[0] if len(closed) == 1 else (
+                        "left" if live["positions"][index][0] < 0 else "right")
+            except (AttributeError, TypeError, ValueError, IndexError):
+                side = "left" if actor.get_pose().p[0] < 0 else "right"
+            arms[index] = side
+            return side
 
-                    def idle_clearance_safe():
-                        live = snapshot(env)
-                        points = np.asarray(live["positions"], dtype=float)
-                        if np.any(np.linalg.norm(points - start_points, axis=1) > .005):
-                            return False, "block_moved_during_idle_arm_clearance", live
-                        if not live["grippers"][other]["open"]:
-                            return False, "idle_gripper_closed_during_clearance", live
-                        if any(live["gripper_contact"][side]):
-                            return False, "selected_arm_contact_during_idle_clearance", live
-                        if any(live["gripper_contact"][other][i] for i in range(3) if i != touched):
-                            return False, "new_block_contact_during_idle_clearance", live
-                        if not live["table_contact"][0]:
-                            return False, "base_support_lost_during_idle_clearance", live
-                        for prior in range(1, index):
-                            if not (live["aligned"][prior-1] and live["block_contact"][prior][prior-1]):
-                                return False, "stack_prefix_lost_during_idle_clearance", live
-                        supported = live["table_contact"][touched] or (
-                            touched > 0 and live["aligned"][touched-1]
-                            and live["block_contact"][touched][touched-1]
-                        )
-                        if not supported:
-                            return False, "contacted_block_support_lost_during_idle_clearance", live
-                        return True, None, live
-
-                    for attempt in range(6):
-                        safe, reason, live = idle_clearance_safe()
-                        if not safe:
-                            yield stop(reason)
-                            return
-                        if not live["gripper_contact"][other][touched]:
+        for stage_id in range(stage, 10):
+            index, phase = divmod(stage_id - 1, 3)
+            actor = getattr(env, NAMES[index])
+            side = arm_for(index)
+            arm = ArmTag(side)
+            if phase == 0:
+                event = motion(stage_id, "open_before_grasp",
+                               lambda: env.open_gripper(arm, pos=1.0))
+                yield event
+                if not event["ok"]:
+                    yield stop(event.get("error"))
+                    return
+                preflight = _preflight_grasp_candidates(env, actor, side)
+                if preflight is not None:
+                    attempts = [{"lift_m": 0.0, "result": preflight}]
+                    for retry in range(1, GRASP_RETRY_MAX_LIFT_STEPS + 1):
+                        if preflight["selected_contact_point_id"] is not None:
                             break
-                        if attempt == 5:
-                            yield stop("idle_arm_contact_not_cleared_within_5cm")
-                            return
-                        before_ee = np.asarray(getattr(env.robot, f"get_{other}_ee_pose")(), dtype=float)
-
-                        def verify_idle_step(event):
-                            safe, reason, _ = idle_clearance_safe()
-                            after_ee = np.asarray(getattr(env.robot, f"get_{other}_ee_pose")(), dtype=float)
-                            delta = after_ee[:3] - before_ee[:3]
-                            event["ee_displacement"] = delta.tolist()
-                            if not safe:
-                                event.update(ok=False, error=reason)
-                            elif not (.005 <= delta[2] <= .015 and np.linalg.norm(delta[:2]) <= .01):
-                                event.update(ok=False, error="idle_arm_retreat_did_not_move_up_1cm")
-
-                        event = motion(pick, "clear_idle_arm_contact_1cm",
-                                       lambda: env.move_by_displacement(arm_tag=ArmTag(other), z=.01),
-                                       verify=verify_idle_step, pending=True)
-                        event["contacted_block"] = COLORS[touched]
-                        idle_clearance_events.append(event)
+                        # Keep the operator's grasp stage. Move the same arm
+                        # up 5 cm in world coordinates, then regenerate all
+                        # grasp candidates from the *new* live joint state.
+                        event = motion(stage_id, "lift_to_retry_grasp",
+                                       lambda: env.move_by_displacement(
+                                           arm_tag=arm, z=GRASP_RETRY_LIFT_M,
+                                           move_axis="world"))
+                        event["retry_index"] = retry
+                        event["cumulative_lift_m"] = retry * GRASP_RETRY_LIFT_M
                         yield event
                         if not event["ok"]:
+                            result.setdefault("grasp_preflight_by_stage", {})[str(stage_id)] = attempts
+                            result["grasp_preflight_attempts"] = attempts
                             yield stop(event.get("error"))
                             return
-                    refreshed = self.infer_recovery_state(env)
-                    if (not refreshed["recoverable"] or refreshed.get("stage_id") != pick
-                            or refreshed.get("arm") != side):
-                        yield stop("idle_contact_cleared_but_stage_changed")
+                        preflight = _preflight_grasp_candidates(env, actor, side)
+                        if preflight is None:
+                            yield stop("grasp_preflight_unavailable_after_lift")
+                            return
+                        attempts.append({"lift_m": retry * GRASP_RETRY_LIFT_M,
+                                         "result": preflight})
+                    result.setdefault("grasp_preflight_by_stage", {})[str(stage_id)] = attempts
+                    result["grasp_preflight_attempts"] = attempts
+                    result["grasp_preflight"] = preflight
+                    contact_id = preflight["selected_contact_point_id"]
+                    if contact_id is None:
+                        yield stop("grasp_planning_failed")
                         return
-                event = motion(pick, "park_idle_arm", lambda: env.back_to_origin(arm_tag=ArmTag(other)),
-                               pending=bool(idle_clearance_events))
-                idle_clearance_events.append(event)
-                yield event
-                if not event["ok"]:
-                    yield stop(event.get("error"))
-                    return
-                refreshed = self.infer_recovery_state(env)
-                if not refreshed["recoverable"] or refreshed.get("block_index") != index or refreshed.get("arm") != side:
-                    yield stop("state_changed_while_parking_idle_arm")
-                    return
-                if idle_contacts:
-                    safe, reason, live = idle_clearance_safe()
-                    if not safe or any(live["gripper_contact"][other]):
-                        yield stop(reason or "idle_arm_contact_after_parking")
-                        return
-                    for clearance_event in idle_clearance_events:
-                        clearance_event["verified"] = True
-                current = refreshed
-            if current["branch"] == "release_supported":
-                event = motion(place, "release_supported_block", lambda: env.open_gripper(arm), pending=True)
-                yield event
-                if not event["ok"]:
-                    yield stop(event.get("error"))
-                    return
+                    build = lambda: env.grasp_actor(
+                        actor, arm_tag=arm, pre_grasp_dis=0.09,
+                        contact_point_id=None if contact_id == -1 else contact_id)
+                else:
+                    build = lambda: env.grasp_actor(actor, arm_tag=arm, pre_grasp_dis=0.09)
+                event = motion(stage_id, "grasp", build)
+                if preflight is not None:
+                    event["grasp_preflight"] = preflight
+            elif phase == 1:
+                event = motion(stage_id, "lift",
+                               lambda: env.move_by_displacement(arm_tag=arm, z=0.07))
             else:
-                if current["held"][index] is None:
-                    if not current["snapshot"]["grippers"][side]["open"]:
-                        event = motion(pick, "open_empty_gripper", lambda: env.open_gripper(arm))
-                        yield event
-                        if not event["ok"]:
-                            yield stop(event.get("error"))
-                            return
-                    event = motion(pick, "grasp", lambda: env.grasp_actor(actor, arm_tag=arm, pre_grasp_dis=0.09),
-                                   verify=require_held(index, side))
-                    yield event
-                    if not event["ok"]:
-                        yield stop(event.get("error"))
-                        return
-                    grasped = self.infer_recovery_state(env)
-                    if not grasped["recoverable"] or grasped.get("held", [None]*3)[index] != side:
-                        yield stop("grasp_not_verified")
-                        return
-                if current["stage_id"] != place or forced_lift:
-                    event = motion(lift, "lift", lambda: env.move_by_displacement(arm_tag=arm, z=0.07),
-                                   verify=require_held(index, side))
-                    yield event
-                    if not event["ok"]:
-                        yield stop(event.get("error"))
-                        return
-                forced_lift = False
-                before = self.infer_recovery_state(env)
-                if not before["recoverable"] or before.get("held", [None]*3)[index] != side:
-                    yield stop("held_block_lost_or_support_changed")
-                    return
-                # Every placement target is recomputed from the LIVE support.
-                target = list(env.block1_target_pose) if index == 0 else getattr(env, NAMES[index-1]).get_functional_point(1)
-                event = motion(place, "place_and_release", lambda: env.place_actor(
+                target = (list(env.block1_target_pose) if index == 0
+                          else getattr(env, NAMES[index - 1]).get_functional_point(1))
+                event = motion(stage_id, "place_and_release", lambda: env.place_actor(
                     actor, arm_tag=arm, target_pose=target, functional_point_id=0,
-                    pre_dis=0.05, dis=0.0, pre_dis_axis="fp"), pending=True)
-                yield event
-                if not event["ok"]:
-                    yield stop(event.get("error"))
-                    return
-            placement_event = event
-            event = motion(place, "retreat", lambda: env.move_by_displacement(arm_tag=arm, z=0.07),
-                           verify=lambda e: verify_support(e, index))
-            if event["ok"]:
-                placement_event["verified"] = True
+                    pre_dis=0.05, dis=0.0, pre_dis_axis="fp"))
             yield event
             if not event["ok"]:
                 yield stop(event.get("error"))
                 return
-            # Placement verification was completed before the handback boundary.
-            after = self.infer_recovery_state(env)
-            if not after["recoverable"] or not after.get("ready", [False]*3)[index]:
-                yield stop("placement_not_verified_after_retreat")
-                return
-        yield stop("recovery_stage_budget_exceeded")
+            if phase == 2:
+                event = motion(stage_id, "retreat",
+                               lambda: env.move_by_displacement(arm_tag=arm, z=0.07))
+                yield event
+                if not event["ok"]:
+                    yield stop(event.get("error"))
+                    return
+
+        metrics = self.success_metrics(env)
+        result.update(success=bool(metrics["official_task_success"]),
+                      plan_success=True, metrics=metrics)
+        if not result["success"]:
+            result["reason"] = "official_task_not_successful_after_recovery"
+        yield {"phase": "done", "result": dict(result)}

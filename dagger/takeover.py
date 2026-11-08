@@ -11,6 +11,23 @@ import tty
 DEFAULT_KEYS = {"i": "intervene", "r": "handback", "x": "abort", "q": "quit"}
 
 
+def recovery_reason_category(reason: str) -> str:
+    """Group a rejection for analysis without changing whether motion is allowed."""
+    if reason == "object_moving_wait_for_settle":
+        return "temporary_wait"
+    if "requires_specialized_recovery" in reason or "requires_manual_unstack" in reason:
+        return "unsupported_primitive"
+    if reason.startswith("stage_precondition_mismatch"):
+        return "incompatible_stage"
+    if "ambiguous" in reason or "partial_grasp" in reason:
+        return "ambiguous_state"
+    if reason.startswith("unobservable_state"):
+        return "technical_unobservable"
+    if reason in {"outside_recovery_workspace", "unheld_object_not_supported"}:
+        return "safety_precondition"
+    return "unclassified"
+
+
 class OperatorInterrupt(Exception):
     """A real operator key arrived while policy sampling was in progress."""
 
@@ -179,6 +196,9 @@ def choose_recovery_stage(task_env, keyboard, adapter=None):
         answer = keyboard.read_line(
             f"\n阶段判断正确吗? [Y/Enter]=确认自动, 输入 {choices} 重选, q/r=取消接管并交还策略: "
         ).strip().lower()
+        if answer == "" and isinstance(keyboard, HumanInterventionInput) and keyboard._fd is None:
+            print("[HG-DAGGER] 无交互终端，取消未确认的接管。", flush=True)
+            return None, None
         if answer in ("q", "r"):
             return None, None
         if answer in ("", "y", "yes"):
@@ -195,7 +215,8 @@ def choose_recovery_stage(task_env, keyboard, adapter=None):
             print("请重选可执行阶段；q/r 取消本次接管。阶段编号不能覆盖抓持/支撑前置条件。", flush=True)
             metadata = getattr(task_env, "episode_metadata", {})
             metadata.setdefault("recovery_selection_rejections", []).append(
-                {"chosen_stage_id": chosen, "reason": reason, "state": state,
+                {"chosen_stage_id": chosen, "reason": reason,
+                 "reason_category": recovery_reason_category(reason), "state": state,
                  "frame_idx": getattr(task_env, "FRAME_IDX", None)}
             )
             if isinstance(keyboard, HumanInterventionInput) and keyboard._fd is None:
@@ -205,8 +226,6 @@ def choose_recovery_stage(task_env, keyboard, adapter=None):
                 return None, None
             continue
         kwargs = {"start_stage_id": chosen}
-        if state.get("clearance_candidate") is not None:
-            kwargs["confirmed_clearance"] = True
         if state.get("partial_place_candidate") is not None:
             kwargs["confirmed_partial_place"] = True
         return adapter.recovery_stage_iterator(task_env, **kwargs), chosen

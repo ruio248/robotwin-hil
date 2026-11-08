@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 from .legacy import Adapter
-from .live_object import PickPlaceAdapter, quaternion, vector
+from .live_object import OperatorPickPlaceAdapter, quaternion, vector
 
 import numpy as np
 
 
-class RotateQrcodeAdapter(PickPlaceAdapter):
+class RotateQrcodeAdapter(OperatorPickPlaceAdapter):
     name = "rotate_qrcode"
     default_episode_protocol = "official-seen"
     actor_name = "qrcode"
     prompt = "Pick up the QR code board, rotate it so the QR code faces you, then set it down"
     default_checkpoint_name = "rotate_qrcode_official50_4999"
+    operator_regrasp_stage_id = 5
     stage_labels = {1: "grasp 抓取二维码板", 2: "lift 抬起",
-                    3: "rotate_and_place 转正并放下", 4: "release_retreat_verify 松爪、撤离及验证"}
+                    3: "rotate_and_place 转正并放下", 4: "release_retreat_verify 松爪、撤离及验证",
+                    5: "reclose_rotate_replace 夹爪内重夹、抬起、转正放下（牌须已在指间）"}
 
     def support(self, env):
         return env.table

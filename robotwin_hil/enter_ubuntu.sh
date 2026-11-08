@@ -44,7 +44,17 @@ export PYTHONUNBUFFERED=1
 
 mkdir -p "$ROBOTWIN_HIL_ROOT"/{outputs/{logs,manifests,lerobot_datasets},.cache/{pip,huggingface,xdg,tmp,warp,jax,openpi}}
 cd "$ROBOTWIN_HIL_ROOT"
-"$ROBOTWIN_PYTHON" -m robotwin_hil.prepare_runtime
+case "${ROBOTWIN_HIL_SKIP_RUNTIME_PREPARE:-0}" in
+  0) "$ROBOTWIN_PYTHON" -m robotwin_hil.prepare_runtime ;;
+  1)
+    if [[ ! -f "$ROBOTWIN_ROOT/dagger/runner.py" || ! -f "$ROBOTWIN_ROOT/.robotwin_hil_runtime.json" ]]; then
+      echo "Cannot reuse missing or unmarked RoboTwin HIL runtime: $ROBOTWIN_ROOT" >&2
+      exit 1
+    fi
+    echo "Reusing existing HIL runtime without rebuilding: $ROBOTWIN_ROOT"
+    ;;
+  *) echo "ROBOTWIN_HIL_SKIP_RUNTIME_PREPARE must be 0 or 1" >&2; exit 2 ;;
+esac
 cd "$ROBOTWIN_ROOT"
 
 if [[ $# -gt 0 ]]; then

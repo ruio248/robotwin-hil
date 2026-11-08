@@ -82,6 +82,27 @@ def _copy_overlay(destination: Path) -> int:
     return count
 
 
+def _preserve_external_asset_links(previous: Path, staging: Path) -> list[str]:
+    """Keep the two installed asset mounts when rebuilding a runtime.
+
+    The pinned upstream checkout does not contain the large object and
+    embodiment assets. A rebuild must not silently drop links that the
+    previous working runtime used to reach those assets.
+    """
+    preserved = []
+    for relative in ("assets/objects", "assets/embodiments"):
+        old_link = previous / relative
+        new_link = staging / relative
+        if not old_link.is_symlink() or not old_link.resolve().is_dir():
+            continue
+        if new_link.exists() or new_link.is_symlink():
+            continue
+        new_link.parent.mkdir(parents=True, exist_ok=True)
+        new_link.symlink_to(os.readlink(old_link))
+        preserved.append(relative)
+    return preserved
+
+
 def build(target: Path = DEFAULT_TARGET, *, rebuild: bool = False) -> Path:
     _check_upstream()
     target = target.resolve()
@@ -114,6 +135,7 @@ def build(target: Path = DEFAULT_TARGET, *, rebuild: bool = False) -> Path:
             DAGGER, staging / "dagger", symlinks=True,
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
         )
+        preserved_asset_links = _preserve_external_asset_links(target, staging) if target.exists() else []
         (staging / METADATA_NAME).write_text(
             json.dumps(
                 {
@@ -122,6 +144,7 @@ def build(target: Path = DEFAULT_TARGET, *, rebuild: bool = False) -> Path:
                     "overlay_files": overlay_count,
                     "built_at_utc": datetime.now(timezone.utc).isoformat(),
                     "source": "robotwin_hil/overlay + robotwin_hil/compat/XPolicyLab + dagger",
+                    "preserved_asset_links": preserved_asset_links,
                 },
                 indent=2,
             )

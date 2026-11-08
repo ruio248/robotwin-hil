@@ -39,7 +39,10 @@ for ancestor in Path(__file__).resolve().parents:
         break
 else:
     raise ImportError("dagger.recording is required for the shared training eligibility gate")
-from dagger.recording import MIN_HIL_SEGMENT_TRANSITIONS, training_eligible
+from dagger.recording import (
+    MIN_HIL_SEGMENT_TRANSITIONS, has_explicit_training_acceptance, training_eligible,
+    accepted_hil_spans,
+)
 
 
 ACTION_DIM = 14
@@ -241,12 +244,25 @@ def extract_source(
     image_size: tuple[int, int],
     min_segment_transitions: int,
 ) -> dict[str, int]:
-    counts = {"baseline": 0, "dagger": 0, "discarded_short_segments": 0, "skipped_policy_segments": 0, "episodes": 0}
+    counts = {"baseline": 0, "dagger": 0, "discarded_short_segments": 0,
+              "candidate_hil_segments": 0, "discarded_short_hil_segments": 0,
+              "skipped_policy_segments": 0, "episodes": 0}
     for episode in episodes:
         frames = [pickle.loads(path.read_bytes()) for path in episode.frames]
+        allowed_hil = set(accepted_hil_spans(
+            episode.metadata,
+            [(start, end) for start, end, source in _segment_runs(episode.mask) if source == "hil"],
+        ))
         for start, end, source in _segment_runs(episode.mask):
+            if (episode.metadata.get("record") or {}).get("formal_training_schema") == 2:
+                if source != "hil" or (start, end) not in allowed_hil:
+                    continue
             target = "baseline" if source == "policy" else "dagger"
             transition_count = end - start - 1
+            if source == "hil":
+                counts["candidate_hil_segments"] += 1
+                if transition_count < min_segment_transitions:
+                    counts["discarded_short_hil_segments"] += 1
             if target not in datasets:
                 counts["skipped_policy_segments"] += 1
                 continue
@@ -415,6 +431,15 @@ def main() -> None:
         "source_roots": [str(path.expanduser().resolve()) for path in args.raw_root],
         "episodes": len(episodes),
         "counts": counts,
+        "min_segment_transitions": args.min_segment_transitions,
+        "discarded_short_hil_fraction": (
+            counts["discarded_short_hil_segments"] / counts["candidate_hil_segments"]
+            if counts["candidate_hil_segments"] else None
+        ),
+        "legacy_episodes_without_explicit_acceptance": [
+            {"raw_root": str(episode.root), "episode_index": episode.episode_index}
+            for episode in episodes if not has_explicit_training_acceptance(episode.metadata)
+        ],
         "norm_stats": {"asset_dir": str(asset_dir), **stats},
         "limitations": [
             "The default baseline is policy-controlled rollout data, not original SFT demonstrations.",

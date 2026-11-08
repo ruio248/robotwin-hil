@@ -398,8 +398,41 @@ def test_shared_runner_recording_and_handback(task, physical_ok, tmp_path, monke
         client_override=WireFormatClient("wrapped_dicts"), helper_overrides=action_wire_helpers)
     assert code == 0 and env.actions == [1, 2] and client.chunks == 2
     record = report["records"][0]
-    assert record["task"] == task and record["accepted_for_training"] is physical_ok
-    assert record["diagnostic_only"] is not physical_ok
-    assert report["saved_valid_hil_episodes"] == int(physical_ok)
+    eligible = Adapter.default_episode_protocol == "official-seen"
+    assert record["task"] == task and record["accepted_for_training"] is eligible
+    assert record["final_success_metrics"]["physical_quality_gate"] is physical_ok
+    assert "physical_quality" not in record["training_gate_checks"]
+    assert record["diagnostic_only"] is not eligible
+    assert record["raw_dir"] is not None
+    if Adapter.default_episode_protocol != "official-seen":
+        assert "official_screen" in record["training_gate_failed"]
+    assert report["saved_valid_hil_episodes"] == int(eligible)
     resumed = runner.inspect_collection(tmp_path / "session", target_mode="hil", resume=True)
-    assert resumed.saved_valid_hil == int(physical_ok)
+    assert resumed.saved_valid_hil == int(eligible)
+
+
+@pytest.mark.parametrize("task", ("place_empty_cup", "handover_block"))
+def test_legacy_default_task_requires_explicit_official_screen_for_training(
+    task, tmp_path, monkeypatch, action_wire_helpers,
+):
+    base = type(get_adapter(task))
+
+    class Adapter(base):
+        def infer_recovery_state(self, env):
+            return {**env.infer_recovery_state(), "reason": None}
+        def recovery_stage_iterator(self, env, start_stage_id=None):
+            return env.recovery_stage_iterator(start_stage_id)
+        def success_metrics(self, env):
+            return {"physical_quality_gate": True, "recovery_ok": True}
+
+    monkeypatch.setattr(runner, "get_adapter", lambda _: Adapter())
+    code, env, client, report = run_fake(
+        monkeypatch, tmp_path, task=task,
+        client_override=WireFormatClient("wrapped_dicts"), helper_overrides=action_wire_helpers,
+        cli_extra=("--episode-protocol", "official-seen"),
+    )
+    assert code == 0 and env.actions == [1, 2] and client.chunks == 2
+    record = report["records"][0]
+    assert record["initial_scene_screening"]["status"] == "policy_ready"
+    assert record["accepted_for_training"] is True
+    assert record["training_gate_failed"] == []

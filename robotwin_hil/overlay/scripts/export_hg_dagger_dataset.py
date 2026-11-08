@@ -24,7 +24,7 @@ if str(ROBOTWIN_ROOT) not in sys.path:
     sys.path.insert(0, str(ROBOTWIN_ROOT))
 
 from envs.utils.pkl2hdf5 import process_folder_to_hdf5_video  # noqa: E402
-from dagger.recording import MIN_HIL_SEGMENT_TRANSITIONS, training_eligible  # noqa: E402
+from dagger.recording import MIN_HIL_SEGMENT_TRANSITIONS, training_eligible, accepted_hil_spans  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -111,6 +111,8 @@ def main() -> int:
         if is_diagnostic_episode(episode_dir, meta):
             print(f"[EXPORT] {episode_dir.name} skipped (diagnostic-only)", flush=True)
             continue
+        if (meta.get("record") or {}).get("formal_training_schema") == 2 and cli.mode != "hil":
+            raise ValueError("Segment-qualified raw must be exported with --mode hil")
         frames_dir = episode_dir / "frames"
         if not frames_dir.is_dir():
             continue
@@ -122,6 +124,8 @@ def main() -> int:
 
         frame_count = validated_frame_count(frames_dir, control_mask, require_mask=cli.mode == "hil")
         runs = list(hil_runs([str(source).lower() for source in control_mask])) if cli.mode == "hil" else [(0, frame_count)]
+        if cli.mode == "hil":
+            runs = accepted_hil_spans(meta, runs)
         if not runs:
             print(f"[EXPORT] episode={episode_index} mode=hil skipped "
                   f"(no segment with {MIN_HIL_SEGMENT_TRANSITIONS} transitions)", flush=True)

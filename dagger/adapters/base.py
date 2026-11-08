@@ -25,6 +25,8 @@ class TaskAdapter(ABC):
     supports_one_stage: bool = False
     supports_sampling: bool = True
     requires_training_gate: bool = False
+    requires_complete_recovery_for_training: bool = False
+    segment_training_gate: bool = False
     default_episode_protocol: str = "legacy-fixed"
     reserved_seed_ranges: tuple = ()
 

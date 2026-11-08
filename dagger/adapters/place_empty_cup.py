@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from .live_object import PickPlaceAdapter, axis_z, vector
+from .live_object import OperatorPickPlaceAdapter, axis_z, vector
 
 
-class PlaceEmptyCupAdapter(PickPlaceAdapter):
+class PlaceEmptyCupAdapter(OperatorPickPlaceAdapter):
     name = "place_empty_cup"
+    default_episode_protocol = "official-seen"
     actor_name = "cup"
     prompt = "Place the empty cup on top of the coaster"
     default_checkpoint_name = "place_empty_cup_official50_4999"

@@ -103,8 +103,62 @@ def _sampling_logs(output_dir: Path):
         yield int(match.group(1)), int(match.group(2)), outcome
 
 
+def _recover_interrupted_screened(output_dir: Path, raw: dict[int, dict[str, Any]],
+                                  saved_index: set[int], target_mode: str,
+                                  expected: dict[str, Any]) -> CollectionProgress:
+    """Recover only durable facts when a killed official-seen run has no report."""
+    if (expected.get("episode_protocol") != "official-seen"
+            or expected.get("seed_mode") != "sequential"
+            or expected.get("sampling_mode") != "off"
+            or target_mode != "hil"):
+        raise ValueError("Interrupted recovery supports only official-seen sequential HIL with sampling off")
+    if set(raw) != saved_index:
+        raise ValueError("raw episodes and episodes.jsonl disagree; inspect before resuming")
+    if sorted(raw) != list(range(len(raw))):
+        raise ValueError("Interrupted raw episode indexes are not contiguous")
+    screening = output_dir / "scene_screening.jsonl"
+    if not screening.is_file():
+        raise ValueError("Missing scene screening log for interrupted recovery")
+    candidates: set[int] = set()
+    ready: list[int] = []
+    for line in screening.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        seed, status = int(row["seed"]), row.get("status")
+        candidates.add(seed)
+        if status == "policy_ready":
+            if seed in ready:
+                raise ValueError(f"Duplicate policy_ready seed {seed}")
+            ready.append(seed)
+    if not ready:
+        raise ValueError("No policy_ready scenes to recover")
+    by_seed: dict[int, dict[str, Any]] = {}
+    valid_hil = 0
+    for episode in raw.values():
+        record = episode["record"]
+        seed = int(episode["seed"])
+        if seed not in ready or seed in by_seed or int(record.get("rollout_index", -1)) != ready.index(seed):
+            raise ValueError(f"Saved episode seed/rollout conflicts with screening: {seed}")
+        for field in ("task", "adapter", "sampling_mode"):
+            if field in expected and record.get(field) != expected[field]:
+                raise ValueError(f"Interrupted raw {field} mismatch for seed {seed}")
+        # Raw episode frequency stores the frame save interval (normally 15),
+        # not the policy interface's --frequency (normally 50). The latter is
+        # unavailable without a session report and must not be inferred here.
+        by_seed[seed] = record
+        if int(record.get("hil_frames", 0)) > 0 and record.get("accepted_for_training") is True:
+            valid_hil += 1
+    records = [by_seed.get(seed, {"rollout_index": index, "seed": seed,
+                                  "rollout_status": "unrecorded_interrupted",
+                                  "save_decision": False, "recovered_without_record": True})
+               for index, seed in enumerate(ready)]
+    return CollectionProgress(len(ready), len(raw), valid_hil, 0, records,
+                              candidates, 0.0, None)
+
+
 def inspect_collection(output_dir: Path, *, target_mode: str, expected: dict[str, Any] | None = None,
-                       resume: bool = False) -> CollectionProgress:
+                       resume: bool = False, recover_interrupted: bool = False) -> CollectionProgress:
     """Inspect durable state without changing files; refuse ambiguous recovery."""
     raw = _raw_episodes(output_dir)
     saved_index = _saved_index(output_dir)
@@ -117,6 +171,9 @@ def inspect_collection(output_dir: Path, *, target_mode: str, expected: dict[str
             raise ValueError(f"Collection data already exists in {output_dir}; use --resume")
         return CollectionProgress(0, 0, 0, 0, [], set(), 0.0, None)
     if not reports:
+        if recover_interrupted:
+            return _recover_interrupted_screened(output_dir, raw, saved_index,
+                                                 target_mode, expected or {})
         raise ValueError(f"No completed session report in {output_dir}; cannot restore rollout history")
     if set(raw) != saved_index:
         raise ValueError("raw episodes and episodes.jsonl disagree; inspect before resuming")

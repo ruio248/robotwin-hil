@@ -28,10 +28,13 @@ import numpy as np
 
 from dagger.runtime import activate_runtime, configure_imports, runtime_root
 from dagger.adapters import get_adapter, registered_tasks
-from dagger.episode_protocol import SCREEN_LOG, prepare_screened_scene, screening_history
+from dagger.episode_protocol import (
+    SCREEN_LOG, prepare_screened_scene, screening_history, screening_qualifies_for_training,
+)
 from dagger.recording import (
     read_json_object, write_json, append_jsonl, append_segment,
-    finalize_episode, discard_recovery_cache,
+    finalize_episode, discard_recovery_cache, summarize_takeover_metrics,
+    assess_operator_hil_segments,
 )
 from dagger.takeover import (
     DEFAULT_KEYS, OperatorInterrupt, HumanInterventionInput,
@@ -88,9 +91,18 @@ def reserved_seed_label(seed: int, task: str = "handover_to_tray") -> str | None
     return None
 
 
+def count_saved_hil_episodes(records: list[dict[str, Any]]) -> int:
+    """Count persisted HIL episodes regardless of formal training eligibility."""
+    return sum(
+        bool(row.get("save_decision")) and int(row.get("hil_frames") or 0) > 0
+        for row in records
+    )
+
+
 def format_collection_progress(records: list[dict[str, Any]], saved_hil: int,
                                target: int, max_rollouts: int) -> str:
     """Display saved-data progress and episode-level takeover rates."""
+    raw_saved_hil = count_saved_hil_episodes(records)
     width = 20
     filled = min(width, width * min(saved_hil, target) // target)
     bar = "#" * filled + "-" * (width - filled)
@@ -99,9 +111,13 @@ def format_collection_progress(records: list[dict[str, Any]], saved_hil: int,
     requests = sum(int(row.get("manual_takeover_requests", 0)) > 0 for row in valid)
     triggered = sum(int(row.get("intervention_count", 0)) > 0 for row in valid)
     denominator = len(valid)
-    prefix = (f"[PROGRESS] [{bar}] {saved_hil}/{target} valid saved HIL "
+    prefix = (f"[PROGRESS] [{bar}] {saved_hil}/{target} training-eligible HIL "
               f"({100 * min(saved_hil, target) / target:.0f}%); "
+              f"saved HIL (including diagnostic)={raw_saved_hil}; "
               f"rollouts={len(records)}/{max_rollouts}; ")
+    missing = sum(bool(row.get("recovered_without_record")) for row in records)
+    if missing:
+        prefix += f"{missing} earlier rollout outcomes unavailable; takeover rate uses known records only; "
     if not denominator:
         return prefix + "takeover rate=n/a (no valid rollout)"
     return (prefix + f"takeover requested={requests}/{denominator} "
@@ -120,7 +136,7 @@ def build_seed_stream(cli: argparse.Namespace):
             if label:
                 raise ValueError(
                     f"Refusing to collect DAgger data on reserved seed {seed} ({label}). "
-                    "Use fresh collection seeds such as 40000+."
+                    "Use fresh collection seeds such as 50000+."
                 )
             yield seed
         return
@@ -238,7 +254,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--policy-name", default="Pi_05")
     parser.add_argument("--ckpt-name", default=None)
     parser.add_argument("--task-config", default=None)
-    parser.add_argument("--seed-start", type=int, default=40000)
+    parser.add_argument("--seed-start", type=int, default=50000)
+    parser.add_argument(
+        "--resume-skip-seed-through", type=int,
+        help="On sequential resume, skip all candidate seeds up to this inclusive value (e.g. seeds used by another run).",
+    )
     parser.add_argument(
         "--one-stage", action="store_true",
         help="Scripted stages 1-5, then policy-only stage 6; auto-select recovery branch.",
@@ -256,7 +276,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "demo/dev/test ranges; sequential: use seed-start + rollout index."
         ),
     )
-    parser.add_argument("--seed-min", type=int, default=40000)
+    parser.add_argument("--seed-min", type=int, default=50000)
     parser.add_argument("--seed-max", type=int, default=99999)
     parser.add_argument(
         "--rng-seed",
@@ -312,6 +332,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--resume", action="store_true",
         help="Resume counters and saved raw episodes in --output-dir after a completed session.",
+    )
+    parser.add_argument(
+        "--resume-interrupted", action="store_true",
+        help="With --resume, recover confirmed raw HIL and screened seeds when a killed official-seen run lacks a session report.",
     )
     parser.add_argument("--save-data", default="true")
     parser.add_argument(
@@ -485,6 +509,11 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("Takeover comparison requires the same declared window in all three arms")
     if cli.resume and cli.acceptance:
         raise ValueError("Acceptance runs cannot resume a collection")
+    if cli.resume_interrupted and not cli.resume:
+        raise ValueError("--resume-interrupted requires --resume")
+    if cli.resume_skip_seed_through is not None and (not cli.resume or cli.seed_mode != "sequential"
+                                                     or cli.resume_skip_seed_through < cli.seed_start):
+        raise ValueError("--resume-skip-seed-through requires sequential --resume and a value >= --seed-start")
     if (cli.es_mode != "off" or cli.takeover_eval) and cli.bias_magnitude:
         raise ValueError("Action bias is incompatible with simulated candidate scoring")
     from coverage_sampling.core import config_record
@@ -542,18 +571,30 @@ def main(argv: list[str] | None = None) -> int:
         expected_resume["save_policy_rollouts"] = True
     if cli.one_stage:
         expected_resume.update(one_stage=True, paired_baseline_sha256=paired_report_sha)
+    if cli.resume_skip_seed_through is not None:
+        expected_resume["resume_skip_seed_through"] = int(cli.resume_skip_seed_through)
     progress = inspect_collection(cli.output_dir, target_mode=cli.target_mode,
-                                  expected=expected_resume, resume=cli.resume)
+                                  expected=expected_resume, resume=cli.resume,
+                                  recover_interrupted=cli.resume_interrupted)
     screen_history = screening_history(cli.output_dir)
     if screen_history and cli.episode_protocol != "official-seen":
         raise ValueError("Cannot resume a screened collection with legacy-fixed protocol")
     if cli.resume:
-        previous_range = read_json_object(Path(progress.source_report)).get("seed_range")
-        expected_start = [int(cli.seed_min), int(cli.seed_max)] if cli.seed_mode == "random" else None
-        if expected_start is not None and previous_range != expected_start:
-            raise ValueError(f"Resume seed range mismatch: {previous_range} != {expected_start}")
-        if cli.seed_mode == "sequential" and previous_range[0] != int(cli.seed_start):
-            raise ValueError("Resume seed-start differs from the previous session")
+        if progress.source_report is None:
+            if not cli.resume_interrupted or min(screen_history) != int(cli.seed_start):
+                raise ValueError("Interrupted resume seed-start differs from the screened collection")
+            print("[RESUME] No session report: saved HIL and seeds restored; other prior rollout outcomes unavailable.",
+                  flush=True)
+        else:
+            previous_report = read_json_object(Path(progress.source_report))
+            previous_range = previous_report.get("seed_range")
+            if cli.resume_skip_seed_through is None and previous_report.get("resume_skip_seed_through") is not None:
+                cli.resume_skip_seed_through = int(previous_report["resume_skip_seed_through"])
+            expected_start = [int(cli.seed_min), int(cli.seed_max)] if cli.seed_mode == "random" else None
+            if expected_start is not None and previous_range != expected_start:
+                raise ValueError(f"Resume seed range mismatch: {previous_range} != {expected_start}")
+            if cli.seed_mode == "sequential" and previous_range[0] != int(cli.seed_start):
+                raise ValueError("Resume seed-start differs from the previous session")
         preserved = preserve_incomplete_cache(cli.output_dir)
         print(f"[RESUME] next rollout={progress.next_rollout_index + 1}/{cli.episodes}, "
               f"next raw episode={progress.next_episode_index}, "
@@ -586,6 +627,8 @@ def main(argv: list[str] | None = None) -> int:
     records: list[dict[str, Any]] = list(progress.records)
     used_seeds = set(progress.used_seeds)
     used_seeds.update(screen_history)
+    if cli.resume_skip_seed_through is not None:
+        used_seeds.update(range(int(cli.seed_start), int(cli.resume_skip_seed_through) + 1))
     scene_attempts = len(screen_history)
     scene_budget_exhausted = False
     aborted = False
@@ -603,6 +646,9 @@ def main(argv: list[str] | None = None) -> int:
     print("After each episode: s/f=success/failure, y/n=save/discard.")
     print(f"Prompt: {instruction or 'official seen, generated and frozen separately per accepted scene'}")
     print(f"Episode protocol: {cli.episode_protocol}")
+    if adapter.requires_training_gate and cli.episode_protocol != "official-seen":
+        print("[TRAINING-GATE] No verified initial expert screening: saved raw is diagnostic only; "
+              "this run cannot reach the formal saved-HIL target.", flush=True)
     print(f"Sampling: {cli.es_mode}; takeover evaluation: {cli.takeover_eval}")
     print(f"Output: {cli.output_dir}")
     print("=" * 72 + "\n")
@@ -779,7 +825,8 @@ def main(argv: list[str] | None = None) -> int:
 
             print(
                 f"\n\033[96m[ROLLOUT {rollout_index + 1}/max {cli.episodes} | "
-                f"saved valid HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
+                f"saved HIL {count_saved_hil_episodes(records)} "
+                f"| training-eligible HIL ({cli.target_mode}) {saved_hil_count}/{cli.target_saved}] "
                 f"seed={seed}; "
                 f"{'e=sampling, ' if cli.es_activation == 'manual' else ''}"
                 +
@@ -819,11 +866,19 @@ def main(argv: list[str] | None = None) -> int:
                         if sampling_log is not None:
                             sampling_log.write({"event": "takeover_request", "policy_steps": policy_steps,
                                                 "decision": decision_step, "source": "human"})
+                    rejection_count_before = len(task_env.episode_metadata.get("recovery_selection_rejections", []))
                     if cli.one_stage:
                         recovery_iter = adapter.recovery_stage_iterator(task_env)
                         chosen_stage = None
                     else:
                         recovery_iter, chosen_stage = choose_recovery_stage(task_env, keyboard, adapter)
+                    if request_event is not None:
+                        request_event["selection_rejections"] = (
+                            len(task_env.episode_metadata.get("recovery_selection_rejections", []))
+                            - rejection_count_before
+                        )
+                        request_event["outcome"] = "cancelled" if recovery_iter is None else "accepted"
+                        request_event["chosen_stage_id"] = chosen_stage
                     if recovery_iter is None:
                         print("\n\033[93m[HG-DAGGER] 已取消本次接管，继续策略执行。\033[0m")
                         return False
@@ -838,6 +893,7 @@ def main(argv: list[str] | None = None) -> int:
                         "handback_step": None,
                         "expert_done": False,
                         "chosen_stage_id": chosen_stage,
+                        "source": "human" if manual else "automatic",
                     })
                     mode = "expert"
                     print("\n\033[93m[HG-DAGGER] i detected: policy chunk discarded.\033[0m")
@@ -1102,6 +1158,7 @@ def main(argv: list[str] | None = None) -> int:
                             if interventions:
                                 interventions[-1]["handback_step"] = int(task_env.FRAME_IDX)
                                 interventions[-1]["expert_progress"] = last_expert_progress
+                                interventions[-1]["handback_requested"] = event == "handback"
                             switch_source("policy")
                             mode = "policy"
                             reset_policy(model_client)
@@ -1124,6 +1181,9 @@ def main(argv: list[str] | None = None) -> int:
                                 interventions[-1]["expert_done"] = bool(last_expert_result.get("success"))
                                 interventions[-1]["end_step"] = int(task_env.FRAME_IDX)
                                 interventions[-1]["expert_result"] = last_expert_result
+                                interventions[-1].setdefault("attempt_results", []).append(last_expert_result)
+                                interventions[-1]["planning_success"] = last_expert_result.get("plan_success") is True
+                                interventions[-1]["execution_success"] = last_expert_result.get("success") is True
                             if last_expert_result.get("success"):
                                 break
                             reason = last_expert_result.get("reason") or "expert_recovery_failed"
@@ -1208,6 +1268,7 @@ def main(argv: list[str] | None = None) -> int:
                     "sampling_activation_events": sampling_activation_events,
                     "intervention_count": intervention_count,
                     "interventions": interventions,
+                    "recovery_selection_rejections": list(task_env.episode_metadata.get("recovery_selection_rejections", [])),
                     "autonomous_success": False, "save_decision": False,
                     "instruction": instruction,
                     "initial_scene_screening": initial_scene_screening,
@@ -1233,15 +1294,36 @@ def main(argv: list[str] | None = None) -> int:
                 expert_result=last_expert_result, final_success=bool(final_check_success),
                 joints_legal=bool(joints_legal),
             ) if cli.one_stage else False
+            training_gate_checks: dict[str, bool] = {}
+            assessed_hil_segments: list[dict[str, Any]] = []
             if adapter.requires_training_gate:
                 diagnostic_run = bool(cli.auto_intervene_step >= 0 or cli.auto_handback_step >= 0
                                       or cli.step_limit is not None or cli.render_freq <= 0 or cli.bias_magnitude)
                 if adapter.default_episode_protocol == "official-seen" and cli.episode_protocol != "official-seen":
                     diagnostic_run = True
-                valid_hil = bool(not diagnostic_run and intervention_count > 0 and hil_frames > 0 and final_check_success
-                                 and joints_legal and final_success_metrics.get("physical_quality_gate")
-                                 and final_success_metrics.get("recovery_ok")
-                                 and (cli.target_mode != "expert" or (last_expert_result or {}).get("success")))
+                if adapter.segment_training_gate:
+                    assessed_hil_segments = assess_operator_hil_segments(
+                        list(task_env.control_mask),
+                        list(task_env.episode_metadata.get("live_recovery_events", [])),
+                    )
+                training_gate_checks = {
+                    "official_screen": cli.episode_protocol == "official-seen" and screening_qualifies_for_training(
+                        initial_scene_screening, seed=int(seed), instruction=instruction),
+                    "not_diagnostic": not diagnostic_run,
+                    "intervention_recorded": intervention_count > 0,
+                    "hil_frames_recorded": hil_frames > 0,
+                }
+                if adapter.segment_training_gate:
+                    training_gate_checks["accepted_hil_segment"] = any(
+                        item["accepted"] for item in assessed_hil_segments)
+                else:
+                    training_gate_checks.update(
+                        final_task_success=bool(final_check_success), joints_legal=bool(joints_legal),
+                        expert_result=bool(cli.target_mode != "expert" or (last_expert_result or {}).get("success")),
+                    )
+                if adapter.requires_complete_recovery_for_training:
+                    training_gate_checks["recovery_ok"] = bool(final_success_metrics.get("recovery_ok"))
+                valid_hil = all(training_gate_checks.values())
 
             if auto_label is not None:
                 supervisor_label = auto_label
@@ -1261,7 +1343,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
             if adapter.requires_training_gate:
-                valid_hil = bool(valid_hil and supervisor_label == "success")
+                if not adapter.segment_training_gate:
+                    training_gate_checks["supervisor_success"] = supervisor_label == "success"
+                valid_hil = all(training_gate_checks.values())
 
             if auto_save == "valid_hil":
                 do_save = valid_hil
@@ -1296,6 +1380,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sampling_activation_events": sampling_activation_events,
                 "intervention_count": intervention_count,
                 "interventions": interventions,
+                "recovery_selection_rejections": list(task_env.episode_metadata.get("recovery_selection_rejections", [])),
                 "segments": segments,
                 "control_mask": list(task_env.control_mask),
                 "autonomous_success": bool(
@@ -1316,8 +1401,12 @@ def main(argv: list[str] | None = None) -> int:
             }
             if adapter.requires_training_gate:
                 episode_record.update(task=cli.task, adapter=adapter.name,
+                                      formal_training_schema=2 if adapter.segment_training_gate else 1,
                                       accepted_for_training=bool(do_save and valid_hil),
-                                      diagnostic_only=not valid_hil)
+                                      diagnostic_only=not valid_hil,
+                                      accepted_hil_segments=(assessed_hil_segments if adapter.segment_training_gate else None),
+                                      training_gate_checks=training_gate_checks,
+                                      training_gate_failed=[key for key, passed in training_gate_checks.items() if not passed])
 
             if cli.save_policy_rollouts:
                 policy_cache = getattr(task_env, "folder_path", {}).get("cache")
@@ -1369,6 +1458,9 @@ def main(argv: list[str] | None = None) -> int:
                 f"[EPISODE] label={supervisor_label} save={do_save} "
                 f"interventions={intervention_count}"
             )
+            if do_save and not valid_hil and adapter.requires_training_gate:
+                print(f"[EPISODE] saved as diagnostic only; training gate failed: "
+                      f"{', '.join(episode_record['training_gate_failed'])}", flush=True)
             print(format_collection_progress(records, saved_hil_count,
                                              int(cli.target_saved), int(cli.episodes)), flush=True)
             safe_close_env(task_env)
@@ -1456,6 +1548,7 @@ def main(argv: list[str] | None = None) -> int:
         "step_limit": cli.step_limit,
         "seed_mode": cli.seed_mode,
         "rng_seed": cli.rng_seed,
+        "resume_skip_seed_through": cli.resume_skip_seed_through,
         "seed_range": (
             [int(cli.seed_min), int(cli.seed_max)]
             if cli.seed_mode == "random"
@@ -1489,6 +1582,7 @@ def main(argv: list[str] | None = None) -> int:
         "total_rollouts": len(records),
         "aborted_rollouts": int(aborted_rollouts),
         "interventions": sum(int(item.get("intervention_count", 0)) for item in records),
+        "takeover_metrics": summarize_takeover_metrics(records),
         "saved_episodes": sum(1 for item in records if item.get("save_decision")),
         "saved_hil_episodes": sum(
             1

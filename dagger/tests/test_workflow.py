@@ -283,12 +283,14 @@ def test_stack_records_gate_and_resume_count_match(monkeypatch, tmp_path, physic
     assert client.chunks == 2  # Validation must not resample the policy.
     row = report["records"][0]
     assert row["task"] == "stack_blocks_three"
-    assert row["accepted_for_training"] is physical_ok
-    assert row["diagnostic_only"] is not physical_ok
+    assert row["final_success_metrics"]["physical_quality_gate"] is physical_ok
+    assert "physical_quality" not in row["training_gate_checks"]
+    assert row["accepted_for_training"] is True
+    assert row["diagnostic_only"] is False
     assert not row["autonomous_success"]
-    assert report["saved_valid_hil_episodes"] == int(physical_ok)
+    assert report["saved_valid_hil_episodes"] == 1
     resumed = runner.inspect_collection(tmp_path / "session", target_mode="hil", resume=True)
-    assert resumed.saved_valid_hil == int(physical_ok)
+    assert resumed.saved_valid_hil == 1
 
 
 @pytest.mark.parametrize("invalid", ["short", "nonfinite"])
@@ -316,6 +318,11 @@ def test_takeover_handback_and_second_takeover_discard_old_chunk(monkeypatch, tm
     assert env.closed and client.closed
     record = report["records"][0]
     assert record["intervention_count"] == 2
+    assert report["takeover_metrics"]["takeover_requests"] == 2
+    assert report["takeover_metrics"]["takeover_requests_accepted"] == 2
+    assert report["takeover_metrics"]["expert_attempts_with_result"] == 1
+    assert report["takeover_metrics"]["expert_execution_successes"] == 1
+    assert record["takeover_request_events"][0]["outcome"] == "accepted"
     assert record["interventions"][0]["handback_step"] is not None
     assert record["interventions"][1]["expert_done"]
     assert record["control_mask"] == ["policy", "policy", "hil", "policy", "hil"]
@@ -324,6 +331,27 @@ def test_takeover_handback_and_second_takeover_discard_old_chunk(monkeypatch, tm
     assert len(list((raw / "frames").glob("*.pkl"))) == 5
     assert json.loads((raw / "episode.json").read_text())["record"]["interventions"] == record["interventions"]
     assert report["task"] == "handover_to_tray"
+
+
+@pytest.mark.parametrize("reason,category", [
+    ("object_moving_wait_for_settle", "temporary_wait"),
+    ("wrong_stack_order_requires_manual_unstack", "unsupported_primitive"),
+    ("stage_precondition_mismatch: selected=6, live=4", "incompatible_stage"),
+    ("ambiguous_partial_grasp", "ambiguous_state"),
+    ("outside_recovery_workspace", "safety_precondition"),
+    ("unobservable_state: missing pose", "technical_unobservable"),
+])
+def test_recovery_reasons_are_classified_for_logs_only(reason, category):
+    assert takeover.recovery_reason_category(reason) == category
+
+
+def test_new_formal_record_needs_explicit_acceptance_but_legacy_remains_compatible(tmp_path):
+    assert recording.training_eligible(tmp_path, {})
+    assert not recording.has_explicit_training_acceptance({})
+    assert not recording.training_eligible(tmp_path, {"record": {"formal_training_schema": 1}})
+    assert recording.training_eligible(tmp_path, {"record": {
+        "formal_training_schema": 1, "accepted_for_training": True,
+    }})
 
 
 @pytest.mark.parametrize("event,code", [("abort", 0), ("quit", 130)])

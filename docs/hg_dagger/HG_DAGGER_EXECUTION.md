@@ -42,7 +42,7 @@ Pass the red block from the left arm to the right arm and put it on the blue pad
 
 放置事件先记录 `verified=false`，经过释放/撤离及至少 0.24 秒、6 个采样间隔的保持窗口后才确认。保持由正常 `take_dense_action` 执行并记录 HIL 来源，不使用裸 `scene.step()` 偷跑；要求目标支撑、≤2 mm 漂移、≤0.02 rad 旋转、有限速度门槛和官方终局成功。若在放置与验证之间交还，旧的未验证专家事件不会被后来另一轮接管悄悄补成通过。上述阈值是保守实现门槛，尚未通过真实多 seed 仿真标定。
 
-每局保留官方成功/失败、`physical_quality_gate`、`recovery_ok`、`live_recovery_events`、`control_mask`、`segments`、人工接管/交还和保存决定。只有人工介入、有 HIL 帧、官方成功、物理质量及全部专家事件验证通过、关节合法、标签成功且确认保存，且非自动/headless/强制步限诊断，才计入 `accepted_for_training=true`。失败 raw 可诊断保存，但不会计入有效 HIL 数；后续只导出合格专家控制段，不跨控制权边界构造训练标签。
+每局保留官方成功/失败、`physical_quality_gate`、`recovery_ok`、`live_recovery_events`、`control_mask`、`segments`、人工接管/交还和保存决定。`physical_quality_gate` 不再是整局结束时 HIL **训练资格**的独立硬门槛；它仍记录终态诊断，且 `stack_blocks_three` 的在线专家恢复迭代器仍用它确认恢复结束，不能把这次改动理解成取消现场恢复验证。训练实际只导出合格 episode 中连续的专家接管片段，不把策略动作当专家标签。当前资格仍要求人工介入、有 HIL 帧、官方终局成功、全部专家恢复事件验证通过、关节合法、标签成功且确认保存，并排除自动/headless/强制步限诊断。**这仍是 episode 级资格过滤**：后续策略失败的局即使含有效纠偏片段，目前也不会自动进入训练集；如需片段独立验收，须另行定义并验证片段级规则。既有 raw 中的 `accepted_for_training` 标记不追溯改写。
 
 ### Ubuntu 启动示例
 

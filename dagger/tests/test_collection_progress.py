@@ -25,3 +25,14 @@ def test_progress_counts_requests_and_actual_interventions_separately():
 
 def test_progress_bar_caps_at_full_width():
     assert "[####################] 21/20" in format_collection_progress([], 21, 20, 100)
+
+
+def test_progress_distinguishes_saved_diagnostics_from_training_eligible_hil():
+    records = [
+        {"save_decision": True, "hil_frames": 55, "accepted_for_training": False},
+        {"save_decision": True, "hil_frames": 101, "accepted_for_training": False},
+        {"save_decision": False, "hil_frames": 10},
+    ]
+    line = format_collection_progress(records, 0, 20, 100)
+    assert "0/20 training-eligible HIL" in line
+    assert "saved HIL (including diagnostic)=2" in line

@@ -63,6 +63,7 @@ class LiveObjectAdapter(TaskAdapter):
     default_frequency = 50
     supports_sampling = False
     requires_training_gate = True
+    requires_complete_recovery_for_training = True
     # Conservative guard, not a substitute for checking the actual manifests.
     reserved_seed_ranges = ((0, 999, "SFT/expert data guard"),
                             (100000, 109999, "frozen policy evaluation guard"))
@@ -380,3 +381,141 @@ class PickPlaceAdapter(LiveObjectAdapter):
                 yield session.stop(event.get("error", "expert_motion_failed"))
                 return
         yield session.completion(4)
+
+
+class OperatorPickPlaceAdapter(PickPlaceAdapter):
+    """Opt-in live recovery for cup/QR; never changes handover_block's gates.
+
+    State classification is advice. An explicit operator stage is authoritative;
+    only a failed primitive or an illegal newly planned joint path stops execution.
+    """
+
+    requires_complete_recovery_for_training = False
+    segment_training_gate = True
+    operator_regrasp_stage_id = None
+
+    def describe_recovery_state(self, state):
+        lines = super().describe_recovery_state(state)
+        lines.append(f"接触/支撑诊断（不拦截手选）={state.get('diagnostic_rejection')}")
+        lines.append("人工阶段优先；仅规划执行失败或新关节路径非法中止专家动作。")
+        return lines
+
+    def infer_recovery_state(self, env):
+        try:
+            state = self.snapshot(env)
+            return {"recoverable": True, "reason": None, "snapshot": state,
+                    **self.classify(state), "diagnostic_rejection": self.rejection(state)}
+        except (AttributeError, ValueError, TypeError, IndexError) as error:
+            return {"recoverable": False, "branch": "unobservable", "stage_id": None,
+                    "reason": f"unobservable_state: {error}"}
+
+    def recovery_stage_rejection(self, state, stage_id):
+        if not state.get("recoverable") and state.get("reason"):
+            return state["reason"]
+        if stage_id is not None and stage_id not in self.stage_labels:
+            return f"unknown_stage: {stage_id}"
+        if stage_id is None and state.get("stage_id") is None:
+            return state.get("reason") or "choose_stage_manually"
+        return None
+
+    def success_metrics(self, env):
+        try:
+            state = self.snapshot(env)
+            return {"official_task_success": state["official_success"],
+                    "physical_quality_gate": self.quality(state), "snapshot": state}
+        except (AttributeError, ValueError, TypeError, IndexError) as error:
+            return {"official_task_success": bool(env.check_success()),
+                    "physical_quality_gate": False, "error": str(error)}
+
+    def recovery_stage_iterator(self, env, start_stage_id=None):
+        from envs.utils import ArmTag
+
+        initial = self.infer_recovery_state(env)
+        stage = start_stage_id if start_stage_id is not None else initial.get("stage_id")
+        reason = self.recovery_stage_rejection(initial, stage)
+        result = {"initial_state": initial, "chosen_stage_id": stage,
+                  "executed_stage_ids": [], "plan_success": False, "success": False}
+        if reason:
+            result["reason"] = reason
+            yield {"phase": "done", "result": result}
+            return
+
+        snapshot = initial.get("snapshot", {})
+        held = snapshot.get("held", [])
+        side = next(iter(held), "left" if snapshot.get("p", [0])[0] < 0 else "right")
+        arm = ArmTag(side)
+        events = env.episode_metadata.setdefault("live_recovery_events", [])
+
+        def motion(number, label, build):
+            env.current_control_source, env.current_stage_id = "hil", number
+            env.plan_success = True
+            env.episode_metadata.pop("expert_stage_error", None)
+            frame_start = int(env.FRAME_IDX) if hasattr(env, "FRAME_IDX") else None
+            lengths = {s: len(getattr(env, f"{s}_joint_path")) for s in ("left", "right")
+                       if hasattr(env, f"{s}_joint_path")}
+            event = {"phase": "stage", "stage_id": number, "substage": label,
+                     "ok": False, "verified": False, "frame_start": frame_start}
+            try:
+                commands = build()
+                if env.plan_success:
+                    env.move(*commands)
+                if len(lengths) == 2 and hasattr(env, "joint_path_absmax"):
+                    paths = [getattr(env, f"{s}_joint_path")[lengths[s]:] for s in ("left", "right")]
+                    peak = max(env.joint_path_absmax(path) for path in paths)
+                    finite = all(np.isfinite(np.asarray(item["position"], dtype=float)).all()
+                                 for path in paths for item in path
+                                 if isinstance(item, dict) and item.get("position") is not None)
+                    legal = bool(finite and np.isfinite(peak) and peak <= np.pi)
+                else:
+                    legal, peak = env.planned_joints_legal()
+                event.update(plan_success=bool(env.plan_success), joints_legal=bool(legal),
+                             joint_absmax=float(peak))
+                event["ok"] = event["verified"] = bool(env.plan_success and legal)
+                if not event["ok"]:
+                    event["error"] = env.episode_metadata.get("expert_stage_error") or "motion_failed_or_illegal_joints"
+            except Exception as error:
+                env.plan_success = False
+                event["error"] = repr(error)
+            event["frame_end_exclusive"] = int(env.FRAME_IDX) if hasattr(env, "FRAME_IDX") else None
+            events.append(event)
+            result["executed_stage_ids"].append(number)
+            return event
+
+        steps = []
+        if stage == self.operator_regrasp_stage_id and self.operator_regrasp_stage_id is not None:
+            # Operator-only correction when the object is already between the
+            # fingers. Keep the arm fixed during open/close: no grasp planner.
+            steps.extend(((stage, "open_for_regrasp", lambda: [env.open_gripper(arm)]),
+                          (stage, "reclose_gripper", lambda: [env.close_gripper(arm, pos=0.0)]),
+                          (stage, "lift", lambda: [self.lift(env, arm)]),
+                          (stage, "rotate_and_replace", lambda: [self.place(env, arm)])))
+        else:
+            if stage == 1:
+                if self.preshape_gripper is None:
+                    if not snapshot.get("grippers", {}).get(side, {}).get("open", True):
+                        steps.append((1, "open_gripper", lambda: [env.open_gripper(arm)]))
+                else:
+                    steps.append((1, "preshape_gripper", lambda: [env.close_gripper(arm, pos=self.preshape_gripper)]))
+                steps.append((1, "grasp", lambda: self.grasp(env, arm)))
+            if stage <= 2:
+                steps.append((2, "lift", lambda: [self.lift(env, arm)]))
+            if stage <= 3:
+                steps.append((3, "place_and_release", lambda: [self.place(env, arm)]))
+            else:
+                steps.append((4, "release", lambda: [env.open_gripper(arm)]))
+            steps.append((4, "retreat", lambda: [env.move_by_displacement(arm, z=.05, move_axis="arm")]))
+
+        for number, label, build in steps:
+            event = motion(number, label, build)
+            yield event
+            if not event["ok"]:
+                result["reason"] = event.get("error", "expert_motion_failed")
+                yield {"phase": "done", "result": dict(result)}
+                return
+
+        metrics = self.success_metrics(env)
+        result.update(success=bool(metrics["official_task_success"]),
+                      plan_success=True, final_metrics=metrics)
+        if not result["success"]:
+            result["reason"] = "official_task_not_successful_after_recovery"
+        yield {"phase": "done", "result": dict(result)}

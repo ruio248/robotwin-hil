@@ -244,7 +244,7 @@ python -u scripts/export_hg_dagger_dataset.py \
 ```
 
 - `--mode full`：完整 policy+HIL 轨迹；
-- `--mode hil`：每个连续 `control_mask == "hil"` 段独立导出并重新编号；不会跨策略/HIL 边界或两次接管拼接动作标签。默认只保留至少 2 个转移（3 个连续保存帧）的段，与 LeRobot 准备入口一致；转换先在临时目录完成，失败不会留下正式 HDF5，已有结果不会被覆盖；
+- `--mode hil`：只保留 `control_mask == "hil"` 的帧（重新编号），用于训练；
 - 输出 `data/*.hdf5`、`video/*.mp4`（可选）、`instruction/*.json`、`manifest_*.json`。
 
 ## 5. 保存后的训练

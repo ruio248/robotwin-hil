@@ -114,3 +114,16 @@ def prepare_screened_scene(env, args, *, seed, episode_index, adapter,
         })
         close_env(env)
         raise
+
+
+def screening_qualifies_for_training(screening, *, seed: int, instruction: str) -> bool:
+    """Require a completed, same-seed official expert check before formal HIL use."""
+    return bool(
+        isinstance(screening, dict)
+        and screening.get("status") == "policy_ready"
+        and screening.get("seed") == int(seed)
+        and screening.get("instruction") == instruction
+        and screening.get("plan_success") is True
+        and screening.get("check_success") is True
+        and screening.get("joints_legal") is True
+    )

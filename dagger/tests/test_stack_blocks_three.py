@@ -9,7 +9,9 @@ import numpy as np
 import pytest
 
 from dagger.adapters import get_adapter
-from dagger.adapters.stack_blocks_three import NAMES, StackBlocksThreeAdapter, snapshot
+from dagger.adapters.stack_blocks_three import (
+    NAMES, StackBlocksThreeAdapter, _preflight_grasp_candidates, snapshot,
+)
 from dagger.takeover import choose_recovery_stage
 
 
@@ -92,7 +94,9 @@ class StackEnv:
                         for i in (1, 2)) and self.is_left_gripper_open() and self.is_right_gripper_open())
 
     def planned_joints_legal(self): return True, 1.
-    def open_gripper(self, arm): return ("open", str(arm))
+    def open_gripper(self, arm, pos=1.0):
+        assert pos == 1.0
+        return ("open", str(arm))
     def grasp_actor(self, actor, arm_tag, **kwargs): return ("grasp", str(arm_tag), self.blocks.index(actor))
     def move_by_displacement(self, arm_tag, z): return ("lift", str(arm_tag), z)
     def back_to_origin(self, arm_tag): return ("park", str(arm_tag))
@@ -276,29 +280,89 @@ def test_confirmed_partial_contact_releases_and_regrasps_each_block(index):
     events = list(iterator)
     assert events[-1]["result"]["success"]
     assert env.moves[0] == ("open", "right")
-    assert env.moves[1] == ("lift", "right", .01)
+    assert env.moves[1] == ("grasp", "right", index)
+    assert not any(event.get("substage") == "clear_partial_contact_retreat_1cm" for event in events)
     assert any(move[0] == "grasp" and move[2] == index for move in env.moves)
 
 
-def test_partial_contact_clearance_stops_after_five_centimeters():
+def test_manual_regrasp_opens_without_old_contact_clearance_loop():
     env, adapter = StackEnv(), StackBlocksThreeAdapter()
     env.touching["left"], env.grip["left"] = 0, .5
     env.retreat_clears_after = 99
     events = list(adapter.recovery_stage_iterator(env, start_stage_id=1,
                                                   confirmed_clearance=True))
-    assert events[-1]["result"]["reason"] == "partial_contact_not_cleared_within_5cm"
-    assert len([m for m in env.moves if m[0] == "lift"]) == 5
-    assert not any(m[0] == "grasp" for m in env.moves)
+    assert events[0]["substage"] == "open_before_regrasp"
+    assert env.moves[0] == ("open", "left")
+    assert any(m[0] == "grasp" for m in env.moves)
+    assert not any(e.get("substage") == "clear_partial_contact_retreat_1cm" for e in events)
 
 
-def test_partial_contact_with_two_blocks_remains_rejected():
+def test_manual_grasp_override_does_not_check_previous_hold():
     env, adapter = StackEnv(), StackBlocksThreeAdapter()
     env.touching["left"], env.grip["left"] = 0, .5
     env.held["left"] = 1
     decision = adapter.infer_recovery_state(env)
     assert "clearance_candidate" not in decision
-    assert adapter.recovery_stage_rejection(decision, 1) == "ambiguous_or_partial_grasp"
+    assert adapter.recovery_stage_rejection(decision, 1) is None
     assert not env.moves
+
+
+def test_grasp_preflight_prefers_short_live_joint_path_without_motion():
+    joints = [SimpleNamespace(get_name=lambda name=name: name) for name in ("j0", "j1")]
+    entity = SimpleNamespace(get_active_joints=lambda: joints,
+                             get_qpos=lambda: np.zeros(2))
+
+    def plan(target, *, last_qpos, constraint_pose=None):
+        contact, leg = target
+        end = np.array([3.0 if contact is None else 2.9 if contact == 0
+                        else (.3 if leg == 0 else .5), 0.])
+        return {"status": "Success", "position": np.vstack([last_qpos, end])}
+
+    robot = SimpleNamespace(left_entity=entity, left_arm_joints_name=["j0", "j1"],
+                            left_plan_path=plan)
+    actor = SimpleNamespace(iter_contact_points=lambda: iter([(0, None), (1, None)]))
+    env = SimpleNamespace(robot=robot, plan_success=True, episode_metadata={},
+                          grasp_actor=lambda actor, *, arm_tag, pre_grasp_dis, contact_point_id: (
+                              arm_tag,
+                              [SimpleNamespace(action="move", target_pose=[contact_point_id, leg], args={})
+                               for leg in (0, 1)]))
+    decision = _preflight_grasp_candidates(env, actor, "left")
+    assert decision["selected_contact_point_id"] == 1
+    assert [candidate["reason"] for candidate in decision["candidates"]] == [
+        "joint_swing_exceeded", "joint_swing_exceeded", "accepted"]
+    assert env.plan_success and env.episode_metadata == {}
+
+    # Official grasp orientation wins even if an alternative is shorter.
+    robot.left_plan_path = lambda target, *, last_qpos, constraint_pose=None: {
+        "status": "Success",
+        "position": np.vstack([last_qpos, [.7 if target[0] is None else .2, 0.]]),
+    }
+    assert _preflight_grasp_candidates(env, actor, "left")["selected_contact_point_id"] == -1
+
+
+def test_new_stage_joint_check_does_not_reject_historical_plan():
+    env = StackEnv()
+    env.left_joint_path = [{"status": "Success", "position": np.array([[4.]])}]
+    env.right_joint_path = []
+    env.joint_path_absmax = lambda paths: max(
+        (float(np.max(np.abs(path["position"]))) for path in paths if "position" in path),
+        default=0.)
+    env.planned_joints_legal = lambda: (False, 4.)
+    first = next(StackBlocksThreeAdapter().recovery_stage_iterator(env))
+    assert first["substage"] == "open_before_grasp"
+    assert first["ok"] and first["joints_legal"] and first["joint_absmax"] == 0.
+    assert first["new_plan_status"] == {"left": [], "right": []}
+
+
+def test_manual_grasp_releases_previously_held_target_before_regrasp():
+    env, adapter = StackEnv(), StackBlocksThreeAdapter()
+    env.held["left"] = 0
+    env.grip["left"] = 0.
+    state = adapter.infer_recovery_state(env)
+    assert adapter.recovery_stage_rejection(state, 1) is None
+    events = list(adapter.recovery_stage_iterator(env, start_stage_id=1))
+    assert events[0]["substage"] == "open_before_regrasp"
+    assert env.moves[:2] == [("open", "left"), ("grasp", "left", 0)]
 
 
 @pytest.mark.parametrize("red_at_target", [True, False])
@@ -380,8 +444,8 @@ def test_iterator_still_rechecks_state_after_valid_confirmation():
     env, adapter = StackEnv(), StackBlocksThreeAdapter()
     recovery, _ = choose_recovery_stage(env, SimpleNamespace(read_line=lambda _: "1"), adapter)
     env.held["left"], env.grip["left"] = 0, .5
-    assert next(recovery)["result"]["reason"] == "partial_contact_requires_explicit_stage_confirmation"
-    assert not env.moves
+    assert next(recovery)["substage"] == "open_before_regrasp"
+    assert env.moves == [("open", "left")]
 
 
 def test_rejected_headless_confirmation_cannot_loop_forever():
@@ -418,6 +482,7 @@ def test_physical_postcondition_checked_before_handback_boundary():
     env, adapter = StackEnv(), StackBlocksThreeAdapter()
     env.drop_after_lift = True
     iterator = adapter.recovery_stage_iterator(env)
+    assert next(iterator)["substage"] == "open_before_grasp"
     assert next(iterator)["verified"]  # grasp
     event = next(iterator)  # lost grasp must already be marked, before next()
     assert not event["ok"] and not event["verified"]
@@ -428,6 +493,7 @@ def test_physical_postcondition_checked_before_handback_boundary():
 def test_placement_not_accepted_until_retreat_and_support_window():
     env, adapter = StackEnv(), StackBlocksThreeAdapter()
     iterator = adapter.recovery_stage_iterator(env)
+    next(iterator)
     next(iterator)
     next(iterator)
     placed = next(iterator)
@@ -461,16 +527,17 @@ def test_drifting_supported_stack_is_rejected():
     assert not event["result"]["success"]
 
 
-def test_new_takeover_parks_idle_arm_from_live_pose_before_grasp():
+def test_new_takeover_does_not_park_idle_arm_before_green_grasp():
     env, adapter = StackEnv(), StackBlocksThreeAdapter()
     env.block1.point[:] = [0, -.13, .765]
     env.arm_poses["left"][2] = .9
     assert list(adapter.recovery_stage_iterator(env))[-1]["result"]["success"]
-    assert env.moves[:2] == [("park", "left"), ("grasp", "right", 1)]
+    assert env.moves[:2] == [("open", "right"), ("grasp", "right", 1)]
+    assert not any(move[0] == "park" for move in env.moves)
 
 
 @pytest.mark.parametrize("touched", [0, 1])
-def test_open_idle_arm_clears_one_supported_contact_before_parking(touched):
+def test_open_idle_arm_clears_one_supported_contact_without_parking(touched):
     env, adapter = StackEnv(), StackBlocksThreeAdapter()
     env.block1.point[:] = [0, -.13, .765]
     env.arm_poses["left"][2] = .9
@@ -480,7 +547,9 @@ def test_open_idle_arm_clears_one_supported_contact_before_parking(touched):
     assert decision["stage_id"] == 4 and decision["arm"] == "right"
     events = list(adapter.recovery_stage_iterator(env, start_stage_id=4))
     assert events[-1]["result"]["success"]
-    assert env.moves[:3] == [("lift", "left", .01), ("lift", "left", .01), ("park", "left")]
+    assert env.moves[:4] == [("lift", "left", .01), ("lift", "left", .01),
+                             ("open", "right"), ("grasp", "right", 1)]
+    assert not any(move[0] == "park" for move in env.moves)
     assert events[-1]["result"]["idle_arm_contact"]["blocks"] == ["red" if touched == 0 else "green"]
     assert all(e["verified"] for e in events if e.get("substage", "").startswith("clear_idle_arm"))
 
