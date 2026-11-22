@@ -1,0 +1,11 @@
+{
+  "task": "click_alarmclock",
+  "files_verified": 24,
+  "checkpoint_bytes": 12441535732,
+  "config": "pi05_robotwin_click_alarmclock",
+  "horizon": 50,
+  "action_dim": 14,
+  "openpi_revision": "ba9876639cb7a4bf0c7db00ec39eeb9c8efd8b12",
+  "norm_stats_sha256": "3ea9deab853af314bd2bf590d9d6551fef21f43f8792996ee278a6918249aa31",
+  "release_manifest_sha256": "2337bd9e7244fc3f6d51b0b830a9cdfc8d6e683decf2c398a431bc5800696c41"
+}

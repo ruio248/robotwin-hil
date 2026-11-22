@@ -1,0 +1,27 @@
+{
+  "task": "stack_blocks_two",
+  "anchors": 50,
+  "source": "50 anchors from 10 fitted training episodes; not independent calibration",
+  "exploratory": true,
+  "K": {
+    "4": {
+      "beta_cal": 100.0,
+      "ess_fraction": 0.9997947472138647,
+      "target_unreachable": true,
+      "score_range_median": 0.005529880523681641
+    },
+    "16": {
+      "beta_cal": 100.0,
+      "ess_fraction": 0.9996148762741512,
+      "target_unreachable": true,
+      "score_range_median": 0.010891437530517578
+    },
+    "32": {
+      "beta_cal": 100.0,
+      "ess_fraction": 0.9995659788183635,
+      "target_unreachable": true,
+      "score_range_median": 0.012888908386230469
+    }
+  },
+  "cache_sha256": "8a1df68fbc739f7199ed7d84c8584b0d8acf3c25c770fef472185a9145718565"
+}

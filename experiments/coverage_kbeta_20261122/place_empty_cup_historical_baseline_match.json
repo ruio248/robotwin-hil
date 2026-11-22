@@ -1,0 +1,38 @@
+{
+  "baseline_source": "ubuntu:/hdd/robotwin-hil-enhanced-sampling/outputs/place_empty_cup_coverage_full_sampling_20261116/eval_baseline_full/episodes.jsonl",
+  "match_keys": [
+    "official_index",
+    "scene_seed",
+    "instruction"
+  ],
+  "comparisons": {
+    "0": {
+      "matched": 25,
+      "k1_successes": 20,
+      "enhanced_successes": 22,
+      "success_to_failure": 1,
+      "failure_to_success": 3
+    },
+    "30": {
+      "matched": 25,
+      "k1_successes": 20,
+      "enhanced_successes": 19,
+      "success_to_failure": 4,
+      "failure_to_success": 3
+    },
+    "50": {
+      "matched": 25,
+      "k1_successes": 20,
+      "enhanced_successes": 21,
+      "success_to_failure": 1,
+      "failure_to_success": 2
+    },
+    "100": {
+      "matched": 25,
+      "k1_successes": 20,
+      "enhanced_successes": 22,
+      "success_to_failure": 1,
+      "failure_to_success": 3
+    }
+  }
+}

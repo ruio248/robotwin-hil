@@ -1,0 +1,53 @@
+{
+  "task": "beat_block_hammer",
+  "source_metrics_sha256": "e2b69b4222d59f437d0d83a7afdf0d58a4096861a9dbb9c1135212d0baed9ccc",
+  "horizon": 50,
+  "verified_episode_count": 50,
+  "verified_anchors": 2553,
+  "fold_role_counts": {
+    "train": 30,
+    "calibration": 10,
+    "test": 10
+  },
+  "folds": 5,
+  "normalization_fit": "train fold",
+  "optimizer": "AdamW lr=1e-4 wd=1e-4; grad norm clip=1",
+  "steps_per_fold": 10000,
+  "batch_size": 256,
+  "online_critic_fold": 0,
+  "critic_sha256": "2858e311d7a1390c1bab3c19650df5968d1caee119ed1800f4714f5518cf0b60",
+  "heldout_expert_rank": {
+    "ci95": [
+      1.0,
+      1.0
+    ],
+    "episodes": 50,
+    "mean": 1.0
+  },
+  "note": "Archived report has stale H10/30-episode text. Counts here are derived from explicit scene assignments. No separate validation partition was used for the archived fixed-step model.",
+  "diagnostic_only_beta_at_calibration_ess_fraction_0_5": {
+    "4": 8325.877348079084,
+    "16": 5123.400267165435,
+    "32": 4608.231248304925
+  },
+  "primary_fixed_beta_by_k": {
+    "1": [
+      0
+    ],
+    "4": [
+      0,
+      100,
+      200
+    ],
+    "16": [
+      0,
+      100,
+      200
+    ],
+    "32": [
+      0,
+      100,
+      200
+    ]
+  }
+}

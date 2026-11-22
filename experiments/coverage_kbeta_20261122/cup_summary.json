@@ -1,0 +1,99 @@
+{
+  "host": "tju-lab",
+  "gpu_policy": 1,
+  "gpu_sim_critic": 0,
+  "task": "place_empty_cup",
+  "protocol": "fixed 25-seed manifest, K32, policy-microbatch32, enhanced, no expert check",
+  "betas": [
+    {
+      "tag": "b0",
+      "beta": 0.0,
+      "requested": 25,
+      "completed": 25,
+      "successes": 22,
+      "success_rate": 0.88,
+      "wilson95": [
+        0.7004420607907267,
+        0.9583318284955964
+      ],
+      "rollout_errors": 0,
+      "infra_errors": 0,
+      "stable_complete": true
+    },
+    {
+      "tag": "b30",
+      "beta": 30.0,
+      "requested": 25,
+      "completed": 25,
+      "successes": 19,
+      "success_rate": 0.76,
+      "wilson95": [
+        0.5657031664457093,
+        0.8850368630659855
+      ],
+      "rollout_errors": 0,
+      "infra_errors": 0,
+      "stable_complete": true
+    },
+    {
+      "tag": "b50",
+      "beta": 50.0,
+      "requested": 25,
+      "completed": 25,
+      "successes": 21,
+      "success_rate": 0.84,
+      "wilson95": [
+        0.6534637839282114,
+        0.9359654854332355
+      ],
+      "rollout_errors": 0,
+      "infra_errors": 0,
+      "stable_complete": true
+    },
+    {
+      "tag": "b100",
+      "beta": 100.0,
+      "requested": 25,
+      "completed": 25,
+      "successes": 22,
+      "success_rate": 0.88,
+      "wilson95": [
+        0.7004420607907267,
+        0.9583318284955964
+      ],
+      "rollout_errors": 0,
+      "infra_errors": 0,
+      "stable_complete": true
+    }
+  ],
+  "paired_vs_beta0": [
+    {
+      "baseline": "b0",
+      "comparison": "b30",
+      "both_success": 18,
+      "b0_only": 4,
+      "beta_only": 1,
+      "both_fail": 2,
+      "discordant_delta": -3
+    },
+    {
+      "baseline": "b0",
+      "comparison": "b50",
+      "both_success": 20,
+      "b0_only": 2,
+      "beta_only": 1,
+      "both_fail": 2,
+      "discordant_delta": -1
+    },
+    {
+      "baseline": "b0",
+      "comparison": "b100",
+      "both_success": 20,
+      "b0_only": 2,
+      "beta_only": 2,
+      "both_fail": 1,
+      "discordant_delta": 0
+    }
+  ],
+  "source_sweep_progress": "sweep_progress.jsonl"
+}

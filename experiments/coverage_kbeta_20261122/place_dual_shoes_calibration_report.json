@@ -1,0 +1,27 @@
+{
+  "task": "place_dual_shoes",
+  "anchors": 50,
+  "source": "50 anchors from 10 fitted training episodes; not independent calibration",
+  "exploratory": true,
+  "K": {
+    "4": {
+      "beta_cal": 67.51317889855092,
+      "ess_fraction": 0.5,
+      "target_unreachable": false,
+      "score_range_median": 0.08062528073787689
+    },
+    "16": {
+      "beta_cal": 32.054998316587614,
+      "ess_fraction": 0.4999999999999999,
+      "target_unreachable": false,
+      "score_range_median": 0.1449015624821186
+    },
+    "32": {
+      "beta_cal": 28.08550055061767,
+      "ess_fraction": 0.4999999999999999,
+      "target_unreachable": false,
+      "score_range_median": 0.1757863312959671
+    }
+  },
+  "cache_sha256": "effd89d81aeac8e67f855167d417e3d52de65b6bfd6a31bff3b7be7618a25675"
+}
