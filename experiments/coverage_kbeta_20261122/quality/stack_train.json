@@ -1,0 +1,6 @@
+{
+  "train_episodes": 50,
+  "train_anchors": 1543,
+  "train_expert_policy_rank": 1.0,
+  "checkpoint": "disc_train50_s42.pt"
+}

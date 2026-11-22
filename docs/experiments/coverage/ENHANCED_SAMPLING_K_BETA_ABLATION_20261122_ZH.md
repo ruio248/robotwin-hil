@@ -16,11 +16,43 @@
 |---|---:|---|
 | place_empty_cup | 10 | H10 step-67 policy。50 场训练，10,000 步平衡来源 BCE；归一化与校准仅用训练集。独立 20 场、339 个观测锚点，episode 等权专家排序率 0.8812；候选分辨率中位数 0.02393。|
 | place_dual_shoes | 10 | full_h10_sft/4999，train50 critic。校准使用参与拟合的 10 场中的 50 个锚点。独立留出排序与完整 branch replay 未通过验收，在线数据用于探索。|
-| stack_blocks_two | 10 | 同样使用 10 场拟合数据的 50 个校准锚点。三个 K 均在 β=100 触及搜索上限，校准 ESS/K 仍约 0.999；表中 α=1 表示采用这个上限。独立排序与完整回放验收不完整。|
+| stack_blocks_two | 10 | 同样使用 10 场拟合数据的 50 个校准锚点。三个 K 均在 β=100 触及搜索上限，校准 ESS/K 仍约 0.999；表中 α=1 表示采用这个上限。同一 checkpoint 的独立 test20 排序已核实；完整分支回放仍缺验收。|
 | beat_block_hammer | 50 | release step-30000 policy。50 场训练开发数据，五折按 episode 分成 30/10/10（训练/校准/留出）；另以 12 个独立 episode、605 个锚点验证冻结 fold 0，专家胜率为 1。固定种子首段 50 步回放最大状态误差为 0。|
-| click_alarmclock | 50 | release step-30000 policy。60 场恢复完整 H50 窗口，50 场开发、10 场永久留出；开发折按 30/10/10 划分训练/验证/校准，训练配置 10,000 步、batch 256。加载核验 8,752 个候选，首段 50 步回放最大状态误差为 0。本次附件没有正式独立 10 场的排序统计。|
+| click_alarmclock | 50 | release step-30000 policy。60 场恢复完整 H50 窗口，50 场开发、10 场永久留出；开发折按 30/10/10 划分训练/验证/校准，训练配置 10,000 步、batch 256。加载核验 8,752 个候选，首段 50 步回放最大状态误差为 0。正式 fold 0 在独立 10 场上专家胜率和 episode AUC 均为 1。|
 
 [空杯独立集指标](../../../experiments/coverage_kbeta_20261122/cup_test20.json) · [双鞋校准](../../../experiments/coverage_kbeta_20261122/place_dual_shoes_calibration_report.json) · [叠积木校准](../../../experiments/coverage_kbeta_20261122/stack_blocks_two_calibration_report.json) · [锤子训练协议](../../../experiments/coverage_kbeta_20261122/beat_verified_protocol.json) · [锤子外部留出集](../../../experiments/coverage_kbeta_20261122/beat_independent_test.json) · [闹钟 policy 标识](../../../experiments/coverage_kbeta_20261122/click_release_verified.json) · [闹钟加载核查](../../../experiments/coverage_kbeta_20261122/click_full_loader_verification.json)
+
+## 专家支撑函数的离线质量
+
+专家排序率回答“同一观测的专家 chunk 有多大比例得分高于 policy 候选”。候选分辨率回答“同一观测的 policy 候选彼此能分开多少”。留出集排序率取 episode 等权均值。训练排序沿用各训练器原字段；空杯、双鞋、叠积木的训练汇总与留出集的加权方式可能不同。
+
+| 任务 | 训练专家排序 | 独立测试专家排序 | 离线候选分辨率 | 数据范围与分数单位 |
+|---|---:|---:|---:|---|
+| place_empty_cup | 0.9854 | 0.8812（20 场） | 0.02393 | sigmoid 概率两两绝对差；每场取均值，再取场间中位数，95% CI [0.01752, 0.02641] |
+| place_dual_shoes | 0.9398 | 缺同一 critic 的独立结果 | 0.17579 | 仅有 K=32 训练校准锚点的原始分数极差中位数，定义与留出集两两差不同 |
+| stack_blocks_two | 1.0000 | 1.0000（20 场） | 4.17 × 10⁻⁸ | 613 个测试锚点；同空杯的概率差定义。专家与 policy 的平均概率差为 0.9999994 |
+| beat_block_hammer | 训练汇总未列 | 1.0000（12 场） | 0.0032175 | 原始 logit 两两绝对差，各场中位数的中位数；另有五折留出 50 场专家胜率 1.0000 |
+| click_alarmclock | 1.0000 | 1.0000（10 场） | 0.0069165 | 同锤子的 logit 差定义；验证、校准、独立测试与训练场景互斥 |
+
+叠积木的测试指标文件和在线运行配置均可追溯至 SHA 以 `9a5397a1` 开头的 critic。该模型能分开专家与策略，但 sigmoid 输出在 policy 候选之间几乎饱和。在线权重使用原始分数和校准尺度，不能从概率差直接推算在线 ESS/K。闹钟独立测试的 episode 等权 AUC 为 1.000，平衡 Brier 为 0.00987，平衡交叉熵为 0.04389；锤子外部 12 场对应值为 1.000、5.69 × 10⁻¹⁰ 和 1.29 × 10⁻⁶。双鞋另行拆分训练数据重训的模型未用于这次在线扫描，其指标不能代替表中缺失项。
+
+[空杯训练](../../../experiments/coverage_kbeta_20261122/quality/cup_train.json) · [空杯 test20 与区间](../../../experiments/coverage_kbeta_20261122/cup_test20.json) · [双鞋训练](../../../experiments/coverage_kbeta_20261122/quality/shoes_train.json) · [叠积木训练](../../../experiments/coverage_kbeta_20261122/quality/stack_train.json) · [叠积木 test20](../../../experiments/coverage_kbeta_20261122/quality/stack_test20.json) · [叠积木模型与数据清单](../../../experiments/coverage_kbeta_20261122/quality/stack_manifest.json) · [锤子五折诊断](../../../experiments/coverage_kbeta_20261122/quality/beat_out_of_fold.json) · [锤子独立集](../../../experiments/coverage_kbeta_20261122/beat_independent_test.json) · [闹钟逐划分及逐场诊断](../../../experiments/coverage_kbeta_20261122/quality/click_fold0.json)
+
+## 在线权重与动作变化
+
+固定 K=32，前三个固定温度任务取 β=30；采用校准倍数的任务取 α=1。下表将每场内各次查询等权平均，再对有效 episode 等权平均。后文相对 β 全矩阵沿用原始报告的查询等权均值，因此同一条件的数值可略有不同。分数极差是同一查询的最大分减最小分；关节、夹爪 RMS 分别量化加权 chunk 相对同批候选均值的变化，沿用执行动作坐标。权重熵及相对均匀分布的 KL 均以 nat 计，KL=ln(K)−熵。
+
+| 任务 | 实际 β | ESS/K | 分数极差 | 关节 RMS | 夹爪 RMS | 权重熵 | KL |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| place_empty_cup | 30.00 | 0.16018 | 0.43025 | 0.003052 | 0.0056072 | 1.2808 | 2.185 |
+| place_dual_shoes | 28.09 | 0.73128 | 0.47032 | 0.0017717 | 0.0036547 | 3.1104 | 0.35536 |
+| stack_blocks_two | 100.00 | 0.95685 | 0.11393 | 0.00092042 | 0.00079095 | 3.409 | 0.056754 |
+| beat_block_hammer | 30.00 | 0.94634 | 0.40066 | 0.00031224 | 4.2391e-05 | 3.4059 | 0.059842 |
+| click_alarmclock | 30.00 | 0.94822 | 0.2763 | 0.00019384 | 0.00014979 | 3.4238 | 0.041911 |
+
+全部 46 个 K>1 条件的结果均在附件。K=1 只有一个候选，ESS/K 恒为 1，熵与 KL 恒为 0；加权动作相对自身的偏移为 0。β=0 的多候选均匀平均也可用作核对。逐场数据可用于检查高低 ESS 是否集中在个别场景。
+
+[全条件在线质量指标](../../../experiments/coverage_kbeta_20261122/quality/online_conditions.json) · [空杯逐场统计](../../../experiments/coverage_kbeta_20261122/quality/cup_online_episodes.json) · [双鞋与叠积木逐场统计及 critic SHA](../../../experiments/coverage_kbeta_20261122/quality/h10_online_episodes.json) · [锤子逐场统计](../../../experiments/coverage_kbeta_20261122/beat_block_hammer.json) · [闹钟逐场统计](../../../experiments/coverage_kbeta_20261122/click_alarmclock.json)
 
 ## 完整在线矩阵
 

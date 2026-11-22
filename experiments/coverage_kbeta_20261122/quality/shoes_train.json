@@ -1,0 +1,20 @@
+{
+  "complete": true,
+  "task": "place_dual_shoes",
+  "protocol": "train50_only_preliminary",
+  "train_episodes": 50,
+  "train_anchors": 1117,
+  "train_source_rank": 0.9397940913160251,
+  "calibration": {
+    "mean": -0.8582505486574568,
+    "scale": 1.2052231033268885,
+    "beta": 67.07539424273483,
+    "target_ess_fraction": 0.5,
+    "beta_max": 100.0,
+    "degenerate": false,
+    "temperature_fit_k": 4,
+    "achieved_ess_fraction": 0.5,
+    "reason": "calibrated"
+  },
+  "checkpoint": "disc_train50_s42.pt"
+}

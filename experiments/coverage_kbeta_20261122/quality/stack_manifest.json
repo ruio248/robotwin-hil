@@ -1,0 +1,33 @@
+{
+  "complete": true,
+  "task": "stack_blocks_two",
+  "representation": "absolute_joint_chunk",
+  "protocol": "train50_fit_and_calibration_plus_independent_test20",
+  "train_episodes": 50,
+  "test_episodes": 20,
+  "train_cache_manifest_sha256": "c854a5b9cff987b2f9cb0b553f0c049615eb454a0e49427647c7b4f10cbc664a",
+  "checkpoint": "disc_s42.pt",
+  "checkpoint_sha256": "9a5397a12e9f2241d906733c39c9489b9b5a282391d1ddd61e40b526ab5078aa",
+  "calibration_sha256": "1f6742a896fbc3756405699a3e44dfc7296b16d8345de1e97ff1b5c565542bae",
+  "test20_metrics_sha256": "4cd575e0123832605415cde9765a8d838cb016e7dd03b9d17965dc002e20fcc3",
+  "test20_not_used_for_fit_or_calibration": true,
+  "training": {
+    "steps": 10000,
+    "batch_size": 256,
+    "width": 256,
+    "lr": 0.0001,
+    "weight_decay": 0.0001,
+    "grad_clip": 1.0,
+    "seed": 42
+  },
+  "models": {
+    "disc_s42": {
+      "kind": "neural",
+      "sha256": "9a5397a12e9f2241d906733c39c9489b9b5a282391d1ddd61e40b526ab5078aa"
+    }
+  },
+  "fit_artifacts": {
+    "original_checkpoint": "disc_train50_s42.pt",
+    "original_calibration_key": "disc_train50_s42"
+  }
+}
