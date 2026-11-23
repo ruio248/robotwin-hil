@@ -1,0 +1,301 @@
+protocol,task,horizon,checkpoint,seed,instruction,success,status,rollout_steps
+h10_paired_20261122,place_empty_cup,10,sft,100000,Relocate the rounded base blue cup precisely onto the coaster made of smooth wood with arm,true,success,173
+h10_paired_20261122,place_empty_cup,10,sft,100001,Slide the cup with smooth plastic surface onto the small coaster with grain texture with the arm.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100002,Set the blue rounded-bottom cup carefully onto the smooth round palm-sized coaster,true,success,200
+h10_paired_20261122,place_empty_cup,10,sft,100004,Move the cup with light blue color onto the grainy texture coaster with the arm,true,success,147
+h10_paired_20261122,place_empty_cup,10,sft,100007,Align the cup with light blue color and set it down on the round coaster with light streaks,true,success,137
+h10_paired_20261122,place_empty_cup,10,sft,100008,Use the arm to set the cylindrical light blue cup on the wooden coaster,true,success,148
+h10_paired_20261122,place_empty_cup,10,sft,100009,Grab the plastic cup for drinks and place it over the smooth round palm-sized coaster.,true,success,145
+h10_paired_20261122,place_empty_cup,10,sft,100010,Stick the medium-sized plastic blue cup onto the round coaster with light streaks using the arm.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100011,Stick the rounded base blue cup onto the round coaster carefully.,true,success,147
+h10_paired_20261122,place_empty_cup,10,sft,100012,Set the smooth blue cup for liquids onto the flat surface gray wooden coaster using the arm.,true,success,195
+h10_paired_20261122,place_empty_cup,10,sft,100013,Lift the plastic cup for drinks up and drop it on the light gray round grainy coaster.,true,success,180
+h10_paired_20261122,place_empty_cup,10,sft,100014,Place the cup for holding liquids on top of the coaster with circular shape,true,success,137
+h10_paired_20261122,place_empty_cup,10,sft,100015,Move the medium blue cylindrical cup to the light gray round grainy coaster using the arm.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100016,Drop the cup with light blue color firmly on the light gray streaked wooden coaster using arm,true,success,173
+h10_paired_20261122,place_empty_cup,10,sft,100017,Pick the rounded base blue cup up and drop it on the coaster made of smooth wood.,true,success,154
+h10_paired_20261122,place_empty_cup,10,sft,100018,Lift the blue rounded-bottom cup and place it onto the flat surface gray wooden coaster.,true,success,163
+h10_paired_20261122,place_empty_cup,10,sft,100019,Make sure the cylindrical light blue cup ends up on the light gray round grainy coaster.,true,success,145
+h10_paired_20261122,place_empty_cup,10,sft,100020,Use an arm to drop the medium-sized plastic blue cup on the coaster with circular shape.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100021,Position the smooth blue drinking cup squarely on top of the flat surface gray wooden coaster.,true,success,128
+h10_paired_20261122,place_empty_cup,10,sft,100023,Use the arm to position the cup with light blue color on the round coaster.,true,success,167
+h10_paired_20261122,place_empty_cup,10,sft,100024,Position the rounded base blue cup squarely on top of the coaster made of smooth wood.,true,success,144
+h10_paired_20261122,place_empty_cup,10,sft,100025,Move the smooth blue cup for liquids to the flat surface gray wooden coaster,true,success,305
+h10_paired_20261122,place_empty_cup,10,sft,100026,Use the arm to position the smooth blue cup for liquids on the round coaster with light streaks.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100028,Use the arm to put the cup with light blue color onto the light gray round grainy coaster.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100029,Use the arm to put the medium blue cylindrical cup onto the coaster made of smooth wood.,true,success,156
+h10_paired_20261122,place_empty_cup,10,sft,100030,Stick the cup for holding liquids onto the grainy texture coaster carefully.,true,success,207
+h10_paired_20261122,place_empty_cup,10,sft,100032,Position the smooth blue cup for liquids squarely on top of the small coaster with grain texture.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100033,Use the arm to set the medium-sized plastic blue cup on the flat surface gray wooden coaster,true,success,164
+h10_paired_20261122,place_empty_cup,10,sft,100034,Direct the cup with light blue color to the light gray streaked wooden coaster and let it rest.,true,success,138
+h10_paired_20261122,place_empty_cup,10,sft,100035,Lift the cup for holding liquids and stick it onto the smooth round palm-sized coaster.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100036,Align the plastic cup for drinks and set it down on the small coaster with grain texture,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100037,Drop the smooth blue cup for liquids on top of the small coaster with grain texture.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100038,"Grab the smooth blue drinking cup, then place it onto the flat surface gray wooden coaster.",false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100040,"Using the arm, slide the light blue plastic cup onto the round coaster.",true,success,146
+h10_paired_20261122,place_empty_cup,10,sft,100041,Lift the plastic cup for drinks up and drop it on the flat round wooden coaster.,true,success,152
+h10_paired_20261122,place_empty_cup,10,sft,100042,Place the light blue plastic cup on top of the light gray round grainy coaster,true,success,147
+h10_paired_20261122,place_empty_cup,10,sft,100044,Use an arm to place the cup with smooth plastic surface on the round coaster with light streaks,true,success,148
+h10_paired_20261122,place_empty_cup,10,sft,100046,Drop the rounded base blue cup firmly on the round coaster using arm,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100047,Position the cup with smooth plastic surface above and drop it on the round coaster,true,success,155
+h10_paired_20261122,place_empty_cup,10,sft,100049,Use the arm to set the smooth blue drinking cup on the coaster made of smooth wood,true,success,147
+h10_paired_20261122,place_empty_cup,10,sft,100050,Align the medium blue cylindrical cup and set it down on the grainy texture coaster,true,success,168
+h10_paired_20261122,place_empty_cup,10,sft,100051,Move the medium blue cylindrical cup to the grainy texture coaster using the arm.,true,success,152
+h10_paired_20261122,place_empty_cup,10,sft,100052,Grab the light blue plastic cup and lower it onto the wooden coaster,true,success,143
+h10_paired_20261122,place_empty_cup,10,sft,100054,Use the arm to position the blue rounded-bottom cup onto the flat surface gray wooden coaster.,true,success,168
+h10_paired_20261122,place_empty_cup,10,sft,100056,Move the cup for holding liquids to the round coaster and set it down.,true,success,129
+h10_paired_20261122,place_empty_cup,10,sft,100057,Use the arm to put the plastic cup for drinks onto the flat surface gray wooden coaster.,true,success,152
+h10_paired_20261122,place_empty_cup,10,sft,100058,Position the medium-sized plastic blue cup squarely on top of the grainy texture coaster.,false,policy_failure,500
+h10_paired_20261122,place_empty_cup,10,sft,100059,Pick the medium blue cylindrical cup up and drop it on the flat surface gray wooden coaster.,true,success,154
+h10_paired_20261122,place_empty_cup,10,sft,100060,"Using the arm, slide the light blue plastic cup onto the round coaster.",true,success,154
+h10_paired_20261122,place_empty_cup,10,sft,100061,Grab the plastic cup for drinks and set it onto the light gray round grainy coaster.,false,policy_failure,500
+h10_paired_20261122,handover_block,10,sft,100000,"Take the red block with the left arm, move it to the right arm, then place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100002,"Pick up the red block using your left arm, pass it to the right arm, and place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100003,"Pick the red block with the left hand, pass it to the right, and set it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100004,Move the red block from the left hand to the right arm and onto the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100006,Hand the red block over from the left arm to the right arm and place it on the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100007,"Take the red block, pass it from the left arm to the right arm, and drop it on the blue pad.",true,success,470
+h10_paired_20261122,handover_block,10,sft,100008,Place the red block onto the blue pad using the right arm after grabbing it with the left.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100009,"Take the red block, pass it from the left arm to the right arm, and drop it on the blue pad.",true,success,235
+h10_paired_20261122,handover_block,10,sft,100010,Place the red block on the blue pad after handing it over from the left arm to the right arm.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100011,"Grab the red block with the left arm and pass it to the right, dropping it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100012,"Take the red block with the left arm, pass it over to the right arm, and set it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100013,"Hold the red block with the left arm, pass it to the right arm, and place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100014,Hand the red block over from the left arm to the right arm and place it on the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100015,"Grab the red block with the left arm and pass it to the right, dropping it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100016,Move the red block from the left arm into the right arm and place it down on the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100017,"The left arm should grab the red block, hand it to the right, and put it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100019,"Lift the red block off the table using the left arm, give it to the right hand, and put it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100020,Move the red block from the left arm into the right arm and place it down on the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100022,"Take the red block, pass it from the left arm to the right arm, and drop it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100023,"The left arm should grab the red block, hand it to the right, and put it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100025,"Lift the block with the left arm, pass it over to the right arm, and place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100026,"Lift the red block with the left arm, move it to the right, and place it onto the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100028,"Use the left arm to grab the block, hand it over to the right arm, and put it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100030,"Lift the red block from the table with the left arm, pass it to the right arm, and place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100031,"Grab the red block with the left arm, hand it across to the right arm, and put it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100032,Move the red block from the left arm into the right arm and place it down on the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100033,"The red block should be grabbed with the left arm, handed to the right arm, and placed on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100034,"Lift the red block with the left arm, pass it to the right arm, and place it on the blue pad.",true,success,245
+h10_paired_20261122,handover_block,10,sft,100035,"Grab the red block on the table with the left arm, switch to the right arm, and drop it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100036,"The left arm should grab the red block, hand it to the right, and put it on the blue pad.",true,success,248
+h10_paired_20261122,handover_block,10,sft,100037,"With the left arm grab the red block, hand it to the right arm, then position it onto the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100038,"Grab the red block on the table with the left arm, switch to the right arm, and drop it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100039,"Take the red block with the left arm, pass it over to the right arm, and set it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100040,"Grab the red block on the table with the left arm, switch to the right arm, and drop it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100042,"Hold the red block with the left arm, transfer it to the right arm, and then set it down on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100044,Use the left arm to pick up the red block and transfer it to the right arm before placing it on the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100046,"Lift the red block with the left arm, move it to the right, and place it onto the blue pad.",true,success,224
+h10_paired_20261122,handover_block,10,sft,100047,"Hold the red block with the left arm, transfer it to the right arm, and then set it down on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100048,"Use the left arm to grab the red block, give it to the right arm, and put it on the blue pad.",true,success,371
+h10_paired_20261122,handover_block,10,sft,100049,"Pick up the red block using the left arm, give it to the right arm, and place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100050,"Use the left arm to grasp the red block, transfer it to the right arm, and set it down on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100052,"Pick the red block up with the left arm, hand it to the right arm, and set it on the blue pad.",true,success,235
+h10_paired_20261122,handover_block,10,sft,100053,"Lift the block with the left arm, pass it over to the right arm, and place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100054,Place the red block onto the blue pad using the right arm after grabbing it with the left.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100055,Use the left arm to pick up the red block and transfer it to the right arm before placing it on the blue pad.,false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100056,"Pick up the red block using the left arm, give it to the right arm, and place it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100057,"Pick the red block with the left hand, pass it to the right, and set it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100058,"Grab the red block with the left arm and pass it to the right, dropping it on the blue pad.",false,policy_failure,800
+h10_paired_20261122,handover_block,10,sft,100059,"With the left arm grab the red block, hand it to the right arm, then position it onto the blue pad.",true,success,240
+h10_paired_20261122,handover_block,10,sft,100060,Move the red block from the left arm into the right arm and place it down on the blue pad.,false,policy_failure,800
+h10_paired_20261122,place_dual_shoes,10,sft,100001,"Use both arms to set two the white sneaker shoe in the medium orange box with smooth surface, tips left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100002,"Grab both the brown sole shoe, ensure tips left, place in the smooth orange box for shoes.",true,success,217
+h10_paired_20261122,place_dual_shoes,10,sft,100003,"Place both items matching the white-laced green running shoe inside the Nike-branded orange shoe-box, make tips face left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100007,"Pick two the shoe with black back detail, ensure tips facing left, and position in the rectangular orange shoe-box.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100008,"Move a pair of the shoe with red green white pattern into the rectangular shoe-box with orange lid, left tips first.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100009,"Set two the shoe with open straps into the medium orange box with smooth surface, align tips to the left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100011,"Place both items matching the black-striped athletic shoe in the smooth orange box for shoes, tip left when set.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100012,"Handle two the synthetic leather shoe, tips directed left, and drop them into the orange shoe-box.",true,success,231
+h10_paired_20261122,place_dual_shoes,10,sft,100015,Set two the shoe with textured brown sole in the medium orange box with smooth surface with tips left.,false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100016,"Collect two the shoe with beige sole, tips facing left, and put in the smooth orange box for shoes.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100018,"Place both items matching the white shoe with flat sole in the orange shoe-box, tip left when set.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100019,"Pick two the rounded tip leather shoe, ensure tips facing left, and position in the orange shoe-box.",true,success,208
+h10_paired_20261122,place_dual_shoes,10,sft,100020,Slide both the smooth white shoe into the orange Nike shoe-box with logo with tips pointing left.,true,success,244
+h10_paired_20261122,place_dual_shoes,10,sft,100021,"Hold two the sports shoe white and black, drop them in the medium-sized box with Nike swoosh, tips pointing left.",true,success,252
+h10_paired_20261122,place_dual_shoes,10,sft,100023,"Use hands to grab two the medium-sized black and white shoe, tips left, drop into the orange shoe-box.",true,success,212
+h10_paired_20261122,place_dual_shoes,10,sft,100024,"Place both items matching the white shoe in the smooth orange box for shoes, tip left when set.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100025,"Stick both the rounded front shoe in the smooth bright orange box, shoe tips pointing left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100026,"Place both items matching the footwear with padded heel inside the medium orange box with smooth surface, make tips face left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100027,"Place both items matching the white shoe with black accents inside the shoe-box with Nike printed logo, make tips face left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100028,"Place both items matching the rubber sole shoe inside the orange shoe-box, make tips face left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100029,"Transfer two the shoe with flat rubber sole, tips left-aligned, into the medium orange box with smooth surface.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100030,"Put two the rounded-top white shoe, tips to the left, into the Nike-branded orange shoe-box.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100031,Set two the brown shoe in the shoe-box with Nike printed logo with tips left.,true,success,306
+h10_paired_20261122,place_dual_shoes,10,sft,100033,"Put two the smooth surface white shoe into the smooth bright orange box, shoe tips left.",true,success,256
+h10_paired_20261122,place_dual_shoes,10,sft,100034,"Move two the classic sneaker design shoe into the smooth bright orange box, ensure tips point left.",true,success,201
+h10_paired_20261122,place_dual_shoes,10,sft,100035,"Use both arms to place both items matching the small brown footwear replica into the medium-sized box with Nike swoosh, tips left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100036,"Put two the light brown shoe, tips to the left, into the shoe-box with Nike printed logo.",true,success,355
+h10_paired_20261122,place_dual_shoes,10,sft,100037,"Lift two the shoe with textured brown sole, position them in the medium-sized box with Nike swoosh, tips to the left.",true,success,190
+h10_paired_20261122,place_dual_shoes,10,sft,100038,"Grab a pair of the shoe for everyday walking, tips left, put them into the shoe-box with Nike printed logo.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100039,"Grab two the synthetic leather shoe, tip left, place them in the orange Nike shoe-box with logo.",true,success,205
+h10_paired_20261122,place_dual_shoes,10,sft,100040,"Ensure two the synthetic leather shoe are in the medium orange box with smooth surface, tips facing left.",true,success,226
+h10_paired_20261122,place_dual_shoes,10,sft,100041,"Move two the shoe with black heel patch into the smooth bright orange box, ensure tips point left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100043,"Pick up two the brown shoe, tips left, drop them into the Nike-branded orange shoe-box.",true,success,215
+h10_paired_20261122,place_dual_shoes,10,sft,100048,"Handle two the white shoe, tips directed left, and drop them into the orange cardboard shoe-box.",true,success,219
+h10_paired_20261122,place_dual_shoes,10,sft,100050,"Make sure tips point left, then place the lace-up sneaker in the smooth bright orange box.",true,success,230
+h10_paired_20261122,place_dual_shoes,10,sft,100051,"Place both items matching the dark brown leather shoe in the rectangular shoe-box with orange lid, tip left when set.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100052,"With both arms, move two the sports shoe white and black into the medium orange box with smooth surface, tips facing left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100054,"Pick two the shoe with rounded and open form, ensure tips facing left, and position in the medium orange box with smooth surface.",true,success,221
+h10_paired_20261122,place_dual_shoes,10,sft,100055,"Retrieve two the plastic brown shoe, orienting tips left, and place in the rectangular shoe-box with orange lid.",true,success,228
+h10_paired_20261122,place_dual_shoes,10,sft,100058,"Make sure tips point left, then place the black shoe with white accents in the orange shoe-box.",true,success,189
+h10_paired_20261122,place_dual_shoes,10,sft,100059,"Pick up two the rounded front shoe together and place in the rectangular shoe-box with orange lid, tips left.",true,success,251
+h10_paired_20261122,place_dual_shoes,10,sft,100060,"Grab a pair of the rounded shoe with visible straps, tips left, put them into the medium orange box with smooth surface.",true,success,225
+h10_paired_20261122,place_dual_shoes,10,sft,100062,Put two the white and black combination shoe in the rectangular shoe-box with orange lid with tips facing left.,false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100064,"Pick two the shoe with textured bottom, ensure tips facing left, and position in the shoe-box with Nike printed logo.",true,success,279
+h10_paired_20261122,place_dual_shoes,10,sft,100066,"Take two the light brown shoe, ensure tips left, place in the shoe-box with Nike printed logo.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100067,"Use both arms to place both items matching the shoe with patterned bottom into the orange cardboard shoe-box, tips left.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100069,"Pick up two the shoe for walking with rubber grip, tips left, drop them into the bright orange shoe-box.",true,success,246
+h10_paired_20261122,place_dual_shoes,10,sft,100070,"Handle two the synthetic leather white shoe, tips directed left, and drop them into the bright orange shoe-box.",false,policy_failure,600
+h10_paired_20261122,place_dual_shoes,10,sft,100071,"Grab a pair of the shoe for walking with rubber grip, tips left, put them into the orange shoe-box.",true,success,212
+h10_paired_20261122,place_dual_shoes,10,sft,100074,"Place both items matching the brown shoe with strap loops in the bright orange shoe-box, tip left when set.",false,policy_failure,600
+h50_paired_20261123,beat_block_hammer,50,sft,100000,Use the left arm to grab the nail-driving hammer and beat block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100002,Grip the nail-driving hammer firmly and hit the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100003,Pick the handheld medium claw hammer from the table and strike,true,success,115
+h50_paired_20261123,beat_block_hammer,50,sft,100006,Take the hammer with two-tone handle and smash the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100007,Use the hammer with two-tone handle to beat after grabbing with the left arm,true,success,106
+h50_paired_20261123,beat_block_hammer,50,sft,100008,"Pick up the silver curved hammer head with the left arm, strike the block.",true,success,113
+h50_paired_20261123,beat_block_hammer,50,sft,100009,Lift the yellow and black hammer grip using the right arm to hit the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100010,Lift the grippy handle hammer using the right arm to hit the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100011,Make the right arm grab the nail-driving hammer and strike the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100012,Take the silver hammer and beat the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100013,Lift the hammer with claw-shaped end with the right arm then strike block,true,success,118
+h50_paired_20261123,beat_block_hammer,50,sft,100014,Use the handheld medium claw hammer to hammer the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100015,"Grab the medium-sized metal hammer, then strike the block.",false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100017,Grab the yellow and black hammer grip with the right arm and strike block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100020,Lift the hammer for nails and hit the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100021,Lift the silver hammer and hit the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100022,"With the left arm, grab the plastic handle metal hammer and hit the block",false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100023,Take the handheld medium claw hammer and smash the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100025,Pick the silver hammer and strike the block.,true,success,265
+h50_paired_20261123,beat_block_hammer,50,sft,100026,"With the left arm, pick up the yellow and black hammer grip and strike the block.",false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100027,Employ the left arm to grab the medium-sized metal hammer and hit.,true,success,111
+h50_paired_20261123,beat_block_hammer,50,sft,100028,Use the plastic handle metal hammer to hammer the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100029,Utilize the left arm to hold the plastic handle metal hammer and strike.,true,success,112
+h50_paired_20261123,beat_block_hammer,50,sft,100032,Grab the handheld medium claw hammer with the right arm and hit the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100034,Hold the grippy handle hammer and pound the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100036,Utilize the right arm to hold the grippy handle hammer and strike.,true,success,115
+h50_paired_20261123,beat_block_hammer,50,sft,100037,Take the silver hammer and hammer the block,true,success,121
+h50_paired_20261123,beat_block_hammer,50,sft,100039,Pick up the grippy handle hammer and strike the block,true,success,114
+h50_paired_20261123,beat_block_hammer,50,sft,100040,Lift the black and yellow hammer grip with the right arm then strike block,true,success,104
+h50_paired_20261123,beat_block_hammer,50,sft,100041,"With the left arm, grab the nail-driving hammer and hit the block",false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100042,Take the yellow and black hammer grip and hammer the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100044,Hold the hammer for nails then hit the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100046,Grab the nail-driving hammer and use it to hit,true,success,111
+h50_paired_20261123,beat_block_hammer,50,sft,100047,Pick up the silver hammer using the right arm then beat,true,success,136
+h50_paired_20261123,beat_block_hammer,50,sft,100048,"Grab the handheld medium claw hammer, then hit the block",true,success,113
+h50_paired_20261123,beat_block_hammer,50,sft,100049,Hold the handheld medium claw hammer and pound the block.,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100051,Grab the silver curved hammer head using the left arm and hit the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100052,Pick up the handheld medium claw hammer and strike the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100053,"With the right arm, grab the handheld medium claw hammer and hit the block",false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100054,Grip the yellow and black hammer grip firmly and hit the block.,true,success,170
+h50_paired_20261123,beat_block_hammer,50,sft,100055,"Pick up the nail-driving hammer using the left arm, hammer the block.",true,success,110
+h50_paired_20261123,beat_block_hammer,50,sft,100056,Take the grippy handle hammer and hammer the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100057,Grab the plastic handle metal hammer and use it to hit,true,success,113
+h50_paired_20261123,beat_block_hammer,50,sft,100059,Use the right arm to take the yellow and black hammer grip and strike,true,success,112
+h50_paired_20261123,beat_block_hammer,50,sft,100061,Grab the medium-sized metal hammer using the left arm and strike the block,false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100063,Use the hammer for nails to hammer the block.,true,success,108
+h50_paired_20261123,beat_block_hammer,50,sft,100064,Grab the nail-driving hammer to beat the block.,true,success,154
+h50_paired_20261123,beat_block_hammer,50,sft,100066,Take the handheld medium claw hammer and strike the block,true,success,137
+h50_paired_20261123,beat_block_hammer,50,sft,100067,"Pick up the silver curved hammer head using the right arm, hammer the block.",false,policy_failure,400
+h50_paired_20261123,beat_block_hammer,50,sft,100068,Pick the nail-driving hammer and smash the block,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100000,Pick the medium dark brown bottle and the bottle with ridges near base up in parallel.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100001,Grasp the dark drink bottle with logo and the green bottle with indented base at the same time.,true,success,144
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100002,Each arm should lift one bottle: the hand-sized soda bottle and the green bottle with indented base.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100003,"Use each arm to secure one bottle, the long thin bottle and the smooth green bottle.",false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100004,Pick up both the medium dark brown bottle and the medium green bottle using separate arms.,true,success,99
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100005,"Raise both bottles together, the plastic drink bottle and the green bottle with indented base.",false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100006,Raise both the medium dark brown bottle and the handheld green bottle simultaneously.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100007,Use separate arms to grasp the hand-sized soda bottle and the bottle with white printed label simultaneously.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100008,Use separate arms to grasp the bottle with ridges on bottom and the bottle with white printed label simultaneously.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100009,Lift the narrow-necked bottle and the smooth green plastic bottle together with both arms.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100010,Pick the brown bottle with red label and the bottle with white printed label up in parallel.,true,success,91
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100012,Use separate arms to grasp the plastic drink bottle and the bottle with narrow top simultaneously.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100013,Use separate arms to grasp the brown bottle with red label and the bottle with narrow top simultaneously.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100014,Pick up the brown bottle with red label and the smooth green plastic bottle in one synchronized motion.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100015,Grab the narrow-necked bottle and the smooth green bottle together.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100016,Catch the bottle with white neck and red top and the plastic bottle in parallel.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100017,Lift the bottle with ridges on bottom and the bottle with narrow top together with both arms.,true,success,139
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100018,Lift the Coca-Cola bottle and the medium-sized green bottle together with both arms.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100019,Pick up the hand-sized soda bottle and the bottle with narrow top in one synchronized motion.,true,success,100
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100020,"Raise both bottles together, the brown bottle with red label and the plastic bottle.",false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100021,Pick the dark drink bottle with logo as the other arm picks the medium green bottle.,true,success,110
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100022,Take hold of the bottle with ridges on bottom and the medium-sized green bottle at once.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100023,Pick up both the long thin bottle and the bottle with rounded neck using separate arms.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100024,Raise both the medium dark brown bottle and the smooth green bottle simultaneously.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100025,"Take the narrow-necked bottle and the medium green bottle with capped neck together, one per arm.",false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100026,Hold the hand-sized soda bottle in one arm and the handheld green bottle in the other.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100027,Grab both bottles at once: the medium dark brown bottle and the plastic bottle.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100028,Hold the bottle with ridges on bottom in one arm and the bottle with ridges near base in the other.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100029,Take hold of the long thin bottle and the bottle with narrow top at once.,true,success,97
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100031,"Grasp both bottles, the red-capped bottle and the smooth green plastic bottle, simultaneously.",false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100032,"Take the brown bottle with red label and the medium-sized green bottle together, one per arm.",true,success,119
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100033,Catch the narrow-necked bottle and the medium-sized green bottle in parallel.,true,success,114
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100034,Lift the two bottles the medium dark brown bottle and the medium-sized green bottle together.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100035,Catch the bottle with ridges on bottom and the smooth green bottle in parallel.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100036,Each arm should lift one bottle: the hand-sized soda bottle and the smooth green plastic bottle.,true,success,101
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100037,Pick the medium dark brown bottle and the medium-sized green bottle up in parallel.,true,success,94
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100038,Raise the red-capped bottle and the bottle with rounded neck at the same time.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100039,Pick up the dark drink bottle with logo and the bottle with white printed label in one synchronized motion.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100041,Use both arms together to pick the hand-sized soda bottle and the medium-sized green bottle.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100042,Grab both bottles at once: the long thin bottle and the handheld green bottle.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100043,Pick up the long thin bottle and the handheld green bottle simultaneously.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100044,"Use each arm to secure one bottle, the smooth bottle with red lid and the bottle with white printed label.",true,success,113
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100045,Use one arm for the long thin bottle and the other for the bottle with rounded neck.,true,success,103
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100046,"Grasp both bottles, the medium dark brown bottle and the smooth green plastic bottle, simultaneously.",false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100048,Raise the red-capped bottle and the medium green bottle at the same time.,false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100049,Reach for the long thin bottle and the medium green bottle with both arms simultaneously.,true,success,126
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100050,"Hold both the narrow-necked bottle and the bottle with white printed label, one in each arm.",false,policy_failure,400
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100051,Pick up the red-capped bottle and the bottle with white printed label in one synchronized motion.,true,success,112
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100052,Pick the brown bottle with red label and the green bottle with indented base up in parallel.,true,success,90
+h10_pick_sftnorm_20261123,pick_dual_bottles,10,sft,100053,Pick the bottle with ridges on bottom and the bottle with narrow top up in parallel.,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100000,Touch the palm-sized alarm-clock's button on the top side.,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100002,Ensure the left arm clicks the top center button of the compact alarm-clock,true,success,59
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100003,Click the center button on the lightweight plastic alarm-clock's top side.,true,success,56
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100004,Touch the compact alarm-clock's button on the top side.,true,success,58
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100007,Point the left arm to press the button of the black matte alarm-clock.,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100008,Tap the button at the square alarm clock's top center.,true,success,66
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100009,Touch the black alarm-clock's button on the top side.,true,success,56
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100010,Push the top button on the black alarm-clock,true,success,54
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100011,the right arm activates the clock with white dial by clicking the top button,true,success,59
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100012,Click the center button on the palm-sized alarm-clock's top side.,true,success,57
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100013,Use the right arm to tap the compact alarm-clock's central button.,true,success,55
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100014,Use the right arm to tap the lightweight plastic alarm-clock's central button.,true,success,56
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100015,Tap the small alarm-clock's top button with the right arm,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100016,Press the top button in the alarm-clock with buttons on side's center.,true,success,59
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100018,Hit the center of the lightweight plastic alarm-clock's top button,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100019,Ensure the left arm clicks the top center button of the square alarm clock,true,success,68
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100020,Click the palm-sized dark blue clock's top center button using the left arm.,true,success,42
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100021,Use the left arm to click the center button on the alarm-clock with rounded edges,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100022,Click the center of the alarm-clock with rounded edges's top,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100023,Activate the alarm-clock with rounded edges by clicking its top button,true,success,55
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100024,Direct the left arm to click the button found on the alarm-clock with buttons on side.,true,success,66
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100025,the left arm clicks the center top button on the black alarm-clock,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100026,Click the middle button on the dark blue clock's top side,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100027,Click the middle button on the alarm-clock with digital display's top side,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100028,Click the button centered on the palm-sized dark blue clock's top.,true,success,67
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100029,Use the left arm to press the central button on the alarm-clock with digital display.,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100030,Push the top button of the white-faced alarm clock using the right arm,true,success,64
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100031,Locate and press the top button on the small alarm-clock,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100032,Click the button centered on the lightweight plastic alarm-clock.,true,success,68
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100034,Click the middle button on the digital screen alarm-clock's top side,true,success,57
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100036,Push the center area of the black alarm-clock's top,true,success,56
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100037,the right arm clicks the center top button on the small alarm-clock,true,success,57
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100038,Point the left arm to press the button of the small alarm-clock.,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100039,Use the left arm to press the clock with black hands button,true,success,53
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100040,Use the right arm to press the center top of the blue clock with green stripe,true,success,57
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100041,Use the left arm to tap the digital screen alarm-clock's top center button.,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100042,Use the left arm to click the top center button on the square plastic alarm clock.,true,success,70
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100044,Use the right arm to click the top of the blue clock with green stripe,true,success,70
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100045,Click the top center button of the clock with black hands,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100046,Use the left arm to tap the blue clock with green stripe's top center button.,true,success,56
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100047,Use the right arm to tap the dark blue clock's top center button.,true,success,65
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100048,Tap the palm-sized alarm-clock's top button with the right arm,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100049,Use the left arm to press the square alarm clock button,true,success,70
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100051,Use the left arm to click the center button on the clock with white dial,true,success,72
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100052,Use the right arm to tap the blue clock with green stripe's central button.,true,success,54
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100053,Press the center top button on the palm-sized dark blue clock with the right arm,true,success,53
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100054,Press the center top button of the rounded square-shaped alarm clock,true,success,56
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100055,Tap the button at the clock with white dial's top center.,true,success,53
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100056,Use the left arm to press the white-faced alarm clock's top button,false,policy_failure,400
+h50_retest_20261122_diagnostic,click_alarmclock,50,sft,100057,Locate and press the square alarm clock's top center button,true,success,67
