@@ -1,0 +1,367 @@
+{
+  "auc_ci95": [
+    0.6137820512820513,
+    0.883052884615384
+  ],
+  "checkpoint_sha256": "684ac6627448c455a365dcd22867b057bb84d2bc0beb82ce93e9448816e24483",
+  "encoder_sha256": "58d7bfcda80d81a4c54582e0dd3b0a73aaa2cafff111325eff729419ea989c1e",
+  "episodes": [
+    {
+      "queries": 60,
+      "scene_seed": 100001,
+      "score_mean": 1.238870620727539,
+      "score_min": -2.597208261489868,
+      "success": false
+    },
+    {
+      "queries": 22,
+      "scene_seed": 100002,
+      "score_mean": 1.093100905418396,
+      "score_min": -1.434626579284668,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100003,
+      "score_mean": -0.6105907559394836,
+      "score_min": -1.9627766609191895,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100007,
+      "score_mean": -1.069227933883667,
+      "score_min": -3.2447850704193115,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100008,
+      "score_mean": 2.043295383453369,
+      "score_min": -2.3852574825286865,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100009,
+      "score_mean": 2.9383811950683594,
+      "score_min": -3.340202569961548,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100011,
+      "score_mean": 0.12615782022476196,
+      "score_min": -1.0432500839233398,
+      "success": false
+    },
+    {
+      "queries": 24,
+      "scene_seed": 100012,
+      "score_mean": 1.364805817604065,
+      "score_min": -2.6136372089385986,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100015,
+      "score_mean": 2.7442872524261475,
+      "score_min": -2.1007001399993896,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100016,
+      "score_mean": -0.3324662744998932,
+      "score_min": -1.4439873695373535,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100018,
+      "score_mean": -1.5978294610977173,
+      "score_min": -3.472890853881836,
+      "success": false
+    },
+    {
+      "queries": 21,
+      "scene_seed": 100019,
+      "score_mean": 2.4220516681671143,
+      "score_min": -1.4752734899520874,
+      "success": true
+    },
+    {
+      "queries": 25,
+      "scene_seed": 100020,
+      "score_mean": 1.7244980335235596,
+      "score_min": -3.8707656860351562,
+      "success": true
+    },
+    {
+      "queries": 26,
+      "scene_seed": 100021,
+      "score_mean": 2.412963628768921,
+      "score_min": -3.655914068222046,
+      "success": true
+    },
+    {
+      "queries": 22,
+      "scene_seed": 100023,
+      "score_mean": 1.3250689506530762,
+      "score_min": -1.9794433116912842,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100024,
+      "score_mean": 2.0174765586853027,
+      "score_min": -2.7622487545013428,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100025,
+      "score_mean": -0.1434270441532135,
+      "score_min": -3.4954986572265625,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100026,
+      "score_mean": -0.0031547406688332558,
+      "score_min": -1.3508014678955078,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100027,
+      "score_mean": 0.05804559215903282,
+      "score_min": -0.9519962072372437,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100028,
+      "score_mean": 2.2397563457489014,
+      "score_min": -1.7437280416488647,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100029,
+      "score_mean": 2.6718339920043945,
+      "score_min": -2.0960729122161865,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100030,
+      "score_mean": -0.17224036157131195,
+      "score_min": -3.0570714473724365,
+      "success": false
+    },
+    {
+      "queries": 31,
+      "scene_seed": 100031,
+      "score_mean": 3.4878556728363037,
+      "score_min": -0.05781157314777374,
+      "success": true
+    },
+    {
+      "queries": 26,
+      "scene_seed": 100033,
+      "score_mean": 2.113781452178955,
+      "score_min": -3.602581739425659,
+      "success": true
+    },
+    {
+      "queries": 21,
+      "scene_seed": 100034,
+      "score_mean": 3.7670140266418457,
+      "score_min": 0.46072888374328613,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100035,
+      "score_mean": -0.7162118554115295,
+      "score_min": -3.322239637374878,
+      "success": false
+    },
+    {
+      "queries": 36,
+      "scene_seed": 100036,
+      "score_mean": 0.3881126344203949,
+      "score_min": -2.6761982440948486,
+      "success": true
+    },
+    {
+      "queries": 19,
+      "scene_seed": 100037,
+      "score_mean": 1.1299324035644531,
+      "score_min": -2.0171165466308594,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100038,
+      "score_mean": 3.375762462615967,
+      "score_min": -1.8267995119094849,
+      "success": false
+    },
+    {
+      "queries": 21,
+      "scene_seed": 100039,
+      "score_mean": 3.097459077835083,
+      "score_min": -0.8896400928497314,
+      "success": true
+    },
+    {
+      "queries": 23,
+      "scene_seed": 100040,
+      "score_mean": 2.9912869930267334,
+      "score_min": -1.3562312126159668,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100041,
+      "score_mean": -1.1942846775054932,
+      "score_min": -3.484422206878662,
+      "success": false
+    },
+    {
+      "queries": 22,
+      "scene_seed": 100043,
+      "score_mean": 3.3639771938323975,
+      "score_min": 0.7712069749832153,
+      "success": true
+    },
+    {
+      "queries": 22,
+      "scene_seed": 100048,
+      "score_mean": 2.2676641941070557,
+      "score_min": -0.7124795913696289,
+      "success": true
+    },
+    {
+      "queries": 23,
+      "scene_seed": 100050,
+      "score_mean": 2.2292613983154297,
+      "score_min": -2.455134630203247,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100051,
+      "score_mean": 0.6225521564483643,
+      "score_min": -2.664428234100342,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100052,
+      "score_mean": -1.192103624343872,
+      "score_min": -3.57916259765625,
+      "success": false
+    },
+    {
+      "queries": 23,
+      "scene_seed": 100054,
+      "score_mean": 2.96419095993042,
+      "score_min": -1.3873310089111328,
+      "success": true
+    },
+    {
+      "queries": 23,
+      "scene_seed": 100055,
+      "score_mean": 1.7139849662780762,
+      "score_min": -2.309629201889038,
+      "success": true
+    },
+    {
+      "queries": 19,
+      "scene_seed": 100058,
+      "score_mean": 2.3488190174102783,
+      "score_min": -2.119596004486084,
+      "success": true
+    },
+    {
+      "queries": 26,
+      "scene_seed": 100059,
+      "score_mean": 0.7921832799911499,
+      "score_min": -2.258314371109009,
+      "success": true
+    },
+    {
+      "queries": 23,
+      "scene_seed": 100060,
+      "score_mean": 2.4950146675109863,
+      "score_min": -0.9536586999893188,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100062,
+      "score_mean": 1.6490424871444702,
+      "score_min": -3.5772790908813477,
+      "success": false
+    },
+    {
+      "queries": 28,
+      "scene_seed": 100064,
+      "score_mean": 2.8174054622650146,
+      "score_min": -1.3865272998809814,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100066,
+      "score_mean": -0.7350230813026428,
+      "score_min": -2.744164228439331,
+      "success": false
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100067,
+      "score_mean": 2.25046968460083,
+      "score_min": -2.4022607803344727,
+      "success": false
+    },
+    {
+      "queries": 25,
+      "scene_seed": 100069,
+      "score_mean": 1.930734395980835,
+      "score_min": -0.8420693874359131,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100070,
+      "score_mean": 2.7925212383270264,
+      "score_min": -0.8732883930206299,
+      "success": false
+    },
+    {
+      "queries": 22,
+      "scene_seed": 100071,
+      "score_mean": 1.6373828649520874,
+      "score_min": -3.4059102535247803,
+      "success": true
+    },
+    {
+      "queries": 60,
+      "scene_seed": 100074,
+      "score_mean": 1.2591636180877686,
+      "score_min": -2.5993945598602295,
+      "success": false
+    }
+  ],
+  "failure_score_mean": 0.7792714075901761,
+  "failures": 26,
+  "success_auc": 0.7580128205128205,
+  "success_score_mean": 2.161606236050526,
+  "successes": 24,
+  "task": "place_dual_shoes",
+  "trace_manifest_sha256": "769f2fd3603ca41b94621646e2141de65270acdb1f832e102f5d3f6d142f899f"
+}

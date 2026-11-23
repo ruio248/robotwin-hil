@@ -1,0 +1,93 @@
+{
+  "format_version": 1,
+  "task": "click_alarmclock",
+  "task_config": "demo_clean",
+  "instruction_type": "seen",
+  "seed": 0,
+  "expert_check": true,
+  "episodes": [
+    {
+      "scene_seed": 100000,
+      "instruction": "Touch the palm-sized alarm-clock's button on the top side."
+    },
+    {
+      "scene_seed": 100002,
+      "instruction": "Ensure the left arm clicks the top center button of the compact alarm-clock"
+    },
+    {
+      "scene_seed": 100003,
+      "instruction": "Click the center button on the lightweight plastic alarm-clock's top side."
+    },
+    {
+      "scene_seed": 100004,
+      "instruction": "Touch the compact alarm-clock's button on the top side."
+    },
+    {
+      "scene_seed": 100007,
+      "instruction": "Point the left arm to press the button of the black matte alarm-clock."
+    },
+    {
+      "scene_seed": 100008,
+      "instruction": "Tap the button at the square alarm clock's top center."
+    },
+    {
+      "scene_seed": 100009,
+      "instruction": "Touch the black alarm-clock's button on the top side."
+    },
+    {
+      "scene_seed": 100010,
+      "instruction": "Push the top button on the black alarm-clock"
+    },
+    {
+      "scene_seed": 100011,
+      "instruction": "the right arm activates the clock with white dial by clicking the top button"
+    },
+    {
+      "scene_seed": 100012,
+      "instruction": "Click the center button on the palm-sized alarm-clock's top side."
+    },
+    {
+      "scene_seed": 100013,
+      "instruction": "Use the right arm to tap the compact alarm-clock's central button."
+    },
+    {
+      "scene_seed": 100014,
+      "instruction": "Use the right arm to tap the lightweight plastic alarm-clock's central button."
+    },
+    {
+      "scene_seed": 100015,
+      "instruction": "Tap the small alarm-clock's top button with the right arm"
+    },
+    {
+      "scene_seed": 100016,
+      "instruction": "Press the top button in the alarm-clock with buttons on side's center."
+    },
+    {
+      "scene_seed": 100018,
+      "instruction": "Hit the center of the lightweight plastic alarm-clock's top button"
+    },
+    {
+      "scene_seed": 100019,
+      "instruction": "Ensure the left arm clicks the top center button of the square alarm clock"
+    },
+    {
+      "scene_seed": 100020,
+      "instruction": "Click the palm-sized dark blue clock's top center button using the left arm."
+    },
+    {
+      "scene_seed": 100021,
+      "instruction": "Use the left arm to click the center button on the alarm-clock with rounded edges"
+    },
+    {
+      "scene_seed": 100022,
+      "instruction": "Click the center of the alarm-clock with rounded edges's top"
+    },
+    {
+      "scene_seed": 100023,
+      "instruction": "Activate the alarm-clock with rounded edges by clicking its top button"
+    }
+  ],
+  "source_trace_manifest": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/h50_retest_20261122/traces/click_alarmclock_sft/manifest.json",
+  "source_trace_sha256": "d875185f7b8eb419f71e99b7330e9fc29c2ad3d913adfd47f17d17bc9dd6bac1",
+  "screening_note": "Prior SFT counted scenes were screened once; replay bypasses stochastic expert screening."
+}

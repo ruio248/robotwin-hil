@@ -1,0 +1,118 @@
+{
+  "task": "place_empty_cup",
+  "count": 20,
+  "baseline_successes": 16,
+  "k32_min_support_successes": 14,
+  "baseline_rate": 0.8,
+  "min_support_rate": 0.7,
+  "paired_rate_change": -0.1,
+  "success_to_failure": 2,
+  "failure_to_success": 0,
+  "decisions": 523,
+  "mean_ess_over_k_beta1": 0.9987771587469677,
+  "mean_joint_rms_mrad": 4.435154169764063,
+  "scene_results": [
+    {
+      "scene_seed": 100000,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100001,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100002,
+      "baseline_success": true,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100004,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100007,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100008,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100009,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100010,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100011,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100012,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100013,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100014,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100015,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100016,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100017,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100018,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100019,
+      "baseline_success": true,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100020,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100021,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100023,
+      "baseline_success": true,
+      "min_support_success": true
+    }
+  ],
+  "protocol": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/support_three_tasks_20261123/place_empty_cup/online_k32_20/protocol.json",
+  "trace": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/support_three_tasks_20261123/place_empty_cup/online_k32_20/trace/manifest.json"
+}
