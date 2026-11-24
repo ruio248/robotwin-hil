@@ -1,0 +1,84 @@
+{
+  "batch_size": 256,
+  "calibration": {
+    "achieved_ess_fraction": 0.5,
+    "beta": 73.20185555481923,
+    "beta_max": 100.0,
+    "degenerate": false,
+    "mean": 0.2038690352119461,
+    "reason": "calibrated",
+    "scale": 2.473153543360065,
+    "target_ess_fraction": 0.5,
+    "temperature_fit_k": 4
+  },
+  "candidate_count": 32,
+  "checkpoint_sha256": "67ec7585f5835045a46ed787fa82e46c32371b9307d7edf8c742d3ff365da52c",
+  "delta": 4.4315220293356106e-06,
+  "rank_lambda": 1,
+  "shared_k32_metrics": {
+    "bce_k4": {
+      "test": {
+        "accuracy": 0.5577269193111789,
+        "anchors": 339,
+        "correct": 77470.5,
+        "pairs": 138904
+      },
+      "train": {
+        "accuracy": 0.6270529313876088,
+        "anchors": 840,
+        "correct": 195941.5,
+        "pairs": 312480
+      }
+    },
+    "rank_k32_10k": {
+      "test": {
+        "accuracy": 0.5759085411507228,
+        "anchors": 339,
+        "correct": 79996.0,
+        "pairs": 138904
+      },
+      "train": {
+        "accuracy": 0.6712381592421915,
+        "anchors": 840,
+        "correct": 209748.5,
+        "pairs": 312480
+      }
+    },
+    "rank_k4_100k": {
+      "test": {
+        "accuracy": 0.5893566779934343,
+        "anchors": 339,
+        "correct": 81864.0,
+        "pairs": 138904
+      },
+      "train": {
+        "accuracy": 0.7196716589861751,
+        "anchors": 840,
+        "correct": 224883.0,
+        "pairs": 312480
+      }
+    },
+    "rank_k4_10k": {
+      "test": {
+        "accuracy": 0.5875928698957553,
+        "anchors": 339,
+        "correct": 81619.0,
+        "pairs": 138904
+      },
+      "train": {
+        "accuracy": 0.6798707117255505,
+        "anchors": 840,
+        "correct": 212446.0,
+        "pairs": 312480
+      }
+    }
+  },
+  "source": {
+    "horizon": 10,
+    "sha256": "798c3a404fbcb558b873a0f437885e63d679d2bc7f6072fc6e68b95bab4227fe"
+  },
+  "steps": 10000,
+  "task": "place_empty_cup",
+  "test_episodes": 20,
+  "train_episodes": 50
+}

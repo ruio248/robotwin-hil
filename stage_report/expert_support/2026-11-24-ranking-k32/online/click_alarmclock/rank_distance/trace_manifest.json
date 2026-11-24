@@ -1,0 +1,906 @@
+{
+  "counted_official_episodes": 20,
+  "d_analysis_ready": true,
+  "episodes": [
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0000_seed_100000",
+      "exception": null,
+      "instruction": "Touch the palm-sized alarm-clock's button on the top side.",
+      "official_episode_index": 0,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 2,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 3,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 4,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 5,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 6,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 7,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 400,
+      "scene_seed": 100000,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0001_seed_100002",
+      "exception": null,
+      "instruction": "Ensure the left arm clicks the top center button of the compact alarm-clock",
+      "official_episode_index": 1,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 2,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 3,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 4,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 5,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 6,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 7,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 400,
+      "scene_seed": 100002,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0002_seed_100003",
+      "exception": null,
+      "instruction": "Click the center button on the lightweight plastic alarm-clock's top side.",
+      "official_episode_index": 2,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 5,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 55,
+      "scene_seed": 100003,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0003_seed_100004",
+      "exception": null,
+      "instruction": "Touch the compact alarm-clock's button on the top side.",
+      "official_episode_index": 3,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 8,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 58,
+      "scene_seed": 100004,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0004_seed_100007",
+      "exception": null,
+      "instruction": "Point the left arm to press the button of the black matte alarm-clock.",
+      "official_episode_index": 4,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 2,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 3,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 4,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 5,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 6,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 7,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 400,
+      "scene_seed": 100007,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0005_seed_100008",
+      "exception": null,
+      "instruction": "Tap the button at the square alarm clock's top center.",
+      "official_episode_index": 5,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 15,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 65,
+      "scene_seed": 100008,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0006_seed_100009",
+      "exception": null,
+      "instruction": "Touch the black alarm-clock's button on the top side.",
+      "official_episode_index": 6,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 7,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 57,
+      "scene_seed": 100009,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0007_seed_100010",
+      "exception": null,
+      "instruction": "Push the top button on the black alarm-clock",
+      "official_episode_index": 7,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 4,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 54,
+      "scene_seed": 100010,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0008_seed_100011",
+      "exception": null,
+      "instruction": "the right arm activates the clock with white dial by clicking the top button",
+      "official_episode_index": 8,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 7,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 57,
+      "scene_seed": 100011,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0009_seed_100012",
+      "exception": null,
+      "instruction": "Click the center button on the palm-sized alarm-clock's top side.",
+      "official_episode_index": 9,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 5,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 55,
+      "scene_seed": 100012,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0010_seed_100013",
+      "exception": null,
+      "instruction": "Use the right arm to tap the compact alarm-clock's central button.",
+      "official_episode_index": 10,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 5,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 55,
+      "scene_seed": 100013,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0011_seed_100014",
+      "exception": null,
+      "instruction": "Use the right arm to tap the lightweight plastic alarm-clock's central button.",
+      "official_episode_index": 11,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 6,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 56,
+      "scene_seed": 100014,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0012_seed_100015",
+      "exception": null,
+      "instruction": "Tap the small alarm-clock's top button with the right arm",
+      "official_episode_index": 12,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 2,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 3,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 4,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 5,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 6,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 7,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 400,
+      "scene_seed": 100015,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0013_seed_100016",
+      "exception": null,
+      "instruction": "Press the top button in the alarm-clock with buttons on side's center.",
+      "official_episode_index": 13,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 9,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 59,
+      "scene_seed": 100016,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0014_seed_100018",
+      "exception": null,
+      "instruction": "Hit the center of the lightweight plastic alarm-clock's top button",
+      "official_episode_index": 14,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 2,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 3,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 4,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 5,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 6,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 7,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 400,
+      "scene_seed": 100018,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0015_seed_100019",
+      "exception": null,
+      "instruction": "Ensure the left arm clicks the top center button of the square alarm clock",
+      "official_episode_index": 15,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 17,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 67,
+      "scene_seed": 100019,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0016_seed_100020",
+      "exception": null,
+      "instruction": "Click the palm-sized dark blue clock's top center button using the left arm.",
+      "official_episode_index": 16,
+      "queries": [
+        {
+          "executed_actions": 42,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 42,
+      "scene_seed": 100020,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0017_seed_100021",
+      "exception": null,
+      "instruction": "Use the left arm to click the center button on the alarm-clock with rounded edges",
+      "official_episode_index": 17,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 2,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 3,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 4,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 5,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 6,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 7,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 400,
+      "scene_seed": 100021,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0018_seed_100022",
+      "exception": null,
+      "instruction": "Click the center of the alarm-clock with rounded edges's top",
+      "official_episode_index": 18,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 2,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 3,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 4,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 5,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 6,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 50,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 7,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 400,
+      "scene_seed": 100022,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0019_seed_100023",
+      "exception": null,
+      "instruction": "Activate the alarm-clock with rounded edges by clicking its top button",
+      "official_episode_index": 19,
+      "queries": [
+        {
+          "executed_actions": 50,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 50
+        },
+        {
+          "executed_actions": 5,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 1,
+          "returned_chunk_length": 50
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 55,
+      "scene_seed": 100023,
+      "status": "success",
+      "success": true
+    }
+  ],
+  "error": null,
+  "expected_official_episodes": 20,
+  "format_version": 1,
+  "infra_error_episodes": 0,
+  "infra_error_skipped_scenes": 0,
+  "official_success_count": 13,
+  "policy_failure_episodes": 7,
+  "query_covered_official_episodes": 20,
+  "run_info": {
+    "action_type": "joint",
+    "checkpoint_label": "support_click_alarmclock_k32_20_20261123_rank_distance",
+    "entry_script_sha256": "e80db4d5b21fd4eae2fc3f436e71182a92bfb86052928c87304352563526944f",
+    "expert_check": true,
+    "expert_screen_policy": "screened_once_at_manifest_creation",
+    "frequency_field": 50,
+    "frozen_scene_manifest": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/support_three_tasks_20261123/click_alarmclock/online_k32_20_rank_distance/scene_manifest.json",
+    "instruction_type": "seen",
+    "official_base_commit": "4c5c753d66c54c3f6ce855ddf426bcaf3e327250",
+    "policy_host": "127.0.0.1",
+    "policy_name": "Pi_05_RobotTwin",
+    "policy_port": "18831",
+    "policy_protocol": "ws",
+    "requested_episodes": 20,
+    "seed": 0,
+    "source": "official evaluator control with frozen scene/instruction replay and passive D trace",
+    "task_config": "demo_clean",
+    "task_name": "click_alarmclock"
+  },
+  "skipped_scenes": [],
+  "status": "complete",
+  "success_count_matches_trace": true,
+  "successful_episodes": 13,
+  "unique_counted_scene_seeds": true
+}

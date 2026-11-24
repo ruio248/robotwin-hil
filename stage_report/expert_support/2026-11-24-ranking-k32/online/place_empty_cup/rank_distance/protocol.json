@@ -1,0 +1,12 @@
+{
+  "task": "place_empty_cup",
+  "count": 20,
+  "candidate_count": 32,
+  "selection": "argmin raw full-chunk expert-support logit",
+  "checkpoint": "/hdd/robotwin-hil-worktrees/dagger-audit/checkpoints/h10/tju_h10_sft_fixed100_20261113/checkpoints/place_empty_cup/full_h10_sft/4999",
+  "checkpoint_manifest_sha256": "d1ddbf58e91aac2c42cd8af58915f6d7e7de00f7793024557eafcf921c98d635",
+  "norm_stats_sha256": "6517748d059818a60f7f075c349dfeee6f8937c97d7231a2ce55b9162b3f0a1e",
+  "baseline_trace_sha256": "72bcff2c6a32b041a58c865affe95d560887375252b4aa5314f65d7a9238caed",
+  "scene_manifest_sha256": "81850045ba42cecfc24303cf07dc1d71f1fd18cb7acd8146e3560afc62ac481d",
+  "training_report_sha256": "111f9ee792998598736b57579004da14b367860aad1f05274917643744f8d0b7"
+}

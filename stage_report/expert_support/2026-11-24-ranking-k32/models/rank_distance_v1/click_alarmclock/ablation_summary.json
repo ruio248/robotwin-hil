@@ -1,0 +1,54 @@
+{
+  "delta": 0.00017168885096907616,
+  "offline": {
+    "anchors": 727,
+    "bce_correct": 1490.0,
+    "pairs": 3227,
+    "possible": 4362,
+    "rank_correct": 3055.0,
+    "switched": 517
+  },
+  "online_queries": 81,
+  "online_switches": 71,
+  "vs_bce": {
+    "before": 15,
+    "after": 13,
+    "drops": [
+      100002,
+      100022
+    ],
+    "gains": [],
+    "change_ci": [
+      -0.25,
+      0.0
+    ]
+  },
+  "vs_sft": {
+    "before": 14,
+    "after": 13,
+    "drops": [
+      100002
+    ],
+    "gains": [],
+    "change_ci": [
+      -0.15,
+      0.0
+    ]
+  },
+  "bce": {
+    "candidate_pair_gap_mean": 0.037128978641703725,
+    "expert_rank": 1.0,
+    "ess_over_k_beta1": 0.9999731689691543,
+    "success_score_mean": -14.13601474200978,
+    "failure_score_mean": -14.173750162124634,
+    "success_auc": 0.13786764705882354
+  },
+  "rank": {
+    "candidate_pair_gap_mean": 6.499986982345581,
+    "expert_rank": 1.0,
+    "ess_over_k_beta1": 0.896824699640274,
+    "success_score_mean": -52.594785802504596,
+    "failure_score_mean": -87.12800717353821,
+    "success_auc": 0.8658088235294118
+  }
+}

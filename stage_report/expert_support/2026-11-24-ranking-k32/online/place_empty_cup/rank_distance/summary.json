@@ -1,0 +1,125 @@
+{
+  "task": "place_empty_cup",
+  "count": 20,
+  "baseline_successes": 16,
+  "k32_min_support_successes": 13,
+  "baseline_rate": 0.8,
+  "min_support_rate": 0.65,
+  "paired_rate_change": -0.15,
+  "paired_change_bootstrap_ci95": [
+    -0.3,
+    0.0
+  ],
+  "success_to_failure": 3,
+  "failure_to_success": 0,
+  "decisions": 566,
+  "mean_ess_over_k_beta1": 0.9939219298429541,
+  "mean_candidate_score_range": 0.3875707849932591,
+  "mean_min_minus_candidate_score": -0.20082568583122287,
+  "mean_joint_rms_mrad": 5.068198469111222,
+  "scene_results": [
+    {
+      "scene_seed": 100000,
+      "baseline_success": true,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100001,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100002,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100004,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100007,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100008,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100009,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100010,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100011,
+      "baseline_success": true,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100012,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100013,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100014,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100015,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100016,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100017,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100018,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100019,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100020,
+      "baseline_success": false,
+      "min_support_success": false
+    },
+    {
+      "scene_seed": 100021,
+      "baseline_success": true,
+      "min_support_success": true
+    },
+    {
+      "scene_seed": 100023,
+      "baseline_success": true,
+      "min_support_success": false
+    }
+  ],
+  "protocol": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/support_three_tasks_20261123/place_empty_cup/online_k32_20_rank_distance/protocol.json",
+  "trace": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/support_three_tasks_20261123/place_empty_cup/online_k32_20_rank_distance/trace/manifest.json",
+  "official_result": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/place_empty_cup_3epoch_20261122/eval_runtime/eval_result/place_empty_cup/Pi_05/demo_clean/support_place_empty_cup_k32_20_20261123_rank_distance/2026-11-23_20-34-49_504736/_result.txt"
+}

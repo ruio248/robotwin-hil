@@ -1,0 +1,12 @@
+{
+  "task": "click_alarmclock",
+  "count": 20,
+  "candidate_count": 32,
+  "selection": "argmin raw full-chunk expert-support logit",
+  "checkpoint": "/hdd/official_nine_task_pi05_sft_5000_20261101/checkpoints/click_alarmclock/4999",
+  "checkpoint_manifest_sha256": "cd077fc91faf138452db93627982e1534e5d20ffc50893fa7122538720dae828",
+  "norm_stats_sha256": "693767f8dce0d99c15e06e8d3e13778dffc0c00fcbfe73aab3fe4c41474e17b0",
+  "baseline_trace_sha256": "d875185f7b8eb419f71e99b7330e9fc29c2ad3d913adfd47f17d17bc9dd6bac1",
+  "scene_manifest_sha256": "8fdf30fbc6f4140d036681ad3a4dc3b1e1ec3fb4c8ec16f69c4aca8e98f4b02a",
+  "training_report_sha256": "4634edfd7ddfa85a679fe7349d80ad580685ec3733ca13c0f21ed147e22c0197"
+}

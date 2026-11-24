@@ -1,0 +1,219 @@
+{
+  "format_version": 1,
+  "task": "place_dual_shoes",
+  "task_config": "demo_clean",
+  "instruction_type": "seen",
+  "seed": 0,
+  "expert_check": true,
+  "episodes": [
+    {
+      "scene_seed": 100001,
+      "instruction": "Use both arms to set two the white sneaker shoe in the medium orange box with smooth surface, tips left."
+    },
+    {
+      "scene_seed": 100002,
+      "instruction": "Grab both the brown sole shoe, ensure tips left, place in the smooth orange box for shoes."
+    },
+    {
+      "scene_seed": 100003,
+      "instruction": "Place both items matching the white-laced green running shoe inside the Nike-branded orange shoe-box, make tips face left."
+    },
+    {
+      "scene_seed": 100007,
+      "instruction": "Pick two the shoe with black back detail, ensure tips facing left, and position in the rectangular orange shoe-box."
+    },
+    {
+      "scene_seed": 100008,
+      "instruction": "Move a pair of the shoe with red green white pattern into the rectangular shoe-box with orange lid, left tips first."
+    },
+    {
+      "scene_seed": 100009,
+      "instruction": "Set two the shoe with open straps into the medium orange box with smooth surface, align tips to the left."
+    },
+    {
+      "scene_seed": 100011,
+      "instruction": "Place both items matching the black-striped athletic shoe in the smooth orange box for shoes, tip left when set."
+    },
+    {
+      "scene_seed": 100012,
+      "instruction": "Handle two the synthetic leather shoe, tips directed left, and drop them into the orange shoe-box."
+    },
+    {
+      "scene_seed": 100015,
+      "instruction": "Set two the shoe with textured brown sole in the medium orange box with smooth surface with tips left."
+    },
+    {
+      "scene_seed": 100016,
+      "instruction": "Collect two the shoe with beige sole, tips facing left, and put in the smooth orange box for shoes."
+    },
+    {
+      "scene_seed": 100018,
+      "instruction": "Place both items matching the white shoe with flat sole in the orange shoe-box, tip left when set."
+    },
+    {
+      "scene_seed": 100019,
+      "instruction": "Pick two the rounded tip leather shoe, ensure tips facing left, and position in the orange shoe-box."
+    },
+    {
+      "scene_seed": 100020,
+      "instruction": "Slide both the smooth white shoe into the orange Nike shoe-box with logo with tips pointing left."
+    },
+    {
+      "scene_seed": 100021,
+      "instruction": "Hold two the sports shoe white and black, drop them in the medium-sized box with Nike swoosh, tips pointing left."
+    },
+    {
+      "scene_seed": 100023,
+      "instruction": "Use hands to grab two the medium-sized black and white shoe, tips left, drop into the orange shoe-box."
+    },
+    {
+      "scene_seed": 100024,
+      "instruction": "Place both items matching the white shoe in the smooth orange box for shoes, tip left when set."
+    },
+    {
+      "scene_seed": 100025,
+      "instruction": "Stick both the rounded front shoe in the smooth bright orange box, shoe tips pointing left."
+    },
+    {
+      "scene_seed": 100026,
+      "instruction": "Place both items matching the footwear with padded heel inside the medium orange box with smooth surface, make tips face left."
+    },
+    {
+      "scene_seed": 100027,
+      "instruction": "Place both items matching the white shoe with black accents inside the shoe-box with Nike printed logo, make tips face left."
+    },
+    {
+      "scene_seed": 100028,
+      "instruction": "Place both items matching the rubber sole shoe inside the orange shoe-box, make tips face left."
+    }
+  ],
+  "skipped_scenes": [
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100000,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100004,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "UnStableError",
+      "scene_seed": 100005,
+      "stage": "expert_unstable"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100006,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "UnStableError",
+      "scene_seed": 100010,
+      "stage": "expert_unstable"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100013,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100014,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "UnStableError",
+      "scene_seed": 100017,
+      "stage": "expert_unstable"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100022,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100032,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100042,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100044,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100045,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100046,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100047,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "UnStableError",
+      "scene_seed": 100049,
+      "stage": "expert_unstable"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100053,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100056,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100057,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100061,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100063,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100065,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100068,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100072,
+      "stage": "expert_rejected"
+    },
+    {
+      "reason": "plan_success/check_success false",
+      "scene_seed": 100073,
+      "stage": "expert_rejected"
+    }
+  ],
+  "official_base_commit": "4c5c753d66c54c3f6ce855ddf426bcaf3e327250",
+  "source_trace_manifest": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/h10_retest_20261122/traces/place_dual_shoes_sft/manifest.json"
+}

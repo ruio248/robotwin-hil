@@ -1,0 +1,84 @@
+{
+  "batch_size": 256,
+  "calibration": {
+    "achieved_ess_fraction": 0.7411941301379198,
+    "beta": 100.0,
+    "beta_max": 100.0,
+    "degenerate": false,
+    "mean": 0.16604576840521076,
+    "reason": "target unattainable within preregistered beta cap",
+    "scale": 2.128885682493365,
+    "target_ess_fraction": 0.5,
+    "temperature_fit_k": 4
+  },
+  "candidate_count": 32,
+  "checkpoint_sha256": "16d559ae47d93e847263a32427c2f620f10f874a68132bcb2f8c10164f606db2",
+  "delta": 7.997477041499224e-06,
+  "rank_lambda": 1,
+  "shared_k32_metrics": {
+    "bce_k4": {
+      "test": {
+        "accuracy": 0.5343465947544329,
+        "anchors": 436,
+        "correct": 102640.5,
+        "pairs": 192086
+      },
+      "train": {
+        "accuracy": 0.6206572905536142,
+        "anchors": 1117,
+        "correct": 257898.0,
+        "pairs": 415524
+      }
+    },
+    "rank_k32_10k": {
+      "test": {
+        "accuracy": 0.5372541465801777,
+        "anchors": 436,
+        "correct": 103199.0,
+        "pairs": 192086
+      },
+      "train": {
+        "accuracy": 0.6575396366996852,
+        "anchors": 1117,
+        "correct": 273223.5,
+        "pairs": 415524
+      }
+    },
+    "rank_k4_100k": {
+      "test": {
+        "accuracy": 0.5386389429734598,
+        "anchors": 436,
+        "correct": 103465.0,
+        "pairs": 192086
+      },
+      "train": {
+        "accuracy": 0.7656356792868764,
+        "anchors": 1117,
+        "correct": 318140.0,
+        "pairs": 415524
+      }
+    },
+    "rank_k4_10k": {
+      "test": {
+        "accuracy": 0.5505606863592349,
+        "anchors": 436,
+        "correct": 105755.0,
+        "pairs": 192086
+      },
+      "train": {
+        "accuracy": 0.6416284017289013,
+        "anchors": 1117,
+        "correct": 266612.0,
+        "pairs": 415524
+      }
+    }
+  },
+  "source": {
+    "horizon": 10,
+    "sha256": "477d4819d914e7966542a42ac384aa1211a89e69b2529012aad473d95b934d9a"
+  },
+  "steps": 10000,
+  "task": "place_dual_shoes",
+  "test_episodes": 20,
+  "train_episodes": 50
+}

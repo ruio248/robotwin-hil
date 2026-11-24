@@ -1,0 +1,12 @@
+{
+  "task": "place_dual_shoes",
+  "count": 20,
+  "candidate_count": 32,
+  "selection": "argmin raw full-chunk expert-support logit",
+  "checkpoint": "/hdd/robotwin-hil-worktrees/dagger-audit/checkpoints/h10/tju_a800_eval_20261117/checkpoints/place_dual_shoes/full_h10_sft/4999",
+  "checkpoint_manifest_sha256": "39e10cf7f1c5406ea08eaaf7f99d9c3a19d2c394372f26dec3439604ffeedb32",
+  "norm_stats_sha256": "1c32c130c895115dcd4413a07c0aad4ce8098ae4f7d76ce3031ece9f96095409",
+  "baseline_trace_sha256": "769f2fd3603ca41b94621646e2141de65270acdb1f832e102f5d3f6d142f899f",
+  "scene_manifest_sha256": "a5a296a63f3b5981e264a39aa8ef8ed6b957c6330c1ea0c0c4e830f953a76928",
+  "training_report_sha256": "471aca3a478706b428505760f12d26a388133f5938932df9a32e72b9a9dbef21"
+}

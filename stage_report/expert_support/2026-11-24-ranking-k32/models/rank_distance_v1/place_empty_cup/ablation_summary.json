@@ -1,0 +1,60 @@
+{
+  "delta": 4.54208657174604e-06,
+  "offline": {
+    "anchors": 339,
+    "bce_correct": 951.0,
+    "pairs": 1673,
+    "possible": 2034,
+    "rank_correct": 991.0,
+    "switched": 64
+  },
+  "online_queries": 566,
+  "online_switches": 290,
+  "vs_bce": {
+    "before": 14,
+    "after": 13,
+    "drops": [
+      100000,
+      100011,
+      100023
+    ],
+    "gains": [
+      100002,
+      100019
+    ],
+    "change_ci": [
+      -0.25,
+      0.15
+    ]
+  },
+  "vs_sft": {
+    "before": 16,
+    "after": 13,
+    "drops": [
+      100000,
+      100011,
+      100023
+    ],
+    "gains": [],
+    "change_ci": [
+      -0.3,
+      0.0
+    ]
+  },
+  "bce": {
+    "candidate_pair_gap_mean": 0.14745693616569042,
+    "expert_rank": 0.9267565359477125,
+    "ess_over_k_beta1": 0.996441724896431,
+    "success_score_mean": -2.1203484965695276,
+    "failure_score_mean": -4.674408980778286,
+    "success_auc": 0.996031746031746
+  },
+  "rank": {
+    "candidate_pair_gap_mean": 0.25993738546967504,
+    "expert_rank": 0.9061887254901961,
+    "ess_over_k_beta1": 0.9845270842313767,
+    "success_score_mean": -2.6265622791316776,
+    "failure_score_mean": -6.2074242659977505,
+    "success_auc": 0.9841269841269841
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "delta": 8.207989139918936e-06,
+  "offline": {
+    "anchors": 436,
+    "bce_correct": 1204.5,
+    "pairs": 2313,
+    "possible": 2616,
+    "rank_correct": 1202.0,
+    "switched": 157
+  },
+  "online_queries": 971,
+  "online_switches": 456,
+  "vs_bce": {
+    "before": 9,
+    "after": 6,
+    "drops": [
+      100003,
+      100007,
+      100008,
+      100020,
+      100024,
+      100028
+    ],
+    "gains": [
+      100012,
+      100018,
+      100021
+    ],
+    "change_ci": [
+      -0.45,
+      0.15
+    ]
+  },
+  "vs_sft": {
+    "before": 6,
+    "after": 6,
+    "drops": [
+      100020
+    ],
+    "gains": [
+      100018
+    ],
+    "change_ci": [
+      -0.15,
+      0.15
+    ]
+  },
+  "bce": {
+    "candidate_pair_gap_mean": 0.14714616499841213,
+    "expert_rank": 0.7344996941464333,
+    "ess_over_k_beta1": 0.9846001029014587,
+    "success_score_mean": 2.161606236050526,
+    "failure_score_mean": 0.7792714075901761,
+    "success_auc": 0.7580128205128205
+  },
+  "rank": {
+    "candidate_pair_gap_mean": 0.3710933579131961,
+    "expert_rank": 0.6850402315076228,
+    "ess_over_k_beta1": 0.9679995507001877,
+    "success_score_mean": 1.2184783034026623,
+    "failure_score_mean": 1.2760565091784184,
+    "success_auc": 0.47115384615384615
+  }
+}
