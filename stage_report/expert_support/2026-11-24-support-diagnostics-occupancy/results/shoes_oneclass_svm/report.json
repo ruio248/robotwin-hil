@@ -1,0 +1,1367 @@
+{
+  "best": {
+    "action_weight": 10.0,
+    "gamma": 0.000591994292515964,
+    "gamma_multiplier": 0.1,
+    "nu": 0.1,
+    "validation": {
+      "candidate_pair_gap": 0.02058202998928463,
+      "candidate_rank": 0.4533856722276742,
+      "expert_acceptance": 0.9327354260089686,
+      "expert_rank": 0.5672645739910314
+    }
+  },
+  "checkpoint_sha256": "204e20b6568ee1486b902c48f99c62fb7d0e358b5bb2cc97fcfdc8464c2b42e8",
+  "delta": 8.097013051155955e-06,
+  "encoder": "frozen DINOv2 CLS",
+  "grid": [
+    {
+      "action_weight": 0.3,
+      "gamma": 0.02492221730099234,
+      "gamma_multiplier": 0.1,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 8.853774582242339e-05,
+        "candidate_rank": 0.44847890088321885,
+        "expert_acceptance": 0.9955156950672646,
+        "expert_rank": 0.5571748878923767
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 0.02492221730099234,
+      "gamma_multiplier": 0.1,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.00043668183746089026,
+        "candidate_rank": 0.44847890088321885,
+        "expert_acceptance": 0.9775784753363229,
+        "expert_rank": 0.5594170403587444
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 0.02492221730099234,
+      "gamma_multiplier": 0.1,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.0008677608145605759,
+        "candidate_rank": 0.4494602551521099,
+        "expert_acceptance": 0.9327354260089686,
+        "expert_rank": 0.5504484304932735
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 0.24922217300992336,
+      "gamma_multiplier": 1.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.0002312221351401157,
+        "candidate_rank": 0.4435721295387635,
+        "expert_acceptance": 0.9820627802690582,
+        "expert_rank": 0.46300448430493274
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 0.24922217300992336,
+      "gamma_multiplier": 1.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.0011895685013722551,
+        "candidate_rank": 0.44847890088321885,
+        "expert_acceptance": 0.9730941704035875,
+        "expert_rank": 0.4674887892376682
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 0.24922217300992336,
+      "gamma_multiplier": 1.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.002435870142181682,
+        "candidate_rank": 0.45142296368989204,
+        "expert_acceptance": 0.9506726457399103,
+        "expert_rank": 0.47757847533632286
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 2.4922217300992338,
+      "gamma_multiplier": 10.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 7.864638846839493e-06,
+        "candidate_rank": 0.49950932286555444,
+        "expert_acceptance": 0.19282511210762332,
+        "expert_rank": 0.41143497757847536
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 2.4922217300992338,
+      "gamma_multiplier": 10.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 3.932224885038406e-05,
+        "candidate_rank": 0.49950932286555444,
+        "expert_acceptance": 0.19282511210762332,
+        "expert_rank": 0.41143497757847536
+      }
+    },
+    {
+      "action_weight": 0.3,
+      "gamma": 2.4922217300992338,
+      "gamma_multiplier": 10.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 7.864446487183563e-05,
+        "candidate_rank": 0.49950932286555444,
+        "expert_acceptance": 0.19282511210762332,
+        "expert_rank": 0.41143497757847536
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 0.01812550096480831,
+      "gamma_multiplier": 0.1,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.0006927788043687599,
+        "candidate_rank": 0.450441609421001,
+        "expert_acceptance": 0.9910313901345291,
+        "expert_rank": 0.5560538116591929
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 0.01812550096480831,
+      "gamma_multiplier": 0.1,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.003399800091785844,
+        "candidate_rank": 0.45142296368989204,
+        "expert_acceptance": 0.968609865470852,
+        "expert_rank": 0.5639013452914798
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 0.01812550096480831,
+      "gamma_multiplier": 0.1,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.006765675912702688,
+        "candidate_rank": 0.4524043179587831,
+        "expert_acceptance": 0.9282511210762332,
+        "expert_rank": 0.5627802690582959
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 0.18125500964808308,
+      "gamma_multiplier": 1.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.0015300366122374058,
+        "candidate_rank": 0.4474975466143278,
+        "expert_acceptance": 0.968609865470852,
+        "expert_rank": 0.4585201793721973
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 0.18125500964808308,
+      "gamma_multiplier": 1.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.007828473803912687,
+        "candidate_rank": 0.44847890088321885,
+        "expert_acceptance": 0.9551569506726457,
+        "expert_rank": 0.4663677130044843
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 0.18125500964808308,
+      "gamma_multiplier": 1.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.016192854128274623,
+        "candidate_rank": 0.4445534838076546,
+        "expert_acceptance": 0.9282511210762332,
+        "expert_rank": 0.4674887892376682
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 1.8125500964808308,
+      "gamma_multiplier": 10.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 7.109517144395006e-05,
+        "candidate_rank": 0.5093228655544652,
+        "expert_acceptance": 0.273542600896861,
+        "expert_rank": 0.4192825112107623
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 1.8125500964808308,
+      "gamma_multiplier": 10.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.00035547903586396226,
+        "candidate_rank": 0.5093228655544652,
+        "expert_acceptance": 0.273542600896861,
+        "expert_rank": 0.4192825112107623
+      }
+    },
+    {
+      "action_weight": 1.0,
+      "gamma": 1.8125500964808308,
+      "gamma_multiplier": 10.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.0007109579096711089,
+        "candidate_rank": 0.5093228655544652,
+        "expert_acceptance": 0.273542600896861,
+        "expert_rank": 0.4192825112107623
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.0053521341855566045,
+      "gamma_multiplier": 0.1,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.0017223221922219184,
+        "candidate_rank": 0.46123650637880276,
+        "expert_acceptance": 0.9865470852017937,
+        "expert_rank": 0.5650224215246636
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.0053521341855566045,
+      "gamma_multiplier": 0.1,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.008525339501993991,
+        "candidate_rank": 0.4524043179587831,
+        "expert_acceptance": 0.9551569506726457,
+        "expert_rank": 0.5605381165919282
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.0053521341855566045,
+      "gamma_multiplier": 0.1,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.017069523773411633,
+        "candidate_rank": 0.4524043179587831,
+        "expert_acceptance": 0.9327354260089686,
+        "expert_rank": 0.5661434977578476
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.05352134185556604,
+      "gamma_multiplier": 1.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.0028521661469524885,
+        "candidate_rank": 0.450441609421001,
+        "expert_acceptance": 0.9192825112107623,
+        "expert_rank": 0.4147982062780269
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.05352134185556604,
+      "gamma_multiplier": 1.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.014778955191148399,
+        "candidate_rank": 0.43768400392541706,
+        "expert_acceptance": 0.9147982062780269,
+        "expert_rank": 0.4147982062780269
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.05352134185556604,
+      "gamma_multiplier": 1.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.03151547129492774,
+        "candidate_rank": 0.43277723258096173,
+        "expert_acceptance": 0.9013452914798207,
+        "expert_rank": 0.4304932735426009
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.5352134185556604,
+      "gamma_multiplier": 10.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.00030522987768823704,
+        "candidate_rank": 0.5446516192345436,
+        "expert_acceptance": 0.49327354260089684,
+        "expert_rank": 0.4585201793721973
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.5352134185556604,
+      "gamma_multiplier": 10.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.0015261446637861642,
+        "candidate_rank": 0.5446516192345436,
+        "expert_acceptance": 0.49327354260089684,
+        "expert_rank": 0.4585201793721973
+      }
+    },
+    {
+      "action_weight": 3.0,
+      "gamma": 0.5352134185556604,
+      "gamma_multiplier": 10.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.0030522848114261816,
+        "candidate_rank": 0.5446516192345436,
+        "expert_acceptance": 0.49327354260089684,
+        "expert_rank": 0.4585201793721973
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.000591994292515964,
+      "gamma_multiplier": 0.1,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.00207516429984519,
+        "candidate_rank": 0.4622178606476938,
+        "expert_acceptance": 0.9865470852017937,
+        "expert_rank": 0.5627802690582959
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.000591994292515964,
+      "gamma_multiplier": 0.1,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.010290392650853719,
+        "candidate_rank": 0.45436702649656524,
+        "expert_acceptance": 0.9551569506726457,
+        "expert_rank": 0.5594170403587444
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.000591994292515964,
+      "gamma_multiplier": 0.1,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.02058202998928463,
+        "candidate_rank": 0.4533856722276742,
+        "expert_acceptance": 0.9327354260089686,
+        "expert_rank": 0.5672645739910314
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.00591994292515964,
+      "gamma_multiplier": 1.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.0031753709867741267,
+        "candidate_rank": 0.45829244357212956,
+        "expert_acceptance": 0.9192825112107623,
+        "expert_rank": 0.3923766816143498
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.00591994292515964,
+      "gamma_multiplier": 1.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.016554454916004453,
+        "candidate_rank": 0.450441609421001,
+        "expert_acceptance": 0.9013452914798207,
+        "expert_rank": 0.41143497757847536
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.00591994292515964,
+      "gamma_multiplier": 1.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.03562215878109635,
+        "candidate_rank": 0.43866535819430813,
+        "expert_acceptance": 0.8923766816143498,
+        "expert_rank": 0.41816143497757846
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.0591994292515964,
+      "gamma_multiplier": 10.0,
+      "nu": 0.01,
+      "validation": {
+        "candidate_pair_gap": 0.00046876023171747553,
+        "candidate_rank": 0.5603532875368008,
+        "expert_acceptance": 0.6860986547085202,
+        "expert_rank": 0.4854260089686099
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.0591994292515964,
+      "gamma_multiplier": 10.0,
+      "nu": 0.05,
+      "validation": {
+        "candidate_pair_gap": 0.002343821957624591,
+        "candidate_rank": 0.5603532875368008,
+        "expert_acceptance": 0.6860986547085202,
+        "expert_rank": 0.4854260089686099
+      }
+    },
+    {
+      "action_weight": 10.0,
+      "gamma": 0.0591994292515964,
+      "gamma_multiplier": 10.0,
+      "nu": 0.1,
+      "validation": {
+        "candidate_pair_gap": 0.004687646033743361,
+        "candidate_rank": 0.5603532875368008,
+        "expert_acceptance": 0.6860986547085202,
+        "expert_rank": 0.4854260089686099
+      }
+    }
+  ],
+  "pca_components": 32,
+  "selection": "maximum validation expert rank, grid order breaks ties",
+  "source": {
+    "horizon": 10,
+    "sha256": "872b572873ea4e245a75d1bf70a10602a8108ad6beee851a4ea458c878204a99"
+  },
+  "split": {
+    "train": [
+      {
+        "anchors": 21,
+        "episode": "episode_0000005",
+        "sha256": "684c711a7fa86e12d61878d63a4bbfda007a47437cfe8fd00a8238f193f47ec3"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000025",
+        "sha256": "4a4e7126118c4db9944280ec2a1436111a933449b1a8dd608ffa1f3d35024240"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000020",
+        "sha256": "e515c3e340ecfb41cbd34e8c90ae0c572abd4d07fc7888b7e14f0ee38aac06d6"
+      },
+      {
+        "anchors": 25,
+        "episode": "episode_0000049",
+        "sha256": "f8770a67aa502d813700d9e98cd7d46ed53c07c7d9d7f2e1bbe7ed4b66381132"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000039",
+        "sha256": "6f0a7cf23d8650df1dd3e3876059d99d9f124a1a224c88ac329ea09d86a66ece"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000027",
+        "sha256": "f301dcf9c22a1e47af95e15a0b32966211dce08f34f987378582d6983046ba6c"
+      },
+      {
+        "anchors": 24,
+        "episode": "episode_0000047",
+        "sha256": "e404cc91692711c1429053abeb9ddb14d4519cbbc3ec04c0a1eeb7be526faca5"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000045",
+        "sha256": "3cf915e1d9fdd3b97df51c3d2261030744e8fc9014d4aff246abb627ebff0884"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000046",
+        "sha256": "d4536fc677df4ee1e5635e94cc59186638a148bc7727c6ec384350d3bb1d257e"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000017",
+        "sha256": "6395a1ba769b2f34cbb6d683d88dd1d777f947a3e3f737b54ce9e620592fa951"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000037",
+        "sha256": "852ffabec810cb9343c0e468663275d8950f20360163a4f284a25b82b87cf0bb"
+      },
+      {
+        "anchors": 24,
+        "episode": "episode_0000031",
+        "sha256": "606836d101bba450c504253ca08d75359f1aeaae85a66724c9963d22648c00bc"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000040",
+        "sha256": "52f55b919f856f76432fe8be96df782fd6ffcace37ff415bcb30d242f07d6d20"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000023",
+        "sha256": "f73b72aabedb123b1a688fc9991cdbb69697f95fcb1cebbefd006d30340bf0bc"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000018",
+        "sha256": "1877b42fab7e5d423aa64182b4c37818ebbc43a67158f6a524d6a535f24c9462"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000007",
+        "sha256": "6a9f5f900165606660571841ce6cc7394abb592d39d45c19b6cfe30f4c736d5c"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000004",
+        "sha256": "d787f7f48d495e2bb572cc604fc92b91cdee6ca9e3f9488a10332bee64c15651"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000038",
+        "sha256": "a8afd8baede1e4e903192cfd40b6237886e6dffa16e9b374b9aafdc1c65f023d"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000029",
+        "sha256": "ffe7f1030d9fb4f1a7e08dc344cb996c189af530ff898a1aa9545525f3cd1a67"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000024",
+        "sha256": "c9e30d84aeabfb257baef871f4c6557ed80af81d6c80f12640f10358d32fab8a"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000034",
+        "sha256": "46ce800a557510993a0428831afd80257755ac022d3900535514b912cd8fd87c"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000009",
+        "sha256": "bc9a3148589dc3c821e98213bef28bcceae066a1e0bc9807f54be9dc3c12463a"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000028",
+        "sha256": "e6bbdc4f5eaf56f32432ae7ab276aa9a5822aae622ad71f2073e4a718221de57"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000021",
+        "sha256": "aa4087366866367180a08316c52cac7b72f9d799d9994ce03557c9672cd06a08"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000026",
+        "sha256": "ed2d261f3145181540a549603b0c79d76a0e0765e9e3519eb7020b0a80acbde4"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000041",
+        "sha256": "541b2bd304a081e29370d49a7869d06471018f148b2204d3e4d0c8059dfa856a"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000016",
+        "sha256": "fc8df733b88d209c98dbec62e0f81a8acbca6d0c40203ff714c4bfb4a21fa816"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000042",
+        "sha256": "05d14a2e3178ecd72749135765460f948279aac6b1c1d229b1114deb0a06bfd6"
+      },
+      {
+        "anchors": 24,
+        "episode": "episode_0000032",
+        "sha256": "405386b9e780d714999dd8149e8fa83bb61a2002005e99eca935a6562fc8de70"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000015",
+        "sha256": "c158b845650e2590e6c39e32abbcccadc1b0334fa20816bc4b7c140b024b2a67"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000003",
+        "sha256": "cb5e3debb838110aeb83b1a8024114de132ca560abc46707e1fe84283aa6cae5"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000044",
+        "sha256": "7faf98f31f8a39b406eadbf0818072796083ccfd72cd0755362e0fb048f1fa61"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000030",
+        "sha256": "be16f83750ea702af3809857b623c7cb9ac7fd87215bf32d8421777df09469f7"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000010",
+        "sha256": "9a8cbdbc9f42d236b1e27f5e013fdc5229750900f65a86c78a283a5aa788bf12"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000043",
+        "sha256": "c71cae25eba38568779b26dd8d6a9e5c5abfaa642b9411ede0bc20c30493516f"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000006",
+        "sha256": "c8b2281bba86cc0b4d5d5e228d2733cf3b5d468052dd00474b589e86267820dd"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000011",
+        "sha256": "2b28449cbfc3f0716d17bcbe035e375680006300744b057e04b575df203a0874"
+      },
+      {
+        "anchors": 24,
+        "episode": "episode_0000022",
+        "sha256": "51b81f62527d6f46ef49471b2b11748f508c0d7d84bcca11f64b811b6ff0337f"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000019",
+        "sha256": "40a569bc02616727e07f4bdc35edd578a63314877241380f1ebbbc1b8eb0c01b"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000035",
+        "sha256": "5edb5eb6ebf4fee56541a32fd1bb29cd71a5463e7c58e1577b2dae172cc6e7ea"
+      }
+    ],
+    "validation": [
+      {
+        "anchors": 22,
+        "episode": "episode_0000000",
+        "sha256": "091a8fb0fc66caf88c1bd41f3c31c760ee8272723ec164ad268330eddded82d3"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000012",
+        "sha256": "cf270fc640ce26e2c0eb72e9618b3ab55981b1cc1eeda2043eb13ec95ea4442d"
+      },
+      {
+        "anchors": 24,
+        "episode": "episode_0000014",
+        "sha256": "ea6ddf7ab4d2d0a0b5efb4f618be5eb64119cc29cdabef1c2d781a8a6ba0c33b"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000048",
+        "sha256": "bf9b472533e88b1f3c3ea6a7e419d2f1d280424c4ee223c96698c292e4b9a3d7"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000002",
+        "sha256": "3ccd67fb9dbae83320c8ddf9da457995d21bc7ca0ad27a15717606f6a9063651"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000036",
+        "sha256": "deb9d2de73b6f73dceb5b8982138d6a5d48edceb077ce9232260bbffa831947c"
+      },
+      {
+        "anchors": 21,
+        "episode": "episode_0000033",
+        "sha256": "4a2388e5b5a341420562e23a9aeaa047de4f06f5449fa64e9759ac4dd28a052f"
+      },
+      {
+        "anchors": 24,
+        "episode": "episode_0000001",
+        "sha256": "9ddda5dbb2a59e9495bdd65d68cba432ded167c56c5a654532de8527544d8960"
+      },
+      {
+        "anchors": 22,
+        "episode": "episode_0000013",
+        "sha256": "6d03029383cfda5064de1a4d14c8bf2f9f2d5caf02557e1192931efbd6382363"
+      },
+      {
+        "anchors": 23,
+        "episode": "episode_0000008",
+        "sha256": "73ebee7a81bc52450e6d272c056ec2df7bf7e170a7f94ada6bc74f1a40bb5e3f"
+      }
+    ]
+  },
+  "test20": {
+    "candidate_pair_gap": 0.022717587717352914,
+    "candidate_rank": 0.45010799136069113,
+    "episodes": [
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.03318467995596197,
+        "correct": 54.0,
+        "episode": "8200000",
+        "expert_accepted": 21,
+        "expert_wins": 42.0,
+        "pairs": 123
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.030027220950619347,
+        "correct": 53.0,
+        "episode": "8200003",
+        "expert_accepted": 21,
+        "expert_wins": 58.0,
+        "pairs": 114
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.017486470556200683,
+        "correct": 38.0,
+        "episode": "8200004",
+        "expert_accepted": 20,
+        "expert_wins": 41.0,
+        "pairs": 106
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.030569586868271912,
+        "correct": 49.0,
+        "episode": "8200005",
+        "expert_accepted": 20,
+        "expert_wins": 47.0,
+        "pairs": 126
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.017306954791140975,
+        "correct": 73.0,
+        "episode": "8200006",
+        "expert_accepted": 23,
+        "expert_wins": 59.0,
+        "pairs": 116
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.017419336970485616,
+        "correct": 45.0,
+        "episode": "8200007",
+        "expert_accepted": 20,
+        "expert_wins": 35.0,
+        "pairs": 104
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.021885617291837973,
+        "correct": 56.0,
+        "episode": "8200009",
+        "expert_accepted": 21,
+        "expert_wins": 37.0,
+        "pairs": 114
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.023541887427360134,
+        "correct": 57.0,
+        "episode": "8200013",
+        "expert_accepted": 21,
+        "expert_wins": 38.0,
+        "pairs": 116
+      },
+      {
+        "anchors": 24,
+        "candidate_pair_gap": 0.022926228449342112,
+        "correct": 56.0,
+        "episode": "8200016",
+        "expert_accepted": 23,
+        "expert_wins": 49.0,
+        "pairs": 130
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.017696507290938,
+        "correct": 80.0,
+        "episode": "8200018",
+        "expert_accepted": 22,
+        "expert_wins": 52.0,
+        "pairs": 114
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.03192561929418481,
+        "correct": 34.0,
+        "episode": "8200019",
+        "expert_accepted": 21,
+        "expert_wins": 35.0,
+        "pairs": 123
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.017621101401737234,
+        "correct": 54.0,
+        "episode": "8200021",
+        "expert_accepted": 21,
+        "expert_wins": 58.0,
+        "pairs": 118
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.020543963788817506,
+        "correct": 53.0,
+        "episode": "8200022",
+        "expert_accepted": 20,
+        "expert_wins": 35.0,
+        "pairs": 116
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.031874728505764206,
+        "correct": 39.0,
+        "episode": "8200023",
+        "expert_accepted": 18,
+        "expert_wins": 39.0,
+        "pairs": 125
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.01812655765795666,
+        "correct": 38.0,
+        "episode": "8200025",
+        "expert_accepted": 20,
+        "expert_wins": 26.0,
+        "pairs": 110
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.01891784901094211,
+        "correct": 52.0,
+        "episode": "8200027",
+        "expert_accepted": 21,
+        "expert_wins": 54.0,
+        "pairs": 120
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.019793159917563502,
+        "correct": 44.0,
+        "episode": "8200028",
+        "expert_accepted": 21,
+        "expert_wins": 53.0,
+        "pairs": 97
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.0280297242636855,
+        "correct": 50.0,
+        "episode": "8200029",
+        "expert_accepted": 22,
+        "expert_wins": 40.0,
+        "pairs": 122
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.015048048953925587,
+        "correct": 55.0,
+        "episode": "8200032",
+        "expert_accepted": 21,
+        "expert_wins": 54.0,
+        "pairs": 111
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.018334740635831098,
+        "correct": 62.0,
+        "episode": "8200034",
+        "expert_accepted": 20,
+        "expert_wins": 34.0,
+        "pairs": 110
+      }
+    ],
+    "expert_acceptance": 0.9564220183486238,
+    "expert_rank": 0.5080275229357798
+  },
+  "train": {
+    "candidate_pair_gap": 0.021668123378061947,
+    "candidate_rank": 0.42083022619935373,
+    "episodes": [
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.019271327174884334,
+        "correct": 33.0,
+        "episode": "episode_0000005",
+        "expert_accepted": 20,
+        "expert_wins": 36.0,
+        "pairs": 87
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.01862498538463977,
+        "correct": 35.0,
+        "episode": "episode_0000025",
+        "expert_accepted": 21,
+        "expert_wins": 54.0,
+        "pairs": 86
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.015660198769235113,
+        "correct": 39.0,
+        "episode": "episode_0000020",
+        "expert_accepted": 21,
+        "expert_wins": 57.0,
+        "pairs": 93
+      },
+      {
+        "anchors": 25,
+        "candidate_pair_gap": 0.020976217619461578,
+        "correct": 45.0,
+        "episode": "episode_0000049",
+        "expert_accepted": 22,
+        "expert_wins": 53.0,
+        "pairs": 108
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.020163200215688383,
+        "correct": 46.0,
+        "episode": "episode_0000039",
+        "expert_accepted": 21,
+        "expert_wins": 46.0,
+        "pairs": 101
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.01688380844294474,
+        "correct": 47.0,
+        "episode": "episode_0000027",
+        "expert_accepted": 20,
+        "expert_wins": 53.0,
+        "pairs": 96
+      },
+      {
+        "anchors": 24,
+        "candidate_pair_gap": 0.018476640304615956,
+        "correct": 38.0,
+        "episode": "episode_0000047",
+        "expert_accepted": 24,
+        "expert_wins": 62.0,
+        "pairs": 110
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.02105186857174063,
+        "correct": 46.0,
+        "episode": "episode_0000045",
+        "expert_accepted": 20,
+        "expert_wins": 50.0,
+        "pairs": 98
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.036515680335347286,
+        "correct": 36.0,
+        "episode": "episode_0000046",
+        "expert_accepted": 15,
+        "expert_wins": 53.0,
+        "pairs": 94
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.017911122642405058,
+        "correct": 32.0,
+        "episode": "episode_0000017",
+        "expert_accepted": 20,
+        "expert_wins": 41.0,
+        "pairs": 93
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.023902886781921123,
+        "correct": 43.0,
+        "episode": "episode_0000037",
+        "expert_accepted": 16,
+        "expert_wins": 42.0,
+        "pairs": 102
+      },
+      {
+        "anchors": 24,
+        "candidate_pair_gap": 0.024231017162018413,
+        "correct": 45.0,
+        "episode": "episode_0000031",
+        "expert_accepted": 20,
+        "expert_wins": 53.0,
+        "pairs": 116
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.021042593058833818,
+        "correct": 49.0,
+        "episode": "episode_0000040",
+        "expert_accepted": 21,
+        "expert_wins": 52.0,
+        "pairs": 98
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.016165467772612737,
+        "correct": 37.0,
+        "episode": "episode_0000023",
+        "expert_accepted": 21,
+        "expert_wins": 42.0,
+        "pairs": 100
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.020237656662881163,
+        "correct": 37.0,
+        "episode": "episode_0000018",
+        "expert_accepted": 19,
+        "expert_wins": 55.0,
+        "pairs": 94
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.025847862307220887,
+        "correct": 41.0,
+        "episode": "episode_0000007",
+        "expert_accepted": 21,
+        "expert_wins": 49.0,
+        "pairs": 107
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.022869818564812842,
+        "correct": 47.0,
+        "episode": "episode_0000004",
+        "expert_accepted": 23,
+        "expert_wins": 62.0,
+        "pairs": 100
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.018483212067152654,
+        "correct": 55.0,
+        "episode": "episode_0000038",
+        "expert_accepted": 21,
+        "expert_wins": 52.0,
+        "pairs": 106
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.025180198215335035,
+        "correct": 34.0,
+        "episode": "episode_0000029",
+        "expert_accepted": 13,
+        "expert_wins": 51.0,
+        "pairs": 94
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.01755372391548876,
+        "correct": 32.0,
+        "episode": "episode_0000024",
+        "expert_accepted": 21,
+        "expert_wins": 50.0,
+        "pairs": 101
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.022134839405526123,
+        "correct": 45.0,
+        "episode": "episode_0000034",
+        "expert_accepted": 18,
+        "expert_wins": 53.0,
+        "pairs": 98
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.028488850601006154,
+        "correct": 41.0,
+        "episode": "episode_0000009",
+        "expert_accepted": 19,
+        "expert_wins": 57.0,
+        "pairs": 108
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.036869076005304806,
+        "correct": 50.0,
+        "episode": "episode_0000028",
+        "expert_accepted": 17,
+        "expert_wins": 60.0,
+        "pairs": 100
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.024003397466467576,
+        "correct": 52.0,
+        "episode": "episode_0000021",
+        "expert_accepted": 22,
+        "expert_wins": 45.0,
+        "pairs": 117
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.015465733464674416,
+        "correct": 42.0,
+        "episode": "episode_0000026",
+        "expert_accepted": 21,
+        "expert_wins": 52.0,
+        "pairs": 94
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.020329454647627043,
+        "correct": 42.0,
+        "episode": "episode_0000041",
+        "expert_accepted": 22,
+        "expert_wins": 34.0,
+        "pairs": 105
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.017377191715481816,
+        "correct": 51.0,
+        "episode": "episode_0000016",
+        "expert_accepted": 21,
+        "expert_wins": 57.0,
+        "pairs": 101
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.02680348366791832,
+        "correct": 40.0,
+        "episode": "episode_0000042",
+        "expert_accepted": 21,
+        "expert_wins": 47.0,
+        "pairs": 105
+      },
+      {
+        "anchors": 24,
+        "candidate_pair_gap": 0.024144607770767164,
+        "correct": 47.0,
+        "episode": "episode_0000032",
+        "expert_accepted": 19,
+        "expert_wins": 56.0,
+        "pairs": 113
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.02037443325467156,
+        "correct": 47.0,
+        "episode": "episode_0000015",
+        "expert_accepted": 20,
+        "expert_wins": 45.0,
+        "pairs": 103
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.01864943406462215,
+        "correct": 42.0,
+        "episode": "episode_0000003",
+        "expert_accepted": 22,
+        "expert_wins": 53.0,
+        "pairs": 101
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.016214173242056602,
+        "correct": 30.0,
+        "episode": "episode_0000044",
+        "expert_accepted": 21,
+        "expert_wins": 47.0,
+        "pairs": 90
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.01727022746618811,
+        "correct": 41.0,
+        "episode": "episode_0000030",
+        "expert_accepted": 21,
+        "expert_wins": 48.0,
+        "pairs": 98
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.023812348866583767,
+        "correct": 44.0,
+        "episode": "episode_0000010",
+        "expert_accepted": 21,
+        "expert_wins": 49.0,
+        "pairs": 99
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.02715714880142065,
+        "correct": 38.0,
+        "episode": "episode_0000043",
+        "expert_accepted": 17,
+        "expert_wins": 42.0,
+        "pairs": 100
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.024864051362745568,
+        "correct": 50.0,
+        "episode": "episode_0000006",
+        "expert_accepted": 19,
+        "expert_wins": 44.0,
+        "pairs": 107
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.02244043012460944,
+        "correct": 42.0,
+        "episode": "episode_0000011",
+        "expert_accepted": 21,
+        "expert_wins": 54.0,
+        "pairs": 98
+      },
+      {
+        "anchors": 24,
+        "candidate_pair_gap": 0.019389598351364928,
+        "correct": 48.0,
+        "episode": "episode_0000022",
+        "expert_accepted": 22,
+        "expert_wins": 55.0,
+        "pairs": 113
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.017497985821480017,
+        "correct": 43.0,
+        "episode": "episode_0000019",
+        "expert_accepted": 20,
+        "expert_wins": 61.0,
+        "pairs": 88
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.02089856504389156,
+        "correct": 41.0,
+        "episode": "episode_0000035",
+        "expert_accepted": 22,
+        "expert_wins": 61.0,
+        "pairs": 101
+      }
+    ],
+    "expert_acceptance": 0.901565995525727,
+    "expert_rank": 0.5685123042505593
+  },
+  "validation": {
+    "candidate_pair_gap": 0.02058202998928463,
+    "candidate_rank": 0.4533856722276742,
+    "episodes": [
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.023217911422372464,
+        "correct": 45.0,
+        "episode": "episode_0000000",
+        "expert_accepted": 21,
+        "expert_wins": 57.0,
+        "pairs": 102
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.013173654967757789,
+        "correct": 35.0,
+        "episode": "episode_0000012",
+        "expert_accepted": 20,
+        "expert_wins": 37.0,
+        "pairs": 89
+      },
+      {
+        "anchors": 24,
+        "candidate_pair_gap": 0.02269929033913234,
+        "correct": 44.0,
+        "episode": "episode_0000014",
+        "expert_accepted": 23,
+        "expert_wins": 52.0,
+        "pairs": 103
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.019892010932646274,
+        "correct": 54.0,
+        "episode": "episode_0000048",
+        "expert_accepted": 23,
+        "expert_wins": 58.0,
+        "pairs": 110
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.019473287646854538,
+        "correct": 39.0,
+        "episode": "episode_0000002",
+        "expert_accepted": 21,
+        "expert_wins": 55.0,
+        "pairs": 101
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.01666887773885172,
+        "correct": 41.0,
+        "episode": "episode_0000036",
+        "expert_accepted": 21,
+        "expert_wins": 46.0,
+        "pairs": 97
+      },
+      {
+        "anchors": 21,
+        "candidate_pair_gap": 0.019293215841676398,
+        "correct": 52.0,
+        "episode": "episode_0000033",
+        "expert_accepted": 20,
+        "expert_wins": 49.0,
+        "pairs": 103
+      },
+      {
+        "anchors": 24,
+        "candidate_pair_gap": 0.029379466280684774,
+        "correct": 64.0,
+        "episode": "episode_0000001",
+        "expert_accepted": 14,
+        "expert_wins": 46.0,
+        "pairs": 107
+      },
+      {
+        "anchors": 22,
+        "candidate_pair_gap": 0.01733563394976376,
+        "correct": 33.0,
+        "episode": "episode_0000013",
+        "expert_accepted": 22,
+        "expert_wins": 48.0,
+        "pairs": 98
+      },
+      {
+        "anchors": 23,
+        "candidate_pair_gap": 0.02316302788087819,
+        "correct": 55.0,
+        "episode": "episode_0000008",
+        "expert_accepted": 23,
+        "expert_wins": 58.0,
+        "pairs": 109
+      }
+    ],
+    "expert_acceptance": 0.9327354260089686,
+    "expert_rank": 0.5672645739910314
+  }
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "path": "/hdd/pace_pi05_eval_20261022/outputs/d_action_pairs_screen_20261026/beat_block_hammer_seed0_n30",
+    "task": "beat_block_hammer",
+    "cache_chunk_horizon": 10,
+    "policy_output_horizon": 50,
+    "role": "historical_H10_support_cache",
+    "h50_ranking_experiment_eligible": false,
+    "reason": "Stored expert chunks contain 10 steps. H50 comparison requires complete aligned 50-step expert and policy chunks.",
+    "checked_pairs_files": 16,
+    "date": "2026-11-24"
+  },
+  {
+    "path": "/hdd/pace_pi05_eval_20261022/outputs/d_action_pairs_screen_20261026_seed1_n30/beat_block_hammer_seed1_n30",
+    "task": "beat_block_hammer",
+    "cache_chunk_horizon": 10,
+    "policy_output_horizon": 50,
+    "role": "historical_H10_support_cache",
+    "h50_ranking_experiment_eligible": false,
+    "reason": "Stored expert chunks contain 10 steps. H50 comparison requires complete aligned 50-step expert and policy chunks.",
+    "checked_pairs_files": 30,
+    "date": "2026-11-24"
+  },
+  {
+    "path": "/hdd/pace_pi05_eval_20261022/outputs/d_action_pairs_screen_20261026_v2/beat_block_hammer_seed0_n30",
+    "task": "beat_block_hammer",
+    "cache_chunk_horizon": 10,
+    "policy_output_horizon": 50,
+    "role": "historical_H10_support_cache",
+    "h50_ranking_experiment_eligible": false,
+    "reason": "Stored expert chunks contain 10 steps. H50 comparison requires complete aligned 50-step expert and policy chunks.",
+    "checked_pairs_files": 30,
+    "date": "2026-11-24"
+  }
+]

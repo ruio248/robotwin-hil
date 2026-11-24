@@ -1,0 +1,256 @@
+{
+  "train": [
+    {
+      "anchors": 21,
+      "episode": "episode_0000005",
+      "sha256": "684c711a7fa86e12d61878d63a4bbfda007a47437cfe8fd00a8238f193f47ec3"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000025",
+      "sha256": "4a4e7126118c4db9944280ec2a1436111a933449b1a8dd608ffa1f3d35024240"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000020",
+      "sha256": "e515c3e340ecfb41cbd34e8c90ae0c572abd4d07fc7888b7e14f0ee38aac06d6"
+    },
+    {
+      "anchors": 25,
+      "episode": "episode_0000049",
+      "sha256": "f8770a67aa502d813700d9e98cd7d46ed53c07c7d9d7f2e1bbe7ed4b66381132"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000039",
+      "sha256": "6f0a7cf23d8650df1dd3e3876059d99d9f124a1a224c88ac329ea09d86a66ece"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000027",
+      "sha256": "f301dcf9c22a1e47af95e15a0b32966211dce08f34f987378582d6983046ba6c"
+    },
+    {
+      "anchors": 24,
+      "episode": "episode_0000047",
+      "sha256": "e404cc91692711c1429053abeb9ddb14d4519cbbc3ec04c0a1eeb7be526faca5"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000045",
+      "sha256": "3cf915e1d9fdd3b97df51c3d2261030744e8fc9014d4aff246abb627ebff0884"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000046",
+      "sha256": "d4536fc677df4ee1e5635e94cc59186638a148bc7727c6ec384350d3bb1d257e"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000017",
+      "sha256": "6395a1ba769b2f34cbb6d683d88dd1d777f947a3e3f737b54ce9e620592fa951"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000037",
+      "sha256": "852ffabec810cb9343c0e468663275d8950f20360163a4f284a25b82b87cf0bb"
+    },
+    {
+      "anchors": 24,
+      "episode": "episode_0000031",
+      "sha256": "606836d101bba450c504253ca08d75359f1aeaae85a66724c9963d22648c00bc"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000040",
+      "sha256": "52f55b919f856f76432fe8be96df782fd6ffcace37ff415bcb30d242f07d6d20"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000023",
+      "sha256": "f73b72aabedb123b1a688fc9991cdbb69697f95fcb1cebbefd006d30340bf0bc"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000018",
+      "sha256": "1877b42fab7e5d423aa64182b4c37818ebbc43a67158f6a524d6a535f24c9462"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000007",
+      "sha256": "6a9f5f900165606660571841ce6cc7394abb592d39d45c19b6cfe30f4c736d5c"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000004",
+      "sha256": "d787f7f48d495e2bb572cc604fc92b91cdee6ca9e3f9488a10332bee64c15651"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000038",
+      "sha256": "a8afd8baede1e4e903192cfd40b6237886e6dffa16e9b374b9aafdc1c65f023d"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000029",
+      "sha256": "ffe7f1030d9fb4f1a7e08dc344cb996c189af530ff898a1aa9545525f3cd1a67"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000024",
+      "sha256": "c9e30d84aeabfb257baef871f4c6557ed80af81d6c80f12640f10358d32fab8a"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000034",
+      "sha256": "46ce800a557510993a0428831afd80257755ac022d3900535514b912cd8fd87c"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000009",
+      "sha256": "bc9a3148589dc3c821e98213bef28bcceae066a1e0bc9807f54be9dc3c12463a"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000028",
+      "sha256": "e6bbdc4f5eaf56f32432ae7ab276aa9a5822aae622ad71f2073e4a718221de57"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000021",
+      "sha256": "aa4087366866367180a08316c52cac7b72f9d799d9994ce03557c9672cd06a08"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000026",
+      "sha256": "ed2d261f3145181540a549603b0c79d76a0e0765e9e3519eb7020b0a80acbde4"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000041",
+      "sha256": "541b2bd304a081e29370d49a7869d06471018f148b2204d3e4d0c8059dfa856a"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000016",
+      "sha256": "fc8df733b88d209c98dbec62e0f81a8acbca6d0c40203ff714c4bfb4a21fa816"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000042",
+      "sha256": "05d14a2e3178ecd72749135765460f948279aac6b1c1d229b1114deb0a06bfd6"
+    },
+    {
+      "anchors": 24,
+      "episode": "episode_0000032",
+      "sha256": "405386b9e780d714999dd8149e8fa83bb61a2002005e99eca935a6562fc8de70"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000015",
+      "sha256": "c158b845650e2590e6c39e32abbcccadc1b0334fa20816bc4b7c140b024b2a67"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000003",
+      "sha256": "cb5e3debb838110aeb83b1a8024114de132ca560abc46707e1fe84283aa6cae5"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000044",
+      "sha256": "7faf98f31f8a39b406eadbf0818072796083ccfd72cd0755362e0fb048f1fa61"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000030",
+      "sha256": "be16f83750ea702af3809857b623c7cb9ac7fd87215bf32d8421777df09469f7"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000010",
+      "sha256": "9a8cbdbc9f42d236b1e27f5e013fdc5229750900f65a86c78a283a5aa788bf12"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000043",
+      "sha256": "c71cae25eba38568779b26dd8d6a9e5c5abfaa642b9411ede0bc20c30493516f"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000006",
+      "sha256": "c8b2281bba86cc0b4d5d5e228d2733cf3b5d468052dd00474b589e86267820dd"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000011",
+      "sha256": "2b28449cbfc3f0716d17bcbe035e375680006300744b057e04b575df203a0874"
+    },
+    {
+      "anchors": 24,
+      "episode": "episode_0000022",
+      "sha256": "51b81f62527d6f46ef49471b2b11748f508c0d7d84bcca11f64b811b6ff0337f"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000019",
+      "sha256": "40a569bc02616727e07f4bdc35edd578a63314877241380f1ebbbc1b8eb0c01b"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000035",
+      "sha256": "5edb5eb6ebf4fee56541a32fd1bb29cd71a5463e7c58e1577b2dae172cc6e7ea"
+    }
+  ],
+  "validation": [
+    {
+      "anchors": 22,
+      "episode": "episode_0000000",
+      "sha256": "091a8fb0fc66caf88c1bd41f3c31c760ee8272723ec164ad268330eddded82d3"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000012",
+      "sha256": "cf270fc640ce26e2c0eb72e9618b3ab55981b1cc1eeda2043eb13ec95ea4442d"
+    },
+    {
+      "anchors": 24,
+      "episode": "episode_0000014",
+      "sha256": "ea6ddf7ab4d2d0a0b5efb4f618be5eb64119cc29cdabef1c2d781a8a6ba0c33b"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000048",
+      "sha256": "bf9b472533e88b1f3c3ea6a7e419d2f1d280424c4ee223c96698c292e4b9a3d7"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000002",
+      "sha256": "3ccd67fb9dbae83320c8ddf9da457995d21bc7ca0ad27a15717606f6a9063651"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000036",
+      "sha256": "deb9d2de73b6f73dceb5b8982138d6a5d48edceb077ce9232260bbffa831947c"
+    },
+    {
+      "anchors": 21,
+      "episode": "episode_0000033",
+      "sha256": "4a2388e5b5a341420562e23a9aeaa047de4f06f5449fa64e9759ac4dd28a052f"
+    },
+    {
+      "anchors": 24,
+      "episode": "episode_0000001",
+      "sha256": "9ddda5dbb2a59e9495bdd65d68cba432ded167c56c5a654532de8527544d8960"
+    },
+    {
+      "anchors": 22,
+      "episode": "episode_0000013",
+      "sha256": "6d03029383cfda5064de1a4d14c8bf2f9f2d5caf02557e1192931efbd6382363"
+    },
+    {
+      "anchors": 23,
+      "episode": "episode_0000008",
+      "sha256": "73ebee7a81bc52450e6d272c056ec2df7bf7e170a7f94ada6bc74f1a40bb5e3f"
+    }
+  ]
+}

@@ -1,0 +1,1119 @@
+{
+  "at_10000": {
+    "bce": 0.5896777510643005,
+    "rank_loss": 0.49179351329803467,
+    "step": 10000,
+    "train": {
+      "candidate_rank": 0.8061148396718867,
+      "episodes": [
+        {
+          "anchors": 21,
+          "episode": "episode_0000005",
+          "expert_wins": 72.0,
+          "pairs": 87,
+          "rank_correct": 61.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000025",
+          "expert_wins": 73.0,
+          "pairs": 86,
+          "rank_correct": 68.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000020",
+          "expert_wins": 78.0,
+          "pairs": 93,
+          "rank_correct": 71.0
+        },
+        {
+          "anchors": 25,
+          "episode": "episode_0000049",
+          "expert_wins": 80.0,
+          "pairs": 108,
+          "rank_correct": 86.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000039",
+          "expert_wins": 80.0,
+          "pairs": 101,
+          "rank_correct": 84.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000027",
+          "expert_wins": 75.0,
+          "pairs": 96,
+          "rank_correct": 77.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000047",
+          "expert_wins": 86.0,
+          "pairs": 110,
+          "rank_correct": 82.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000045",
+          "expert_wins": 76.0,
+          "pairs": 98,
+          "rank_correct": 80.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000046",
+          "expert_wins": 78.0,
+          "pairs": 94,
+          "rank_correct": 80.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000017",
+          "expert_wins": 71.0,
+          "pairs": 93,
+          "rank_correct": 80.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000037",
+          "expert_wins": 77.0,
+          "pairs": 102,
+          "rank_correct": 84.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000031",
+          "expert_wins": 74.0,
+          "pairs": 116,
+          "rank_correct": 86.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000040",
+          "expert_wins": 77.0,
+          "pairs": 98,
+          "rank_correct": 79.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000023",
+          "expert_wins": 75.0,
+          "pairs": 100,
+          "rank_correct": 87.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000018",
+          "expert_wins": 80.0,
+          "pairs": 94,
+          "rank_correct": 81.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000007",
+          "expert_wins": 79.0,
+          "pairs": 107,
+          "rank_correct": 82.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000004",
+          "expert_wins": 79.0,
+          "pairs": 100,
+          "rank_correct": 79.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000038",
+          "expert_wins": 76.0,
+          "pairs": 106,
+          "rank_correct": 87.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000029",
+          "expert_wins": 79.0,
+          "pairs": 94,
+          "rank_correct": 72.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000024",
+          "expert_wins": 73.0,
+          "pairs": 101,
+          "rank_correct": 85.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000034",
+          "expert_wins": 75.0,
+          "pairs": 98,
+          "rank_correct": 76.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000009",
+          "expert_wins": 71.0,
+          "pairs": 108,
+          "rank_correct": 85.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000028",
+          "expert_wins": 64.0,
+          "pairs": 100,
+          "rank_correct": 81.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000021",
+          "expert_wins": 77.0,
+          "pairs": 117,
+          "rank_correct": 96.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000026",
+          "expert_wins": 76.0,
+          "pairs": 94,
+          "rank_correct": 86.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000041",
+          "expert_wins": 82.0,
+          "pairs": 105,
+          "rank_correct": 82.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000016",
+          "expert_wins": 80.0,
+          "pairs": 101,
+          "rank_correct": 79.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000042",
+          "expert_wins": 77.0,
+          "pairs": 105,
+          "rank_correct": 87.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000032",
+          "expert_wins": 81.0,
+          "pairs": 113,
+          "rank_correct": 84.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000015",
+          "expert_wins": 69.0,
+          "pairs": 103,
+          "rank_correct": 83.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000003",
+          "expert_wins": 82.0,
+          "pairs": 101,
+          "rank_correct": 84.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000044",
+          "expert_wins": 82.0,
+          "pairs": 90,
+          "rank_correct": 78.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000030",
+          "expert_wins": 81.0,
+          "pairs": 98,
+          "rank_correct": 76.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000010",
+          "expert_wins": 80.0,
+          "pairs": 99,
+          "rank_correct": 86.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000043",
+          "expert_wins": 67.0,
+          "pairs": 100,
+          "rank_correct": 88.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000006",
+          "expert_wins": 71.0,
+          "pairs": 107,
+          "rank_correct": 93.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000011",
+          "expert_wins": 72.0,
+          "pairs": 98,
+          "rank_correct": 79.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000022",
+          "expert_wins": 82.0,
+          "pairs": 113,
+          "rank_correct": 85.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000019",
+          "expert_wins": 75.0,
+          "pairs": 88,
+          "rank_correct": 62.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000035",
+          "expert_wins": 82.0,
+          "pairs": 101,
+          "rank_correct": 82.0
+        }
+      ],
+      "expert_rank": 0.8568232662192393
+    },
+    "validation": {
+      "candidate_rank": 0.5721295387634936,
+      "episodes": [
+        {
+          "anchors": 22,
+          "episode": "episode_0000000",
+          "expert_wins": 53.0,
+          "pairs": 102,
+          "rank_correct": 55.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000012",
+          "expert_wins": 48.0,
+          "pairs": 89,
+          "rank_correct": 39.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000014",
+          "expert_wins": 67.0,
+          "pairs": 103,
+          "rank_correct": 60.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000048",
+          "expert_wins": 66.0,
+          "pairs": 110,
+          "rank_correct": 64.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000002",
+          "expert_wins": 67.0,
+          "pairs": 101,
+          "rank_correct": 58.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000036",
+          "expert_wins": 61.0,
+          "pairs": 97,
+          "rank_correct": 56.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000033",
+          "expert_wins": 58.0,
+          "pairs": 103,
+          "rank_correct": 56.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000001",
+          "expert_wins": 66.0,
+          "pairs": 107,
+          "rank_correct": 69.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000013",
+          "expert_wins": 70.0,
+          "pairs": 98,
+          "rank_correct": 61.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000008",
+          "expert_wins": 61.0,
+          "pairs": 109,
+          "rank_correct": 65.0
+        }
+      ],
+      "expert_rank": 0.6917040358744395
+    }
+  },
+  "batch_size": 256,
+  "best_validation": {
+    "bce": 0.7100877165794373,
+    "rank_loss": 0.6675183176994324,
+    "step": 1000,
+    "train": {
+      "candidate_rank": 0.6214267959234402,
+      "episodes": [
+        {
+          "anchors": 21,
+          "episode": "episode_0000005",
+          "expert_wins": 69.0,
+          "pairs": 87,
+          "rank_correct": 53.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000025",
+          "expert_wins": 75.0,
+          "pairs": 86,
+          "rank_correct": 56.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000020",
+          "expert_wins": 68.0,
+          "pairs": 93,
+          "rank_correct": 50.0
+        },
+        {
+          "anchors": 25,
+          "episode": "episode_0000049",
+          "expert_wins": 85.0,
+          "pairs": 108,
+          "rank_correct": 69.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000039",
+          "expert_wins": 79.0,
+          "pairs": 101,
+          "rank_correct": 73.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000027",
+          "expert_wins": 75.0,
+          "pairs": 96,
+          "rank_correct": 69.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000047",
+          "expert_wins": 86.0,
+          "pairs": 110,
+          "rank_correct": 60.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000045",
+          "expert_wins": 68.0,
+          "pairs": 98,
+          "rank_correct": 56.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000046",
+          "expert_wins": 75.0,
+          "pairs": 94,
+          "rank_correct": 62.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000017",
+          "expert_wins": 73.0,
+          "pairs": 93,
+          "rank_correct": 53.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000037",
+          "expert_wins": 78.0,
+          "pairs": 102,
+          "rank_correct": 64.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000031",
+          "expert_wins": 71.0,
+          "pairs": 116,
+          "rank_correct": 61.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000040",
+          "expert_wins": 77.0,
+          "pairs": 98,
+          "rank_correct": 61.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000023",
+          "expert_wins": 79.0,
+          "pairs": 100,
+          "rank_correct": 65.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000018",
+          "expert_wins": 73.0,
+          "pairs": 94,
+          "rank_correct": 66.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000007",
+          "expert_wins": 72.0,
+          "pairs": 107,
+          "rank_correct": 74.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000004",
+          "expert_wins": 83.0,
+          "pairs": 100,
+          "rank_correct": 73.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000038",
+          "expert_wins": 78.0,
+          "pairs": 106,
+          "rank_correct": 79.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000029",
+          "expert_wins": 71.0,
+          "pairs": 94,
+          "rank_correct": 55.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000024",
+          "expert_wins": 80.0,
+          "pairs": 101,
+          "rank_correct": 69.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000034",
+          "expert_wins": 63.0,
+          "pairs": 98,
+          "rank_correct": 43.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000009",
+          "expert_wins": 79.0,
+          "pairs": 108,
+          "rank_correct": 63.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000028",
+          "expert_wins": 69.0,
+          "pairs": 100,
+          "rank_correct": 78.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000021",
+          "expert_wins": 68.0,
+          "pairs": 117,
+          "rank_correct": 61.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000026",
+          "expert_wins": 72.0,
+          "pairs": 94,
+          "rank_correct": 70.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000041",
+          "expert_wins": 81.0,
+          "pairs": 105,
+          "rank_correct": 79.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000016",
+          "expert_wins": 74.0,
+          "pairs": 101,
+          "rank_correct": 63.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000042",
+          "expert_wins": 78.0,
+          "pairs": 105,
+          "rank_correct": 67.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000032",
+          "expert_wins": 71.0,
+          "pairs": 113,
+          "rank_correct": 64.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000015",
+          "expert_wins": 71.0,
+          "pairs": 103,
+          "rank_correct": 64.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000003",
+          "expert_wins": 87.0,
+          "pairs": 101,
+          "rank_correct": 69.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000044",
+          "expert_wins": 77.0,
+          "pairs": 90,
+          "rank_correct": 44.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000030",
+          "expert_wins": 72.0,
+          "pairs": 98,
+          "rank_correct": 52.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000010",
+          "expert_wins": 78.0,
+          "pairs": 99,
+          "rank_correct": 52.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000043",
+          "expert_wins": 69.0,
+          "pairs": 100,
+          "rank_correct": 57.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000006",
+          "expert_wins": 64.0,
+          "pairs": 107,
+          "rank_correct": 55.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000011",
+          "expert_wins": 70.0,
+          "pairs": 98,
+          "rank_correct": 58.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000022",
+          "expert_wins": 89.0,
+          "pairs": 113,
+          "rank_correct": 72.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000019",
+          "expert_wins": 77.0,
+          "pairs": 88,
+          "rank_correct": 52.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000035",
+          "expert_wins": 78.0,
+          "pairs": 101,
+          "rank_correct": 69.0
+        }
+      ],
+      "expert_rank": 0.8394854586129754
+    },
+    "validation": {
+      "candidate_rank": 0.6261040235525025,
+      "episodes": [
+        {
+          "anchors": 22,
+          "episode": "episode_0000000",
+          "expert_wins": 70.0,
+          "pairs": 102,
+          "rank_correct": 49.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000012",
+          "expert_wins": 73.0,
+          "pairs": 89,
+          "rank_correct": 54.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000014",
+          "expert_wins": 84.0,
+          "pairs": 103,
+          "rank_correct": 56.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000048",
+          "expert_wins": 78.0,
+          "pairs": 110,
+          "rank_correct": 80.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000002",
+          "expert_wins": 74.0,
+          "pairs": 101,
+          "rank_correct": 67.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000036",
+          "expert_wins": 75.0,
+          "pairs": 97,
+          "rank_correct": 55.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000033",
+          "expert_wins": 72.0,
+          "pairs": 103,
+          "rank_correct": 71.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000001",
+          "expert_wins": 82.0,
+          "pairs": 107,
+          "rank_correct": 64.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000013",
+          "expert_wins": 71.0,
+          "pairs": 98,
+          "rank_correct": 67.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000008",
+          "expert_wins": 70.0,
+          "pairs": 109,
+          "rank_correct": 75.0
+        }
+      ],
+      "expert_rank": 0.8396860986547086
+    }
+  },
+  "checkpoint_sha256": "6d07c6f4105c7e2ee8fe4f84933d537570d09eda52ea0cf02e551fe17cb0f4e7",
+  "delta": 8.097013051155955e-06,
+  "encoder": "frozen DINOv2 ViT-S/14 CLS",
+  "encoder_sha256": "95e29c43835aff0fa43386c11d8f778ddd4ce5914227a415f14acc273ac9e517",
+  "final": {
+    "bce": 0.32504719495773315,
+    "rank_loss": 0.17709791660308838,
+    "step": 100000,
+    "train": {
+      "candidate_rank": 0.9249316430524485,
+      "episodes": [
+        {
+          "anchors": 21,
+          "episode": "episode_0000005",
+          "expert_wins": 81.0,
+          "pairs": 87,
+          "rank_correct": 75.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000025",
+          "expert_wins": 87.0,
+          "pairs": 86,
+          "rank_correct": 82.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000020",
+          "expert_wins": 87.0,
+          "pairs": 93,
+          "rank_correct": 88.0
+        },
+        {
+          "anchors": 25,
+          "episode": "episode_0000049",
+          "expert_wins": 98.0,
+          "pairs": 108,
+          "rank_correct": 99.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000039",
+          "expert_wins": 86.0,
+          "pairs": 101,
+          "rank_correct": 93.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000027",
+          "expert_wins": 84.0,
+          "pairs": 96,
+          "rank_correct": 92.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000047",
+          "expert_wins": 93.0,
+          "pairs": 110,
+          "rank_correct": 103.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000045",
+          "expert_wins": 86.0,
+          "pairs": 98,
+          "rank_correct": 96.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000046",
+          "expert_wins": 86.0,
+          "pairs": 94,
+          "rank_correct": 91.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000017",
+          "expert_wins": 83.0,
+          "pairs": 93,
+          "rank_correct": 87.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000037",
+          "expert_wins": 87.0,
+          "pairs": 102,
+          "rank_correct": 95.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000031",
+          "expert_wins": 91.0,
+          "pairs": 116,
+          "rank_correct": 102.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000040",
+          "expert_wins": 88.0,
+          "pairs": 98,
+          "rank_correct": 91.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000023",
+          "expert_wins": 88.0,
+          "pairs": 100,
+          "rank_correct": 93.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000018",
+          "expert_wins": 86.0,
+          "pairs": 94,
+          "rank_correct": 93.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000007",
+          "expert_wins": 86.0,
+          "pairs": 107,
+          "rank_correct": 97.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000004",
+          "expert_wins": 90.0,
+          "pairs": 100,
+          "rank_correct": 93.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000038",
+          "expert_wins": 85.0,
+          "pairs": 106,
+          "rank_correct": 98.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000029",
+          "expert_wins": 92.0,
+          "pairs": 94,
+          "rank_correct": 89.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000024",
+          "expert_wins": 87.0,
+          "pairs": 101,
+          "rank_correct": 96.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000034",
+          "expert_wins": 88.0,
+          "pairs": 98,
+          "rank_correct": 90.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000009",
+          "expert_wins": 86.0,
+          "pairs": 108,
+          "rank_correct": 101.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000028",
+          "expert_wins": 78.0,
+          "pairs": 100,
+          "rank_correct": 88.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000021",
+          "expert_wins": 89.0,
+          "pairs": 117,
+          "rank_correct": 104.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000026",
+          "expert_wins": 83.0,
+          "pairs": 94,
+          "rank_correct": 88.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000041",
+          "expert_wins": 92.0,
+          "pairs": 105,
+          "rank_correct": 99.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000016",
+          "expert_wins": 87.0,
+          "pairs": 101,
+          "rank_correct": 91.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000042",
+          "expert_wins": 86.0,
+          "pairs": 105,
+          "rank_correct": 100.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000032",
+          "expert_wins": 92.0,
+          "pairs": 113,
+          "rank_correct": 103.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000015",
+          "expert_wins": 81.0,
+          "pairs": 103,
+          "rank_correct": 91.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000003",
+          "expert_wins": 92.0,
+          "pairs": 101,
+          "rank_correct": 92.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000044",
+          "expert_wins": 88.0,
+          "pairs": 90,
+          "rank_correct": 86.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000030",
+          "expert_wins": 87.0,
+          "pairs": 98,
+          "rank_correct": 92.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000010",
+          "expert_wins": 87.0,
+          "pairs": 99,
+          "rank_correct": 86.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000043",
+          "expert_wins": 84.0,
+          "pairs": 100,
+          "rank_correct": 96.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000006",
+          "expert_wins": 87.0,
+          "pairs": 107,
+          "rank_correct": 92.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000011",
+          "expert_wins": 87.0,
+          "pairs": 98,
+          "rank_correct": 88.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000022",
+          "expert_wins": 93.0,
+          "pairs": 113,
+          "rank_correct": 102.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000019",
+          "expert_wins": 83.0,
+          "pairs": 88,
+          "rank_correct": 83.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000035",
+          "expert_wins": 90.0,
+          "pairs": 101,
+          "rank_correct": 96.0
+        }
+      ],
+      "expert_rank": 0.9762304250559284
+    },
+    "validation": {
+      "candidate_rank": 0.5485770363101079,
+      "episodes": [
+        {
+          "anchors": 22,
+          "episode": "episode_0000000",
+          "expert_wins": 49.0,
+          "pairs": 102,
+          "rank_correct": 35.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000012",
+          "expert_wins": 67.0,
+          "pairs": 89,
+          "rank_correct": 47.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000014",
+          "expert_wins": 45.0,
+          "pairs": 103,
+          "rank_correct": 52.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000048",
+          "expert_wins": 76.0,
+          "pairs": 110,
+          "rank_correct": 51.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000002",
+          "expert_wins": 62.0,
+          "pairs": 101,
+          "rank_correct": 67.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000036",
+          "expert_wins": 51.0,
+          "pairs": 97,
+          "rank_correct": 47.0
+        },
+        {
+          "anchors": 21,
+          "episode": "episode_0000033",
+          "expert_wins": 77.0,
+          "pairs": 103,
+          "rank_correct": 66.0
+        },
+        {
+          "anchors": 24,
+          "episode": "episode_0000001",
+          "expert_wins": 60.0,
+          "pairs": 107,
+          "rank_correct": 54.0
+        },
+        {
+          "anchors": 22,
+          "episode": "episode_0000013",
+          "expert_wins": 79.0,
+          "pairs": 98,
+          "rank_correct": 70.0
+        },
+        {
+          "anchors": 23,
+          "episode": "episode_0000008",
+          "expert_wins": 70.0,
+          "pairs": 109,
+          "rank_correct": 70.0
+        }
+      ],
+      "expert_rank": 0.7130044843049327
+    }
+  },
+  "lr": 0.0001,
+  "rank_lambda": 1,
+  "source": {
+    "horizon": 10,
+    "sha256": "872b572873ea4e245a75d1bf70a10602a8108ad6beee851a4ea458c878204a99"
+  },
+  "split_seed": 42,
+  "steps": 100000,
+  "train_episodes": 40,
+  "training_seed": 1042,
+  "validation_episodes": 10
+}

@@ -1,0 +1,15 @@
+/hdd/miniconda3/envs/genpo/lib/python3.10/site-packages/transformers/modeling_utils.py:4481: FutureWarning: `_is_quantized_training_enabled` is going to be deprecated in transformers 4.39.0. Please use `model.hf_quantizer.is_trainable` instead
+  warnings.warn(
+/hdd/miniconda3/envs/genpo/lib/python3.10/site-packages/transformers/models/dinov2/modeling_dinov2.py:158: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if num_channels != self.num_channels:
+/hdd/miniconda3/envs/genpo/lib/python3.10/site-packages/transformers/models/dinov2/modeling_dinov2.py:88: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if num_patches == num_positions and height == width:
+/hdd/miniconda3/envs/genpo/lib/python3.10/site-packages/transformers/models/dinov2/modeling_dinov2.py:98: TracerWarning: Converting a tensor to a Python float might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  patch_pos_embed = patch_pos_embed.reshape(1, int(math.sqrt(num_positions)), int(math.sqrt(num_positions)), dim)
+/hdd/miniconda3/envs/genpo/lib/python3.10/site-packages/transformers/models/dinov2/modeling_dinov2.py:103: TracerWarning: Converting a tensor to a Python float might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  scale_factor=(float(height / math.sqrt(num_positions)), float(width / math.sqrt(num_positions))),
+/hdd/miniconda3/envs/genpo/lib/python3.10/site-packages/transformers/models/dinov2/modeling_dinov2.py:107: TracerWarning: Converting a tensor to a Python integer might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if int(height) != patch_pos_embed.shape[-2] or int(width) != patch_pos_embed.shape[-1]:
+/hdd/miniconda3/envs/genpo/lib/python3.10/site-packages/transformers/models/dinov2/modeling_dinov2.py:107: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if int(height) != patch_pos_embed.shape[-2] or int(width) != patch_pos_embed.shape[-1]:
+Encoded 70 episodes

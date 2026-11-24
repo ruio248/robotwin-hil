@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-24",
+  "task": "place_dual_shoes",
+  "finding": "Cached original train/test features match ImageNet ResNet18, while outcome and online scorers used R3M18.",
+  "checks": {
+    "train_imagenet_relative_error": 0.0007377985,
+    "test_imagenet_relative_error": 0.0007984876,
+    "train_r3m_relative_error": 0.9890062,
+    "test_r3m_relative_error": 0.98630846,
+    "click_r3m_relative_error": 6.228981e-05
+  },
+  "valid": "Original shoes train50/test20 candidate ranking metrics use mutually consistent cached ImageNet features, and remain valid.",
+  "invalid": "Historical shoes SFT-outcome AUC and online support-guided evaluations used wrong visual encoder. expert100 shoes mixed cached ImageNet and freshly encoded R3M features; its results are invalid for coverage conclusions.",
+  "correct_encoder": "ImageNet ResNet18 resnet18-f37072fd.pth",
+  "corrected_outcome_auc": {
+    "matched_sft_models": {
+      "wrong_r3m_auc": 0.7580128205128205,
+      "correct_imagenet_auc": 0.9727564102564102,
+      "correct_ci95": [
+        0.9294871794871795,
+        0.9983974358974359
+      ]
+    },
+    "rank_distance_v1": {
+      "wrong_r3m_auc": 0.47115384615384615,
+      "correct_imagenet_auc": 0.7483974358974359,
+      "correct_ci95": [
+        0.6041666666666666,
+        0.8701923076923077
+      ]
+    },
+    "rank_distance_100000": {
+      "wrong_r3m_auc": 0.9182692307692307,
+      "correct_imagenet_auc": 0.8685897435897436,
+      "correct_ci95": [
+        0.7580128205128205,
+        0.9567307692307693
+      ]
+    }
+  }
+}

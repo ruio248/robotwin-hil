@@ -1,0 +1,128 @@
+{
+  "checks": [
+    {
+      "seed": 8200000,
+      "anchors": 22,
+      "features_relative_rms": 0.000745375466067344,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200003,
+      "anchors": 22,
+      "features_relative_rms": 0.0007692186627537012,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200004,
+      "anchors": 21,
+      "features_relative_rms": 0.0007209884352050722,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200005,
+      "anchors": 22,
+      "features_relative_rms": 0.0006954835262149572,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200006,
+      "anchors": 23,
+      "features_relative_rms": 0.0007593094487674534,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200007,
+      "anchors": 21,
+      "features_relative_rms": 0.0007337962160818279,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200009,
+      "anchors": 22,
+      "features_relative_rms": 0.000675089075230062,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200013,
+      "anchors": 21,
+      "features_relative_rms": 0.0007352994289249182,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200016,
+      "anchors": 24,
+      "features_relative_rms": 0.0007013118010945618,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200018,
+      "anchors": 22,
+      "features_relative_rms": 0.0007478175102733076,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200019,
+      "anchors": 22,
+      "features_relative_rms": 0.0007369834929704666,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200021,
+      "anchors": 21,
+      "features_relative_rms": 0.0007156261126510799,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200022,
+      "anchors": 21,
+      "features_relative_rms": 0.0007825805223546922,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200023,
+      "anchors": 23,
+      "features_relative_rms": 0.0007274476811289787,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200025,
+      "anchors": 21,
+      "features_relative_rms": 0.0007411340484395623,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200027,
+      "anchors": 22,
+      "features_relative_rms": 0.000755532702896744,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200028,
+      "anchors": 21,
+      "features_relative_rms": 0.0006831862847320735,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200029,
+      "anchors": 23,
+      "features_relative_rms": 0.0007191594922915101,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200032,
+      "anchors": 21,
+      "features_relative_rms": 0.0007338172872550786,
+      "frame_interval_median": 0.06666666666666643
+    },
+    {
+      "seed": 8200034,
+      "anchors": 21,
+      "features_relative_rms": 0.0007210045005194843,
+      "frame_interval_median": 0.06666666666666643
+    }
+  ],
+  "experts": "exact action[t:t+10] in raw per-scene parquet; all anchors within episode",
+  "state": "exact raw observation.state at frame_index",
+  "feature_encoder": "ImageNet ResNet18; all20 episodes checked",
+  "scope": "candidate generation was previously state-verified; raw policy RNG outputs not independently replayed"
+}

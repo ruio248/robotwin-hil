@@ -1,0 +1,72 @@
+[34m[1m[CONNECTING][0m websocket policy server ws://127.0.0.1:18833 (attempt 1/180, timeout=30s)
+[32m[1m[CONNECTED][0m websocket policy server connected: ws://127.0.0.1:18833
+sample 1 50
+sample 2 50
+sample 3 50
+sample 4 50
+sample 5 50
+sample 6 50
+sample 7 50
+sample 8 50
+sample 9 50
+sample 10 50
+sample 11 50
+sample 12 50
+sample 13 50
+sample 14 50
+sample 15 50
+sample 16 50
+sample 17 50
+sample 18 50
+sample 19 50
+sample 20 50
+sample 21 50
+sample 22 50
+sample 23 50
+sample 24 50
+sample 25 50
+sample 26 50
+sample 27 50
+sample 28 50
+sample 29 50
+sample 30 50
+sample 31 50
+sample 32 50
+sample 33 50
+sample 34 50
+sample 35 50
+sample 36 50
+sample 37 50
+sample 38 50
+sample 39 50
+sample 40 50
+sample 41 50
+sample 42 50
+sample 43 50
+sample 44 50
+sample 45 50
+sample 46 50
+sample 47 50
+sample 48 50
+sample 49 50
+sample 50 50
+bce {'step': 1000, 'bce': 0.5626964569091797, 'rank': 0.6415198445320129, 'train': {'accuracy': 0.6466809421841542, 'pairs': 2335}, 'test': {'accuracy': 0.6501650165016502, 'pairs': 606}}
+bce {'step': 2000, 'bce': 0.34710821509361267, 'rank': 0.6587892770767212, 'train': {'accuracy': 0.6458244111349036, 'pairs': 2335}, 'test': {'accuracy': 0.6452145214521452, 'pairs': 606}}
+bce {'step': 3000, 'bce': 0.28877395391464233, 'rank': 0.7399798035621643, 'train': {'accuracy': 0.6423982869379015, 'pairs': 2335}, 'test': {'accuracy': 0.6468646864686468, 'pairs': 606}}
+bce {'step': 4000, 'bce': 0.15126463770866394, 'rank': 0.7586779594421387, 'train': {'accuracy': 0.6445396145610278, 'pairs': 2335}, 'test': {'accuracy': 0.6452145214521452, 'pairs': 606}}
+bce {'step': 5000, 'bce': 0.2442045658826828, 'rank': 0.7005289196968079, 'train': {'accuracy': 0.6359743040685225, 'pairs': 2335}, 'test': {'accuracy': 0.6402640264026402, 'pairs': 606}}
+bce {'step': 6000, 'bce': 0.29722899198532104, 'rank': 0.661344051361084, 'train': {'accuracy': 0.6518201284796574, 'pairs': 2335}, 'test': {'accuracy': 0.641914191419142, 'pairs': 606}}
+bce {'step': 7000, 'bce': 0.5585190057754517, 'rank': 0.6608585119247437, 'train': {'accuracy': 0.6539614561027838, 'pairs': 2335}, 'test': {'accuracy': 0.6518151815181518, 'pairs': 606}}
+bce {'step': 8000, 'bce': 0.4919704496860504, 'rank': 0.6897596716880798, 'train': {'accuracy': 0.6548179871520342, 'pairs': 2335}, 'test': {'accuracy': 0.6501650165016502, 'pairs': 606}}
+bce {'step': 9000, 'bce': 0.5216014981269836, 'rank': 0.7214842438697815, 'train': {'accuracy': 0.612847965738758, 'pairs': 2335}, 'test': {'accuracy': 0.599009900990099, 'pairs': 606}}
+bce {'step': 10000, 'bce': 0.3586997389793396, 'rank': 0.765116274356842, 'train': {'accuracy': 0.6402569593147751, 'pairs': 2335}, 'test': {'accuracy': 0.6270627062706271, 'pairs': 606}}
+bce_rank {'step': 1000, 'bce': 0.6035727262496948, 'rank': 0.6056954264640808, 'train': {'accuracy': 0.6800856531049251, 'pairs': 2335}, 'test': {'accuracy': 0.6732673267326733, 'pairs': 606}}
+bce_rank {'step': 2000, 'bce': 0.5910423994064331, 'rank': 0.5805978775024414, 'train': {'accuracy': 0.6882226980728051, 'pairs': 2335}, 'test': {'accuracy': 0.6765676567656765, 'pairs': 606}}
+bce_rank {'step': 3000, 'bce': 0.3884313106536865, 'rank': 0.5863704085350037, 'train': {'accuracy': 0.6997858672376873, 'pairs': 2335}, 'test': {'accuracy': 0.6749174917491749, 'pairs': 606}}
+bce_rank {'step': 4000, 'bce': 0.2689727544784546, 'rank': 0.5335628986358643, 'train': {'accuracy': 0.7049250535331906, 'pairs': 2335}, 'test': {'accuracy': 0.6798679867986799, 'pairs': 606}}
+bce_rank {'step': 5000, 'bce': 0.24011021852493286, 'rank': 0.5312176942825317, 'train': {'accuracy': 0.7092077087794433, 'pairs': 2335}, 'test': {'accuracy': 0.6765676567656765, 'pairs': 606}}
+bce_rank {'step': 6000, 'bce': 0.16372555494308472, 'rank': 0.52236407995224, 'train': {'accuracy': 0.7289079229122055, 'pairs': 2335}, 'test': {'accuracy': 0.6749174917491749, 'pairs': 606}}
+bce_rank {'step': 7000, 'bce': 0.2432011365890503, 'rank': 0.5707410573959351, 'train': {'accuracy': 0.7254817987152035, 'pairs': 2335}, 'test': {'accuracy': 0.6782178217821783, 'pairs': 606}}
+bce_rank {'step': 8000, 'bce': 0.17012429237365723, 'rank': 0.4984911382198334, 'train': {'accuracy': 0.7614561027837259, 'pairs': 2335}, 'test': {'accuracy': 0.6765676567656765, 'pairs': 606}}
+bce_rank {'step': 9000, 'bce': 0.4044412076473236, 'rank': 0.5121182203292847, 'train': {'accuracy': 0.7738758029978586, 'pairs': 2335}, 'test': {'accuracy': 0.6782178217821783, 'pairs': 606}}
+bce_rank {'step': 10000, 'bce': 0.3024836778640747, 'rank': 0.4795812666416168, 'train': {'accuracy': 0.7820128479657388, 'pairs': 2335}, 'test': {'accuracy': 0.6963696369636964, 'pairs': 606}}
