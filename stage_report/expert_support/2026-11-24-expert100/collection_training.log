@@ -1,0 +1,145 @@
+[34m[1m[CONNECTING][0m websocket policy server ws://127.0.0.1:18832 (attempt 1/180, timeout=30s)
+[32m[1m[CONNECTED][0m websocket policy server connected: ws://127.0.0.1:18832
+missing pytorch3d
+Warp DeprecationWarning: The symbol `warp.torch.device_from_torch` will soon be removed from the public API. Use `warp.device_from_torch` instead.
+place_dual_shoes accepted 1 9200000 49
+place_dual_shoes accepted 2 9200001 45
+place_dual_shoes accepted 3 9200002 48
+place_dual_shoes reject 9200003
+place_dual_shoes accepted 4 9200004 46
+place_dual_shoes accepted 5 9200005 44
+place_dual_shoes accepted 6 9200006 46
+place_dual_shoes accepted 7 9200007 48
+place_dual_shoes accepted 8 9200008 45
+place_dual_shoes accepted 9 9200009 46
+place_dual_shoes reject 9200010
+place_dual_shoes accepted 10 9200011 48
+place_dual_shoes reject 9200012
+place_dual_shoes reject 9200013
+place_dual_shoes accepted 11 9200014 49
+place_dual_shoes accepted 12 9200015 46
+place_dual_shoes accepted 13 9200016 47
+place_dual_shoes expert_error 9200017 UnStableError Objects is unstable in seed(9200017), unstable objects: 041_shoe
+place_dual_shoes accepted 14 9200018 45
+place_dual_shoes accepted 15 9200019 51
+place_dual_shoes accepted 16 9200020 46
+place_dual_shoes accepted 17 9200021 48
+place_dual_shoes accepted 18 9200022 46
+place_dual_shoes reject 9200023
+place_dual_shoes accepted 19 9200024 46
+place_dual_shoes accepted 20 9200025 49
+place_dual_shoes accepted 21 9200026 44
+place_dual_shoes accepted 22 9200027 45
+place_dual_shoes accepted 23 9200028 45
+place_dual_shoes accepted 24 9200029 44
+place_dual_shoes accepted 25 9200030 44
+place_dual_shoes reject 9200031
+place_dual_shoes accepted 26 9200032 47
+place_dual_shoes accepted 27 9200033 44
+place_dual_shoes accepted 28 9200034 48
+place_dual_shoes accepted 29 9200035 48
+place_dual_shoes accepted 30 9200036 45
+place_dual_shoes accepted 31 9200037 48
+place_dual_shoes accepted 32 9200038 48
+place_dual_shoes accepted 33 9200039 48
+place_dual_shoes accepted 34 9200040 47
+place_dual_shoes reject 9200041
+place_dual_shoes accepted 35 9200042 44
+place_dual_shoes accepted 36 9200043 47
+place_dual_shoes accepted 37 9200044 52
+place_dual_shoes expert_error 9200045 UnStableError Objects is unstable in seed(9200045), unstable objects: 041_shoe
+place_dual_shoes reject 9200046
+place_dual_shoes accepted 38 9200047 46
+place_dual_shoes accepted 39 9200048 50
+place_dual_shoes accepted 40 9200049 46
+place_dual_shoes reject 9200050
+place_dual_shoes reject 9200051
+place_dual_shoes accepted 41 9200052 51
+place_dual_shoes accepted 42 9200053 44
+place_dual_shoes accepted 43 9200054 48
+place_dual_shoes accepted 44 9200055 48
+place_dual_shoes accepted 45 9200056 45
+place_dual_shoes accepted 46 9200057 48
+place_dual_shoes reject 9200058
+place_dual_shoes accepted 47 9200059 45
+place_dual_shoes accepted 48 9200060 46
+place_dual_shoes reject 9200061
+place_dual_shoes accepted 49 9200062 47
+place_dual_shoes reject 9200063
+place_dual_shoes reject 9200064
+place_dual_shoes accepted 50 9200065 44
+place_dual_shoes {'step': 1000, 'bce': 0.606230616569519, 'rank': 0.6609210968017578, 'train100': 0.6747700816772783, 'test20': 0.5114569822741029}
+place_dual_shoes {'step': 2000, 'bce': 0.553115963935852, 'rank': 0.6401057839393616, 'train100': 0.6915878834651746, 'test20': 0.512753999135322}
+place_dual_shoes {'step': 3000, 'bce': 0.5152607560157776, 'rank': 0.6320364475250244, 'train100': 0.707569618624992, 'test20': 0.5149156939040207}
+place_dual_shoes {'step': 4000, 'bce': 0.5452855229377747, 'rank': 0.6041499376296997, 'train100': 0.7125860183934658, 'test20': 0.5214007782101168}
+place_dual_shoes {'step': 5000, 'bce': 0.5200079083442688, 'rank': 0.6046621799468994, 'train100': 0.7206251205865329, 'test20': 0.5149156939040207}
+place_dual_shoes {'step': 6000, 'bce': 0.4997042715549469, 'rank': 0.5877994894981384, 'train100': 0.7308508585761142, 'test20': 0.5023778642455685}
+place_dual_shoes {'step': 7000, 'bce': 0.5588387846946716, 'rank': 0.5878098011016846, 'train100': 0.7347096276287864, 'test20': 0.5045395590142672}
+place_dual_shoes {'step': 8000, 'bce': 0.5388615131378174, 'rank': 0.5797216892242432, 'train100': 0.7417197247411409, 'test20': 0.5101599654128837}
+place_dual_shoes {'step': 9000, 'bce': 0.46147122979164124, 'rank': 0.5397859215736389, 'train100': 0.7467361245096148, 'test20': 0.4980544747081712}
+place_dual_shoes {'step': 10000, 'bce': 0.4644279181957245, 'rank': 0.5377446413040161, 'train100': 0.753231719081613, 'test20': 0.5028102031993082}
+[34m[1m[CONNECTING][0m websocket policy server ws://127.0.0.1:18816 (attempt 1/180, timeout=30s)
+[32m[1m[CONNECTED][0m websocket policy server connected: ws://127.0.0.1:18816
+place_empty_cup accepted 1 9200000 26
+place_empty_cup accepted 2 9200001 25
+place_empty_cup reject 9200002
+place_empty_cup accepted 3 9200003 25
+place_empty_cup accepted 4 9200004 27
+place_empty_cup accepted 5 9200005 27
+place_empty_cup reject 9200006
+place_empty_cup accepted 6 9200007 27
+place_empty_cup accepted 7 9200008 26
+place_empty_cup accepted 8 9200009 28
+place_empty_cup accepted 9 9200010 27
+place_empty_cup accepted 10 9200011 27
+place_empty_cup accepted 11 9200012 26
+place_empty_cup accepted 12 9200013 25
+place_empty_cup accepted 13 9200014 25
+place_empty_cup accepted 14 9200015 25
+place_empty_cup accepted 15 9200016 26
+place_empty_cup accepted 16 9200017 26
+place_empty_cup accepted 17 9200018 26
+place_empty_cup accepted 18 9200019 25
+place_empty_cup accepted 19 9200020 25
+place_empty_cup reject 9200021
+place_empty_cup accepted 20 9200022 26
+place_empty_cup accepted 21 9200023 26
+place_empty_cup accepted 22 9200024 26
+place_empty_cup accepted 23 9200025 26
+place_empty_cup accepted 24 9200026 25
+place_empty_cup accepted 25 9200027 25
+place_empty_cup accepted 26 9200028 25
+place_empty_cup accepted 27 9200029 26
+place_empty_cup accepted 28 9200030 25
+place_empty_cup accepted 29 9200031 25
+place_empty_cup accepted 30 9200032 25
+place_empty_cup accepted 31 9200033 25
+place_empty_cup accepted 32 9200034 30
+place_empty_cup accepted 33 9200035 25
+place_empty_cup accepted 34 9200036 26
+place_empty_cup accepted 35 9200037 26
+place_empty_cup accepted 36 9200038 28
+place_empty_cup accepted 37 9200039 26
+place_empty_cup accepted 38 9200040 29
+place_empty_cup accepted 39 9200041 25
+place_empty_cup accepted 40 9200042 26
+place_empty_cup accepted 41 9200043 28
+place_empty_cup accepted 42 9200044 26
+place_empty_cup accepted 43 9200045 25
+place_empty_cup accepted 44 9200046 26
+place_empty_cup accepted 45 9200047 25
+place_empty_cup accepted 46 9200048 26
+place_empty_cup accepted 47 9200049 28
+place_empty_cup accepted 48 9200050 29
+place_empty_cup accepted 49 9200051 26
+place_empty_cup accepted 50 9200052 25
+place_empty_cup {'step': 1000, 'bce': 0.6232318878173828, 'rank': 0.6765869855880737, 'train100': 0.6747769667477697, 'test20': 0.5068738792588166}
+place_empty_cup {'step': 2000, 'bce': 0.594005823135376, 'rank': 0.6590588092803955, 'train100': 0.7058664503919978, 'test20': 0.5140466228332337}
+place_empty_cup {'step': 3000, 'bce': 0.551582396030426, 'rank': 0.6363902688026428, 'train100': 0.719203388303145, 'test20': 0.5367603108188882}
+place_empty_cup {'step': 4000, 'bce': 0.5859346985816956, 'rank': 0.6336574554443359, 'train100': 0.7271334594935568, 'test20': 0.5385534967124925}
+place_empty_cup {'step': 5000, 'bce': 0.5194658637046814, 'rank': 0.603916585445404, 'train100': 0.7394791385059025, 'test20': 0.5534967124925284}
+place_empty_cup {'step': 6000, 'bce': 0.5817180275917053, 'rank': 0.609167754650116, 'train100': 0.7544381364332703, 'test20': 0.5702331141661685}
+place_empty_cup {'step': 7000, 'bce': 0.5411558747291565, 'rank': 0.5943370461463928, 'train100': 0.7651617554293954, 'test20': 0.56246264196055}
+place_empty_cup {'step': 8000, 'bce': 0.5042502284049988, 'rank': 0.5749175548553467, 'train100': 0.7758853744255204, 'test20': 0.5648535564853556}
+place_empty_cup {'step': 9000, 'bce': 0.5195032954216003, 'rank': 0.55550616979599, 'train100': 0.773992971073263, 'test20': 0.5750149432157801}
+place_empty_cup {'step': 10000, 'bce': 0.554618239402771, 'rank': 0.5504422187805176, 'train100': 0.7912048301342706, 'test20': 0.5965331739390317}

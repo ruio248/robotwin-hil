@@ -1,0 +1,17 @@
+{
+  "README.md": "5d6a212712b77d32e4b132315936597c06a9abb8f48d293b5ce9f76b5c22d1a5",
+  "summary.json": "45c6a2c34c48d11e3ae405dc42498d6c590f7340920fc7d9887305e26cee89ac",
+  "collection_training.log": "04ae952928f48bd860dcfcbc582587b6142aabecc9496bd7dbf00c8ed1dd1353",
+  "place_dual_shoes/new_manifest.json": "3579a9cce1f42eb9057d88cf718dd5b5c800304e6a99e4cb8462826896c2c025",
+  "place_dual_shoes/sft_outcomes.json": "2fb0ce78f527a19221c6ee7c8d18a5b1f878b9d60643fab66b5a7486e787ef49",
+  "place_dual_shoes/report.json": "090273257f51134f35ebd89e1a85e697770670991b602935c96c0fd60339ad5a",
+  "place_dual_shoes/outcomes.log": "92460149ce8c4339aec0bf6178502c250caf66ff3be8bb97333a3e437b1d0aed",
+  "place_dual_shoes/curve.json": "49065468a90d19f2d560dac59e0b25808e811485578907ba53887d8f0561b1c0",
+  "scripts/score_outcomes.py": "280096c3f1bc365ac5aad4e0ce94f8b37b5b3cabcb21e23db380d46e9263ba6b",
+  "scripts/expand_expert100.py": "9f04f01a7b6547c7ccb63ac41c9e019be816955098679b3dd89c3af9c587cf03",
+  "place_empty_cup/new_manifest.json": "a6b89a2d8b4e54581642bac75b9a28519b8749f3c7e91717b7e0f05f8d689b00",
+  "place_empty_cup/sft_outcomes.json": "c1c1e2a001b4b787db74e0fbc8dbe1d02a9b5b157b96329607ecfe2a5b976737",
+  "place_empty_cup/report.json": "525705e970af8bd5e0183858f56991f576719e1e60c38f2a6ac21c51af8deeb6",
+  "place_empty_cup/outcomes.log": "bc32a12a1fd3767ca22f7c639ee89bb1a66e2cd6d6ae52486e9eb8df0f41ee95",
+  "place_empty_cup/curve.json": "8dd371f7e0d64b107662fbc2a1b98049ac143d92e37e1fbd9443f23297098352"
+}
