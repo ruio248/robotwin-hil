@@ -1,0 +1,164 @@
+{
+  "pairs": [
+    {
+      "seed": 100028,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100024,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100047,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100037,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100032,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100044,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100026,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100046,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100030,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100042,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100029,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100041,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100040,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100049,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100025,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100033,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100035,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100038,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100034,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    },
+    {
+      "seed": 100036,
+      "rgb_max": 0,
+      "rgb_mae": 0.0,
+      "state_max": 0.0,
+      "pose_max": 0.0,
+      "feature_max": 0.0
+    }
+  ]
+}
