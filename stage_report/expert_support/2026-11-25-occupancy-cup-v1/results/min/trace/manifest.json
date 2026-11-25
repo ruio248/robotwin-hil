@@ -1,0 +1,3566 @@
+{
+  "counted_official_episodes": 20,
+  "d_analysis_ready": true,
+  "episodes": [
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0000_seed_100000",
+      "exception": null,
+      "instruction": "Relocate the rounded base blue cup precisely onto the coaster made of smooth wood with arm",
+      "official_episode_index": 0,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 7,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 157,
+      "scene_seed": 100000,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0001_seed_100001",
+      "exception": null,
+      "instruction": "Slide the cup with smooth plastic surface onto the small coaster with grain texture with the arm.",
+      "official_episode_index": 1,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0016.npz",
+          "policy_steps_before_query": 160,
+          "query_index": 16,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0017.npz",
+          "policy_steps_before_query": 170,
+          "query_index": 17,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0018.npz",
+          "policy_steps_before_query": 180,
+          "query_index": 18,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0019.npz",
+          "policy_steps_before_query": 190,
+          "query_index": 19,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0020.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 20,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0021.npz",
+          "policy_steps_before_query": 210,
+          "query_index": 21,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0022.npz",
+          "policy_steps_before_query": 220,
+          "query_index": 22,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0023.npz",
+          "policy_steps_before_query": 230,
+          "query_index": 23,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0024.npz",
+          "policy_steps_before_query": 240,
+          "query_index": 24,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0025.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 25,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0026.npz",
+          "policy_steps_before_query": 260,
+          "query_index": 26,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0027.npz",
+          "policy_steps_before_query": 270,
+          "query_index": 27,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0028.npz",
+          "policy_steps_before_query": 280,
+          "query_index": 28,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0029.npz",
+          "policy_steps_before_query": 290,
+          "query_index": 29,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0030.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 30,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0031.npz",
+          "policy_steps_before_query": 310,
+          "query_index": 31,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0032.npz",
+          "policy_steps_before_query": 320,
+          "query_index": 32,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0033.npz",
+          "policy_steps_before_query": 330,
+          "query_index": 33,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0034.npz",
+          "policy_steps_before_query": 340,
+          "query_index": 34,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0035.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 35,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0036.npz",
+          "policy_steps_before_query": 360,
+          "query_index": 36,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0037.npz",
+          "policy_steps_before_query": 370,
+          "query_index": 37,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0038.npz",
+          "policy_steps_before_query": 380,
+          "query_index": 38,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0039.npz",
+          "policy_steps_before_query": 390,
+          "query_index": 39,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0040.npz",
+          "policy_steps_before_query": 400,
+          "query_index": 40,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0041.npz",
+          "policy_steps_before_query": 410,
+          "query_index": 41,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0042.npz",
+          "policy_steps_before_query": 420,
+          "query_index": 42,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0043.npz",
+          "policy_steps_before_query": 430,
+          "query_index": 43,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0044.npz",
+          "policy_steps_before_query": 440,
+          "query_index": 44,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0045.npz",
+          "policy_steps_before_query": 450,
+          "query_index": 45,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0046.npz",
+          "policy_steps_before_query": 460,
+          "query_index": 46,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0047.npz",
+          "policy_steps_before_query": 470,
+          "query_index": 47,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0048.npz",
+          "policy_steps_before_query": 480,
+          "query_index": 48,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0049.npz",
+          "policy_steps_before_query": 490,
+          "query_index": 49,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 500,
+      "scene_seed": 100001,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0002_seed_100002",
+      "exception": null,
+      "instruction": "Set the blue rounded-bottom cup carefully onto the smooth round palm-sized coaster",
+      "official_episode_index": 2,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 9,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 159,
+      "scene_seed": 100002,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0003_seed_100004",
+      "exception": null,
+      "instruction": "Move the cup with light blue color onto the grainy texture coaster with the arm",
+      "official_episode_index": 3,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 6,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 146,
+      "scene_seed": 100004,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0004_seed_100007",
+      "exception": null,
+      "instruction": "Align the cup with light blue color and set it down on the round coaster with light streaks",
+      "official_episode_index": 4,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 6,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 136,
+      "scene_seed": 100007,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0005_seed_100008",
+      "exception": null,
+      "instruction": "Use the arm to set the cylindrical light blue cup on the wooden coaster",
+      "official_episode_index": 5,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 6,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 146,
+      "scene_seed": 100008,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0006_seed_100009",
+      "exception": null,
+      "instruction": "Grab the plastic cup for drinks and place it over the smooth round palm-sized coaster.",
+      "official_episode_index": 6,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0016.npz",
+          "policy_steps_before_query": 160,
+          "query_index": 16,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0017.npz",
+          "policy_steps_before_query": 170,
+          "query_index": 17,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0018.npz",
+          "policy_steps_before_query": 180,
+          "query_index": 18,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 5,
+          "file": "query_0019.npz",
+          "policy_steps_before_query": 190,
+          "query_index": 19,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 195,
+      "scene_seed": 100009,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0007_seed_100010",
+      "exception": null,
+      "instruction": "Stick the medium-sized plastic blue cup onto the round coaster with light streaks using the arm.",
+      "official_episode_index": 7,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0016.npz",
+          "policy_steps_before_query": 160,
+          "query_index": 16,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0017.npz",
+          "policy_steps_before_query": 170,
+          "query_index": 17,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0018.npz",
+          "policy_steps_before_query": 180,
+          "query_index": 18,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0019.npz",
+          "policy_steps_before_query": 190,
+          "query_index": 19,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0020.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 20,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0021.npz",
+          "policy_steps_before_query": 210,
+          "query_index": 21,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0022.npz",
+          "policy_steps_before_query": 220,
+          "query_index": 22,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0023.npz",
+          "policy_steps_before_query": 230,
+          "query_index": 23,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0024.npz",
+          "policy_steps_before_query": 240,
+          "query_index": 24,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0025.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 25,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0026.npz",
+          "policy_steps_before_query": 260,
+          "query_index": 26,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0027.npz",
+          "policy_steps_before_query": 270,
+          "query_index": 27,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0028.npz",
+          "policy_steps_before_query": 280,
+          "query_index": 28,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0029.npz",
+          "policy_steps_before_query": 290,
+          "query_index": 29,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0030.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 30,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0031.npz",
+          "policy_steps_before_query": 310,
+          "query_index": 31,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0032.npz",
+          "policy_steps_before_query": 320,
+          "query_index": 32,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0033.npz",
+          "policy_steps_before_query": 330,
+          "query_index": 33,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0034.npz",
+          "policy_steps_before_query": 340,
+          "query_index": 34,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0035.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 35,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0036.npz",
+          "policy_steps_before_query": 360,
+          "query_index": 36,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0037.npz",
+          "policy_steps_before_query": 370,
+          "query_index": 37,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0038.npz",
+          "policy_steps_before_query": 380,
+          "query_index": 38,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0039.npz",
+          "policy_steps_before_query": 390,
+          "query_index": 39,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0040.npz",
+          "policy_steps_before_query": 400,
+          "query_index": 40,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0041.npz",
+          "policy_steps_before_query": 410,
+          "query_index": 41,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0042.npz",
+          "policy_steps_before_query": 420,
+          "query_index": 42,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0043.npz",
+          "policy_steps_before_query": 430,
+          "query_index": 43,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0044.npz",
+          "policy_steps_before_query": 440,
+          "query_index": 44,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0045.npz",
+          "policy_steps_before_query": 450,
+          "query_index": 45,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0046.npz",
+          "policy_steps_before_query": 460,
+          "query_index": 46,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0047.npz",
+          "policy_steps_before_query": 470,
+          "query_index": 47,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0048.npz",
+          "policy_steps_before_query": 480,
+          "query_index": 48,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0049.npz",
+          "policy_steps_before_query": 490,
+          "query_index": 49,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 500,
+      "scene_seed": 100010,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0008_seed_100011",
+      "exception": null,
+      "instruction": "Stick the rounded base blue cup onto the round coaster carefully.",
+      "official_episode_index": 8,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 2,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 142,
+      "scene_seed": 100011,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0009_seed_100012",
+      "exception": null,
+      "instruction": "Set the smooth blue cup for liquids onto the flat surface gray wooden coaster using the arm.",
+      "official_episode_index": 9,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 8,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 148,
+      "scene_seed": 100012,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0010_seed_100013",
+      "exception": null,
+      "instruction": "Lift the plastic cup for drinks up and drop it on the light gray round grainy coaster.",
+      "official_episode_index": 10,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0016.npz",
+          "policy_steps_before_query": 160,
+          "query_index": 16,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0017.npz",
+          "policy_steps_before_query": 170,
+          "query_index": 17,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0018.npz",
+          "policy_steps_before_query": 180,
+          "query_index": 18,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0019.npz",
+          "policy_steps_before_query": 190,
+          "query_index": 19,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0020.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 20,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0021.npz",
+          "policy_steps_before_query": 210,
+          "query_index": 21,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 9,
+          "file": "query_0022.npz",
+          "policy_steps_before_query": 220,
+          "query_index": 22,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 229,
+      "scene_seed": 100013,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0011_seed_100014",
+      "exception": null,
+      "instruction": "Place the cup for holding liquids on top of the coaster with circular shape",
+      "official_episode_index": 11,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0016.npz",
+          "policy_steps_before_query": 160,
+          "query_index": 16,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0017.npz",
+          "policy_steps_before_query": 170,
+          "query_index": 17,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0018.npz",
+          "policy_steps_before_query": 180,
+          "query_index": 18,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0019.npz",
+          "policy_steps_before_query": 190,
+          "query_index": 19,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0020.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 20,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0021.npz",
+          "policy_steps_before_query": 210,
+          "query_index": 21,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 9,
+          "file": "query_0022.npz",
+          "policy_steps_before_query": 220,
+          "query_index": 22,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 229,
+      "scene_seed": 100014,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0012_seed_100015",
+      "exception": null,
+      "instruction": "Move the medium blue cylindrical cup to the light gray round grainy coaster using the arm.",
+      "official_episode_index": 12,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0016.npz",
+          "policy_steps_before_query": 160,
+          "query_index": 16,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0017.npz",
+          "policy_steps_before_query": 170,
+          "query_index": 17,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0018.npz",
+          "policy_steps_before_query": 180,
+          "query_index": 18,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0019.npz",
+          "policy_steps_before_query": 190,
+          "query_index": 19,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0020.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 20,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0021.npz",
+          "policy_steps_before_query": 210,
+          "query_index": 21,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0022.npz",
+          "policy_steps_before_query": 220,
+          "query_index": 22,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0023.npz",
+          "policy_steps_before_query": 230,
+          "query_index": 23,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0024.npz",
+          "policy_steps_before_query": 240,
+          "query_index": 24,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0025.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 25,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0026.npz",
+          "policy_steps_before_query": 260,
+          "query_index": 26,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0027.npz",
+          "policy_steps_before_query": 270,
+          "query_index": 27,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0028.npz",
+          "policy_steps_before_query": 280,
+          "query_index": 28,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0029.npz",
+          "policy_steps_before_query": 290,
+          "query_index": 29,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0030.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 30,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0031.npz",
+          "policy_steps_before_query": 310,
+          "query_index": 31,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0032.npz",
+          "policy_steps_before_query": 320,
+          "query_index": 32,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0033.npz",
+          "policy_steps_before_query": 330,
+          "query_index": 33,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0034.npz",
+          "policy_steps_before_query": 340,
+          "query_index": 34,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0035.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 35,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0036.npz",
+          "policy_steps_before_query": 360,
+          "query_index": 36,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0037.npz",
+          "policy_steps_before_query": 370,
+          "query_index": 37,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0038.npz",
+          "policy_steps_before_query": 380,
+          "query_index": 38,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0039.npz",
+          "policy_steps_before_query": 390,
+          "query_index": 39,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0040.npz",
+          "policy_steps_before_query": 400,
+          "query_index": 40,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0041.npz",
+          "policy_steps_before_query": 410,
+          "query_index": 41,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0042.npz",
+          "policy_steps_before_query": 420,
+          "query_index": 42,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0043.npz",
+          "policy_steps_before_query": 430,
+          "query_index": 43,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0044.npz",
+          "policy_steps_before_query": 440,
+          "query_index": 44,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0045.npz",
+          "policy_steps_before_query": 450,
+          "query_index": 45,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0046.npz",
+          "policy_steps_before_query": 460,
+          "query_index": 46,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0047.npz",
+          "policy_steps_before_query": 470,
+          "query_index": 47,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0048.npz",
+          "policy_steps_before_query": 480,
+          "query_index": 48,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0049.npz",
+          "policy_steps_before_query": 490,
+          "query_index": 49,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 500,
+      "scene_seed": 100015,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0013_seed_100016",
+      "exception": null,
+      "instruction": "Drop the cup with light blue color firmly on the light gray streaked wooden coaster using arm",
+      "official_episode_index": 13,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 4,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 154,
+      "scene_seed": 100016,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0014_seed_100017",
+      "exception": null,
+      "instruction": "Pick the rounded base blue cup up and drop it on the coaster made of smooth wood.",
+      "official_episode_index": 14,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 6,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 146,
+      "scene_seed": 100017,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0015_seed_100018",
+      "exception": null,
+      "instruction": "Lift the blue rounded-bottom cup and place it onto the flat surface gray wooden coaster.",
+      "official_episode_index": 15,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 5,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 145,
+      "scene_seed": 100018,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0016_seed_100019",
+      "exception": null,
+      "instruction": "Make sure the cylindrical light blue cup ends up on the light gray round grainy coaster.",
+      "official_episode_index": 16,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 8,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 138,
+      "scene_seed": 100019,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0017_seed_100020",
+      "exception": null,
+      "instruction": "Use an arm to drop the medium-sized plastic blue cup on the coaster with circular shape.",
+      "official_episode_index": 17,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0016.npz",
+          "policy_steps_before_query": 160,
+          "query_index": 16,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0017.npz",
+          "policy_steps_before_query": 170,
+          "query_index": 17,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0018.npz",
+          "policy_steps_before_query": 180,
+          "query_index": 18,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0019.npz",
+          "policy_steps_before_query": 190,
+          "query_index": 19,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0020.npz",
+          "policy_steps_before_query": 200,
+          "query_index": 20,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0021.npz",
+          "policy_steps_before_query": 210,
+          "query_index": 21,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0022.npz",
+          "policy_steps_before_query": 220,
+          "query_index": 22,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0023.npz",
+          "policy_steps_before_query": 230,
+          "query_index": 23,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0024.npz",
+          "policy_steps_before_query": 240,
+          "query_index": 24,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0025.npz",
+          "policy_steps_before_query": 250,
+          "query_index": 25,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0026.npz",
+          "policy_steps_before_query": 260,
+          "query_index": 26,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0027.npz",
+          "policy_steps_before_query": 270,
+          "query_index": 27,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0028.npz",
+          "policy_steps_before_query": 280,
+          "query_index": 28,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0029.npz",
+          "policy_steps_before_query": 290,
+          "query_index": 29,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0030.npz",
+          "policy_steps_before_query": 300,
+          "query_index": 30,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0031.npz",
+          "policy_steps_before_query": 310,
+          "query_index": 31,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0032.npz",
+          "policy_steps_before_query": 320,
+          "query_index": 32,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0033.npz",
+          "policy_steps_before_query": 330,
+          "query_index": 33,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0034.npz",
+          "policy_steps_before_query": 340,
+          "query_index": 34,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0035.npz",
+          "policy_steps_before_query": 350,
+          "query_index": 35,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0036.npz",
+          "policy_steps_before_query": 360,
+          "query_index": 36,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0037.npz",
+          "policy_steps_before_query": 370,
+          "query_index": 37,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0038.npz",
+          "policy_steps_before_query": 380,
+          "query_index": 38,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0039.npz",
+          "policy_steps_before_query": 390,
+          "query_index": 39,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0040.npz",
+          "policy_steps_before_query": 400,
+          "query_index": 40,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0041.npz",
+          "policy_steps_before_query": 410,
+          "query_index": 41,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0042.npz",
+          "policy_steps_before_query": 420,
+          "query_index": 42,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0043.npz",
+          "policy_steps_before_query": 430,
+          "query_index": 43,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0044.npz",
+          "policy_steps_before_query": 440,
+          "query_index": 44,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0045.npz",
+          "policy_steps_before_query": 450,
+          "query_index": 45,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0046.npz",
+          "policy_steps_before_query": 460,
+          "query_index": 46,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0047.npz",
+          "policy_steps_before_query": 470,
+          "query_index": 47,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0048.npz",
+          "policy_steps_before_query": 480,
+          "query_index": 48,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0049.npz",
+          "policy_steps_before_query": 490,
+          "query_index": 49,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 500,
+      "scene_seed": 100020,
+      "status": "policy_failure",
+      "success": false
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0018_seed_100021",
+      "exception": null,
+      "instruction": "Position the smooth blue drinking cup squarely on top of the flat surface gray wooden coaster.",
+      "official_episode_index": 18,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 6,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 126,
+      "scene_seed": 100021,
+      "status": "success",
+      "success": true
+    },
+    {
+      "counted_in_official_result": true,
+      "d_eligible": true,
+      "directory": "episodes/episode_0019_seed_100023",
+      "exception": null,
+      "instruction": "Use the arm to position the cup with light blue color on the round coaster.",
+      "official_episode_index": 19,
+      "queries": [
+        {
+          "executed_actions": 10,
+          "file": "query_0000.npz",
+          "policy_steps_before_query": 0,
+          "query_index": 0,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0001.npz",
+          "policy_steps_before_query": 10,
+          "query_index": 1,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0002.npz",
+          "policy_steps_before_query": 20,
+          "query_index": 2,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0003.npz",
+          "policy_steps_before_query": 30,
+          "query_index": 3,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0004.npz",
+          "policy_steps_before_query": 40,
+          "query_index": 4,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0005.npz",
+          "policy_steps_before_query": 50,
+          "query_index": 5,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0006.npz",
+          "policy_steps_before_query": 60,
+          "query_index": 6,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0007.npz",
+          "policy_steps_before_query": 70,
+          "query_index": 7,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0008.npz",
+          "policy_steps_before_query": 80,
+          "query_index": 8,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0009.npz",
+          "policy_steps_before_query": 90,
+          "query_index": 9,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0010.npz",
+          "policy_steps_before_query": 100,
+          "query_index": 10,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0011.npz",
+          "policy_steps_before_query": 110,
+          "query_index": 11,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0012.npz",
+          "policy_steps_before_query": 120,
+          "query_index": 12,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0013.npz",
+          "policy_steps_before_query": 130,
+          "query_index": 13,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 10,
+          "file": "query_0014.npz",
+          "policy_steps_before_query": 140,
+          "query_index": 14,
+          "returned_chunk_length": 10
+        },
+        {
+          "executed_actions": 7,
+          "file": "query_0015.npz",
+          "policy_steps_before_query": 150,
+          "query_index": 15,
+          "returned_chunk_length": 10
+        }
+      ],
+      "rollout_failed": false,
+      "rollout_steps": 157,
+      "scene_seed": 100023,
+      "status": "success",
+      "success": true
+    }
+  ],
+  "error": null,
+  "expected_official_episodes": 20,
+  "format_version": 1,
+  "infra_error_episodes": 0,
+  "infra_error_skipped_scenes": 0,
+  "official_success_count": 16,
+  "policy_failure_episodes": 4,
+  "query_covered_official_episodes": 20,
+  "run_info": {
+    "action_type": "joint",
+    "checkpoint_label": "occupancy_20261125_min",
+    "entry_script_sha256": "e80db4d5b21fd4eae2fc3f436e71182a92bfb86052928c87304352563526944f",
+    "expert_check": true,
+    "expert_screen_policy": "screened_once_at_manifest_creation",
+    "frequency_field": 50,
+    "frozen_scene_manifest": "/hdd/robotwin-hil-worktrees/dagger-audit/outputs/occupancy_cup_20261125/min/scenes.json",
+    "instruction_type": "seen",
+    "official_base_commit": "4c5c753d66c54c3f6ce855ddf426bcaf3e327250",
+    "policy_host": "127.0.0.1",
+    "policy_name": "Pi_05",
+    "policy_port": "18926",
+    "policy_protocol": "ws",
+    "requested_episodes": 20,
+    "seed": 0,
+    "source": "official evaluator control with frozen scene/instruction replay and passive D trace",
+    "task_config": "demo_clean",
+    "task_name": "place_empty_cup"
+  },
+  "skipped_scenes": [],
+  "status": "complete",
+  "success_count_matches_trace": true,
+  "successful_episodes": 16,
+  "unique_counted_scene_seeds": true
+}

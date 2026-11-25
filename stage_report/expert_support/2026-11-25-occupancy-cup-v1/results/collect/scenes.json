@@ -1,0 +1,161 @@
+{
+  "format_version": 1,
+  "task": "place_empty_cup",
+  "task_config": "demo_clean",
+  "instruction_type": "seen",
+  "seed": 0,
+  "expert_check": true,
+  "episodes": [
+    {
+      "scene_seed": 100024,
+      "instruction": "Position the rounded base blue cup squarely on top of the coaster made of smooth wood."
+    },
+    {
+      "scene_seed": 100025,
+      "instruction": "Move the smooth blue cup for liquids to the flat surface gray wooden coaster"
+    },
+    {
+      "scene_seed": 100026,
+      "instruction": "Use the arm to position the smooth blue cup for liquids on the round coaster with light streaks."
+    },
+    {
+      "scene_seed": 100028,
+      "instruction": "Use the arm to put the cup with light blue color onto the light gray round grainy coaster."
+    },
+    {
+      "scene_seed": 100029,
+      "instruction": "Use the arm to put the medium blue cylindrical cup onto the coaster made of smooth wood."
+    },
+    {
+      "scene_seed": 100030,
+      "instruction": "Stick the cup for holding liquids onto the grainy texture coaster carefully."
+    },
+    {
+      "scene_seed": 100032,
+      "instruction": "Position the smooth blue cup for liquids squarely on top of the small coaster with grain texture."
+    },
+    {
+      "scene_seed": 100033,
+      "instruction": "Use the arm to set the medium-sized plastic blue cup on the flat surface gray wooden coaster"
+    },
+    {
+      "scene_seed": 100034,
+      "instruction": "Direct the cup with light blue color to the light gray streaked wooden coaster and let it rest."
+    },
+    {
+      "scene_seed": 100035,
+      "instruction": "Lift the cup for holding liquids and stick it onto the smooth round palm-sized coaster."
+    },
+    {
+      "scene_seed": 100036,
+      "instruction": "Align the plastic cup for drinks and set it down on the small coaster with grain texture"
+    },
+    {
+      "scene_seed": 100037,
+      "instruction": "Drop the smooth blue cup for liquids on top of the small coaster with grain texture."
+    },
+    {
+      "scene_seed": 100038,
+      "instruction": "Grab the smooth blue drinking cup, then place it onto the flat surface gray wooden coaster."
+    },
+    {
+      "scene_seed": 100040,
+      "instruction": "Using the arm, slide the light blue plastic cup onto the round coaster."
+    },
+    {
+      "scene_seed": 100041,
+      "instruction": "Lift the plastic cup for drinks up and drop it on the flat round wooden coaster."
+    },
+    {
+      "scene_seed": 100042,
+      "instruction": "Place the light blue plastic cup on top of the light gray round grainy coaster"
+    },
+    {
+      "scene_seed": 100044,
+      "instruction": "Use an arm to place the cup with smooth plastic surface on the round coaster with light streaks"
+    },
+    {
+      "scene_seed": 100046,
+      "instruction": "Drop the rounded base blue cup firmly on the round coaster using arm"
+    },
+    {
+      "scene_seed": 100047,
+      "instruction": "Position the cup with smooth plastic surface above and drop it on the round coaster"
+    },
+    {
+      "scene_seed": 100049,
+      "instruction": "Use the arm to set the smooth blue drinking cup on the coaster made of smooth wood"
+    }
+  ],
+  "skipped_scenes": [
+    {
+      "scene_seed": 100003,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100005,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100006,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100022,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100027,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100031,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100039,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100043,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100045,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100048,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100053,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100055,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100095,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100098,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100102,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100105,
+      "reason": "expert_rejected"
+    },
+    {
+      "scene_seed": 100111,
+      "reason": "expert_rejected"
+    }
+  ],
+  "official_base_commit": "4c5c753d66c54c3f6ce855ddf426bcaf3e327250"
+}

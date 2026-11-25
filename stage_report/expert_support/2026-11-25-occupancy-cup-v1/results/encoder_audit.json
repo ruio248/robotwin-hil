@@ -1,0 +1,25 @@
+{
+  "episodes": [
+    {
+      "episode": "train_episode_0000000",
+      "relative_l2": 0.0004566159041132778
+    },
+    {
+      "episode": "train_episode_0000017",
+      "relative_l2": 0.00047233811346814036
+    },
+    {
+      "episode": "train_episode_0000033",
+      "relative_l2": 0.00046049623051658273
+    },
+    {
+      "episode": "train_episode_0000049",
+      "relative_l2": 0.0004641699488274753
+    }
+  ],
+  "camera_order": [
+    "cam_high",
+    "cam_left_wrist",
+    "cam_right_wrist"
+  ]
+}
